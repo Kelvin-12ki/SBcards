@@ -1,15 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Tesseract from 'tesseract.js';
 import CameraView from '@/components/scanner/CameraView';
 import ScanResults from '@/components/scanner/ScanResults';
-import Spinner from '@/components/ui/Spinner';
-import { preprocessImage, preprocessImageAggressive } from '@/utils/imagePreprocessor';
 import { parseCardText, type ParsedCardData } from '@/utils/cardParser';
 import { createCard } from '@/api/cards';
 import toast from 'react-hot-toast';
 
-type ScanPhase = 'camera' | 'processing' | 'review' | 'saving';
+type ScanPhase = 'camera' | 'review' | 'saving';
 
 const ScanCardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -18,86 +15,21 @@ const ScanCardPage: React.FC = () => {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [parsedData, setParsedData] = useState<ParsedCardData | null>(null);
 
-  /** Convert a data URL string to an HTMLCanvasElement. */
-  const dataURLToCanvas = (dataUrl: string): Promise<HTMLCanvasElement> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Could not get 2d context'));
-          return;
-        }
-        ctx.drawImage(img, 0, 0);
-        resolve(canvas);
-      };
-      img.onerror = () => reject(new Error('Failed to load image'));
-      img.src = dataUrl;
-    });
-  };
-
-  // Lazy Tesseract worker — created once, reused for retakes
-  const workerRef = useRef<Tesseract.Worker | null>(null);
-
-  // Cleanup worker on unmount
-  useEffect(() => {
-    return () => {
-      if (workerRef.current) {
-        workerRef.current.terminate();
-        workerRef.current = null;
-      }
-    };
-  }, []);
-
-  const getOrCreateWorker = async (): Promise<Tesseract.Worker> => {
-    if (!workerRef.current) {
-      workerRef.current = await Tesseract.createWorker('eng');
-      await workerRef.current.setParameters({ tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK });
-    }
-    return workerRef.current;
-  };
-
   const handleCapture = async (imageData: string) => {
     setCapturedImage(imageData);
-    setPhase('processing');
-
-    try {
-      // Convert captured data URL to canvas for preprocessing
-      const canvas = await dataURLToCanvas(imageData);
-
-      // First pass — standard preprocessing
-      const preprocessed1 = preprocessImage(canvas);
-      const worker = await getOrCreateWorker();
-      const result1 = await worker.recognize(preprocessed1);
-      const text1 = result1.data.text;
-      const confidence1 = result1.data.confidence ?? 0;
-
-      let finalText: string;
-
-      // Second pass — aggressive preprocessing if confidence is low
-      if (confidence1 < 60) {
-        const preprocessed2 = preprocessImageAggressive(canvas);
-        const result2 = await worker.recognize(preprocessed2);
-        const text2 = result2.data.text;
-        const confidence2 = result2.data.confidence ?? 0;
-
-        // Use whichever result has higher confidence
-        finalText = confidence2 > confidence1 ? text2 : text1;
-      } else {
-        finalText = text1;
-      }
-
-      const parsed = parseCardText(finalText);
-      setParsedData(parsed);
-      setPhase('review');
-    } catch (err) {
-      console.error('OCR error:', err);
-      toast.error('Could not read card. Please try again.');
-      setPhase('camera');
-    }
+    // Skip OCR — go straight to review with empty data for manual entry
+    setParsedData({
+      fullName: '',
+      email: '',
+      phone: '',
+      company: '',
+      role: '',
+      website: '',
+      linkedin: '',
+      twitter: '',
+      notes: '',
+    });
+    setPhase('review');
   };
 
   const handleCameraError = (error: string) => {
@@ -151,25 +83,6 @@ const ScanCardPage: React.FC = () => {
       {/* Phase: Camera */}
       {phase === 'camera' && (
         <CameraView onCapture={handleCapture} onError={handleCameraError} />
-      )}
-
-      {/* Phase: Processing */}
-      {phase === 'processing' && capturedImage && (
-        <div className="relative mx-auto max-w-lg overflow-hidden rounded-2xl">
-          <img
-            src={capturedImage}
-            alt="Captured card"
-            className="w-full object-cover"
-          />
-          {/* Scan line overlay on the frozen image */}
-          <div className="absolute inset-0 z-10">
-            <div className="scan-line" />
-          </div>
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40">
-            <Spinner size="lg" />
-            <p className="mt-4 text-sm text-text-primary">Analyzing...</p>
-          </div>
-        </div>
       )}
 
       {/* Phase: Review */}
