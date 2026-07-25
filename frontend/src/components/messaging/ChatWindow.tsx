@@ -72,7 +72,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         {onBack && (
           <button
             onClick={onBack}
-            className="rounded-full p-1.5 text-text-tertiary hover:bg-surface-2 hover:text-text-primary transition-colors"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full text-text-tertiary hover:bg-surface-2 hover:text-text-primary transition-colors"
             aria-label="Back to conversations"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -97,7 +97,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       </div>
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <div className="flex-1 overflow-y-auto px-3 py-3 sm:px-4 sm:py-4">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="h-6 w-6 animate-spin text-neon-cyan" />
@@ -138,7 +138,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       </div>
 
       {/* Input area */}
-      <div className="border-t border-border-subtle p-4">
+      <div className="border-t border-border-subtle p-3 sm:p-4">
         <div className="flex items-center gap-3">
           <input
             ref={inputRef}
@@ -162,7 +162,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             onClick={handleSend}
             disabled={!input.trim() || loading}
             className={cn(
-              'flex h-10 w-10 items-center justify-center rounded-full transition-all duration-200',
+              'flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full transition-all duration-200',
               input.trim()
                 ? 'bg-gradient-to-r from-gold to-gold-strong text-gold-ink shadow-lg shadow-gold/20 hover-glow-gold'
                 : 'bg-surface-2 text-text-tertiary cursor-not-allowed',

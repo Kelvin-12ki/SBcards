@@ -195,10 +195,10 @@ const MessagesPage: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-12rem)]">
+    <div className="flex flex-col h-[calc(100vh-10rem)] md:h-[calc(100vh-12rem)]">
       {/* Heading */}
       <div className="mb-5 flex items-center justify-between">
-        <h1 className="font-display text-2xl font-extrabold tracking-tight text-gradient-gold">
+        <h1 className="font-display text-xl sm:text-2xl font-extrabold tracking-tight text-gradient-gold">
           Messages
         </h1>
         {/* Mobile toggle */}
@@ -214,7 +214,7 @@ const MessagesPage: React.FC = () => {
       </div>
 
       {/* Two-panel layout */}
-      <div className="flex flex-1 gap-0 overflow-hidden rounded-2xl border border-border-subtle bg-surface-1">
+      <div className="flex flex-1 gap-0 overflow-hidden rounded-xl sm:rounded-2xl border border-border-subtle bg-surface-1">
         {/* Left panel - Conversation List */}
         <div
           className={cn(

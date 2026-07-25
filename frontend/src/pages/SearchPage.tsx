@@ -88,10 +88,10 @@ const SearchPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Header */}
       <div>
-        <h1 className="font-display text-3xl font-extrabold tracking-tight text-gradient-gold">Search</h1>
+        <h1 className="font-display text-2xl md:text-3xl font-extrabold tracking-tight text-gradient-gold">Search</h1>
         <p className="mt-1 text-sm text-text-secondary">
           Find people, events, organizations, and more.
         </p>

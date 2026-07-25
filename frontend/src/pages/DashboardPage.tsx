@@ -81,9 +81,9 @@ const DashboardPage: React.FC = () => {
   const defaultCard = cards.find((c) => c.isDefault) || cards[0];
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-6 md:space-y-10">
       <div>
-        <h1 className="font-display text-3xl font-extrabold tracking-tight text-gradient-gold">
+        <h1 className="font-display text-2xl md:text-3xl font-extrabold tracking-tight text-gradient-gold">
           Welcome back{user?.displayName ? `, ${user.displayName}` : ''}!
         </h1>
         <p className="mt-1.5 text-base text-text-secondary">
@@ -111,11 +111,11 @@ const DashboardPage: React.FC = () => {
       </div>
 
       {/* Quick-access cards */}
-      <section className="grid gap-4 sm:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
         {/* Messages */}
         <button
           onClick={() => navigate('/messages')}
-          className="rounded-2xl border border-border-subtle bg-surface-1 p-5 text-left transition-all duration-200 card-magical hover-glow-gold group"
+          className="rounded-2xl border border-border-subtle bg-surface-1 p-3 sm:p-5 text-left transition-all duration-200 card-magical hover-glow-gold group"
         >
           <div className="flex items-center justify-between mb-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/10 text-gold group-hover:bg-gold/20 transition-colors">
@@ -160,7 +160,7 @@ const DashboardPage: React.FC = () => {
         {/* Wallet */}
         <button
           onClick={() => navigate('/wallet')}
-          className="rounded-2xl border border-border-subtle bg-surface-1 p-5 text-left transition-all duration-200 card-magical hover-glow-gold group"
+          className="rounded-2xl border border-border-subtle bg-surface-1 p-3 sm:p-5 text-left transition-all duration-200 card-magical hover-glow-gold group"
         >
           <div className="flex items-center justify-between mb-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-neon-purple/10 text-neon-purple group-hover:bg-neon-purple/20 transition-colors">
@@ -244,7 +244,7 @@ const DashboardPage: React.FC = () => {
             </Button>
           </div>
         ) : (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {events.map((event) => (
               <EventCard
                 key={event.id}
@@ -272,7 +272,7 @@ const DashboardPage: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {matches.map((match) => (
               <MatchCard key={match.id} match={match} />
             ))}

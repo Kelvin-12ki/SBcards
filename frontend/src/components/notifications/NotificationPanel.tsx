@@ -72,7 +72,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
   return (
     <div
       ref={panelRef}
-      className="absolute right-0 top-full mt-2 w-80 sm:w-96 rounded-2xl border border-border-subtle bg-surface-1/95 backdrop-blur-xl shadow-2xl z-50 overflow-hidden"
+      className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] max-w-sm sm:w-80 md:w-96 rounded-2xl border border-border-subtle bg-surface-1/95 backdrop-blur-xl shadow-2xl z-50 overflow-hidden"
     >
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border-subtle px-4 py-3">

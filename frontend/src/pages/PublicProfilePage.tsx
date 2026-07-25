@@ -317,7 +317,7 @@ const PublicProfilePage: React.FC = () => {
       {/* ════════════════════════════════════════════════
          PROFILE HEADER
          ════════════════════════════════════════════════ */}
-      <section className="card-magical rounded-2xl border border-border-subtle bg-surface-1 p-6 md:p-8">
+      <section className="card-magical rounded-2xl border border-border-subtle bg-surface-1 p-4 sm:p-6 md:p-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
           {/* Avatar */}
           <div className="relative shrink-0">
@@ -325,10 +325,10 @@ const PublicProfilePage: React.FC = () => {
               <img
                 src={profile.avatarUrl}
                 alt={profile.displayName || 'Profile'}
-                className="h-20 w-20 rounded-full object-cover border-2 border-neon-cyan/30 shadow-lg shadow-neon-cyan/10"
+                className="h-16 w-16 sm:h-20 sm:w-20 rounded-full object-cover border-2 border-neon-cyan/30 shadow-lg shadow-neon-cyan/10"
               />
             ) : (
-              <div className="flex h-20 w-20 items-center justify-center rounded-full gradient-magical text-2xl font-bold text-white shadow-lg shadow-neon-purple/30">
+              <div className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full gradient-magical text-2xl font-bold text-white shadow-lg shadow-neon-purple/30">
                 {initials}
               </div>
             )}
@@ -378,7 +378,7 @@ const PublicProfilePage: React.FC = () => {
           </div>
 
           {/* Action buttons */}
-          <div className="flex shrink-0 items-center gap-2 self-start sm:self-center">
+          <div className="flex shrink-0 items-center gap-2 flex-wrap self-start sm:self-center">
             {/* Connection status buttons */}
             {connectionStatus === 'none' && (
               <button

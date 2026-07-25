@@ -67,8 +67,8 @@ const Modal: React.FC<ModalProps> = ({
         )}
       >
         {title && (
-          <div className="flex items-center justify-between border-b border-border-subtle px-6 py-4">
-            <h2 className="font-display text-xl font-bold text-gradient-gold">{title}</h2>
+          <div className="flex items-center justify-between border-b border-border-subtle px-4 py-3 sm:px-6 sm:py-4">
+            <h2 className="font-display text-lg sm:text-xl font-bold text-gradient-gold">{title}</h2>
             <button
               onClick={onClose}
               className="rounded-full p-1.5 text-text-tertiary transition-colors hover:bg-surface-2 hover:text-text-primary"
@@ -81,10 +81,10 @@ const Modal: React.FC<ModalProps> = ({
           </div>
         )}
 
-        <div className="px-6 py-4">{children}</div>
+        <div className="px-4 py-3 sm:px-6 sm:py-4 max-h-[85vh] overflow-y-auto">{children}</div>
 
         {footer && (
-          <div className="flex items-center justify-end gap-3 border-t border-border-subtle px-6 py-4">
+          <div className="flex items-center justify-end gap-3 border-t border-border-subtle px-4 py-3 sm:px-6 sm:py-4">
             {footer}
           </div>
         )}

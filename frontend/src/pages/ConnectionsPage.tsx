@@ -111,9 +111,9 @@ const ConnectionsPage: React.FC = () => {
   })();
 
   return (
-    <div className="min-h-screen bg-background p-6 space-y-8">
+    <div className="min-h-screen bg-background space-y-6 md:space-y-8">
       {/* Header */}
-      <h1 className="font-display text-3xl font-extrabold tracking-tight text-gradient-magical">
+      <h1 className="font-display text-2xl md:text-3xl font-extrabold tracking-tight text-gradient-magical">
         My Connections
       </h1>
 
@@ -358,7 +358,7 @@ const ConnectionsPage: React.FC = () => {
       <button
         type="button"
         onClick={() => navigate('/search')}
-        className="fixed bottom-8 right-8 z-30 flex h-14 w-14 items-center justify-center rounded-full gradient-magical text-white shadow-lg shadow-neon-purple/30 hover:shadow-neon-purple/50 transition-all duration-300 hover:scale-105"
+        className="fixed bottom-24 md:bottom-8 right-8 z-30 flex h-14 w-14 items-center justify-center rounded-full gradient-magical text-white shadow-lg shadow-neon-purple/30 hover:shadow-neon-purple/50 transition-all duration-300 hover:scale-105"
         aria-label="Find people"
       >
         <UserPlus className="h-6 w-6" />

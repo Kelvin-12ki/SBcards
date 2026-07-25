@@ -57,7 +57,7 @@ const LoginPage: React.FC = () => {
       </div>
       <div className="w-full max-w-sm relative z-10">
         <div className="mb-8 text-center">
-          <h1 className="font-display text-4xl font-extrabold tracking-tight text-text-primary">
+          <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight text-text-primary">
             SB<span className="text-gradient-gold">Cards</span>
           </h1>
           <p className="mt-2 text-base text-text-secondary">
@@ -67,7 +67,7 @@ const LoginPage: React.FC = () => {
 
         <form
           onSubmit={handleSubmit}
-          className="space-y-5 rounded-2xl border border-border-subtle bg-surface-1 p-8 card-magical"
+          className="space-y-5 rounded-2xl border border-border-subtle bg-surface-1 p-5 sm:p-8 card-magical"
         >
           {error && (
             <div className="rounded-xl bg-danger/10 border border-danger/20 px-4 py-2.5 text-sm text-danger">

@@ -14,10 +14,10 @@ import NotificationBell from '@/components/notifications/NotificationBell';
 import NotificationPanel from '@/components/notifications/NotificationPanel';
 
 export interface NavbarProps {
-  onMenuToggle?: () => void;
+  onMenuToggle?: never;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ onMenuToggle }) => {
+const Navbar: React.FC<NavbarProps> = () => {
   const { user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -114,16 +114,6 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle }) => {
   return (
     <nav className="flex h-16 items-center justify-between border-b border-border-subtle bg-surface-1 px-5 lg:px-6">
       <div className="flex items-center gap-3">
-        <button
-          onClick={onMenuToggle}
-          className="rounded-xl p-2 text-text-tertiary hover:bg-surface-2 hover:text-text-primary lg:hidden"
-          aria-label="Toggle navigation menu"
-        >
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-          </svg>
-        </button>
-
         <Link to="/dashboard" className="flex items-center gap-2 group">
           <span className="font-display text-xl font-extrabold tracking-tight text-text-primary">
             SB<span className="text-gradient-gold">Cards</span>
@@ -181,7 +171,7 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle }) => {
           </button>
 
           {dropdownOpen && (
-            <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl border border-border-subtle bg-surface-1 py-1 shadow-2xl">
+            <div className="absolute right-0 top-full mt-2 w-48 max-w-[calc(100vw-2rem)] rounded-2xl border border-border-subtle bg-surface-1 py-1 shadow-2xl">
               <Link
                 to="/profile"
                 onClick={() => setDropdownOpen(false)}

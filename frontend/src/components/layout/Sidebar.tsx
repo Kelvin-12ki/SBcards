@@ -88,8 +88,8 @@ const WalletIcon = () => (
 );
 
 export interface SidebarProps {
-  isOpen: boolean;
-  onClose: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 const navLinks = [
@@ -140,19 +140,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
   return (
     <>
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
-          onClick={onClose}
-          aria-hidden="true"
-        />
-      )}
-
       <aside
         className={cn(
-          'fixed left-0 top-16 z-50 h-[calc(100vh-4rem)] w-64 transform border-r border-border-subtle bg-surface-1 transition-transform duration-200',
-          'lg:static lg:z-auto lg:translate-x-0',
-          isOpen ? 'translate-x-0' : '-translate-x-full',
+          'hidden lg:flex lg:flex-col w-64 border-r border-border-subtle bg-surface-1',
+          'fixed left-0 top-16 h-[calc(100vh-4rem)]',
         )}
       >
         <nav className="flex flex-col gap-1 p-4">

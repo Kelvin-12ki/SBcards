@@ -119,16 +119,16 @@ const ProfilePage: React.FC = () => {
   return (
     <div className="max-w-2xl space-y-8">
       {/* Profile Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
+        <div className="flex items-center gap-4 sm:gap-6">
           <div className="relative">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full gradient-magical text-2xl font-bold text-white shadow-lg shadow-neon-purple/30">
+            <div className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full gradient-magical text-2xl font-bold text-white shadow-lg shadow-neon-purple/30">
               {initials}
             </div>
             <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-surface-1 bg-success animate-glow-pulse" />
           </div>
           <div>
-            <h1 className="font-display text-2xl font-extrabold tracking-tight text-gradient-gold">
+            <h1 className="font-display text-xl sm:text-2xl font-extrabold tracking-tight text-gradient-gold">
               {user?.displayName || 'Your Profile'}
             </h1>
             <p className="text-base text-text-secondary">{user?.email}</p>
@@ -143,7 +143,7 @@ const ProfilePage: React.FC = () => {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 ml-auto">
           <Link
             to="/qr"
             className="inline-flex items-center gap-1.5 text-sm text-neon-cyan hover:text-neon-cyan/80 transition-colors"

@@ -45,7 +45,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
             key={conv.id}
             onClick={() => onSelect(conv.id)}
             className={cn(
-              'relative flex items-start gap-3 rounded-2xl p-3 text-left transition-all duration-200 card-magical',
+              'relative flex items-start gap-3 rounded-2xl p-3.5 sm:p-3 text-left transition-all duration-200 card-magical min-h-[64px]',
               isActive
                 ? 'border-gold/50 border-glow-gold'
                 : 'border-border-subtle hover:border-neon-purple/30 hover-glow-magical',

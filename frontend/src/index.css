@@ -9,6 +9,8 @@
     font-family: 'Urbanist', 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
   }
 
   ::selection {
@@ -187,6 +189,10 @@ select:-webkit-autofill:focus {
   .hover-glow-magical:hover {
     box-shadow: 0 0 20px rgba(123, 97, 255, 0.25), 0 0 40px rgba(0, 245, 255, 0.1);
     border-color: rgba(123, 97, 255, 0.4);
+  }
+
+  .touch-scroll {
+    touch-action: pan-y;
   }
 
   /* ── Sparkle dots ── */
