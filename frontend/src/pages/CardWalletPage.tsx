@@ -1,0 +1,157 @@
+import React, { useEffect, useState, useMemo } from 'react';
+import { Wallet, Search, CreditCard, TrendingUp, Calendar } from 'lucide-react';
+import { getCards } from '@/api/cards';
+import type { Card } from '@/types/card';
+import CardPreview from '@/components/cards/CardPreview';
+import Spinner from '@/components/ui/Spinner';
+import EmptyState from '@/components/ui/EmptyState';
+import { cn } from '@/utils/helpers';
+
+const CardWalletPage: React.FC = () => {
+  const [cards, setCards] = useState<Card[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchCards = async () => {
+      try {
+        const data = await getCards();
+        if (!cancelled) setCards(data);
+      } catch (err) {
+        console.error('Failed to load cards:', err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    fetchCards();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Filter cards by search
+  const filteredCards = useMemo(() => {
+    if (!searchQuery.trim()) return cards;
+    const query = searchQuery.toLowerCase();
+    return cards.filter(
+      (card) =>
+        card.fullName.toLowerCase().includes(query) ||
+        (card.company && card.company.toLowerCase().includes(query)) ||
+        (card.headline && card.headline.toLowerCase().includes(query)),
+    );
+  }, [cards, searchQuery]);
+
+  // Stats
+  const stats = useMemo(() => {
+    const total = cards.length;
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const thisWeek = cards.filter((c) => new Date(c.createdAt) >= startOfWeek).length;
+    const thisMonth = cards.filter((c) => new Date(c.createdAt) >= startOfMonth).length;
+
+    return { total, thisWeek, thisMonth };
+  }, [cards]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-5xl mx-auto">
+      {/* Heading */}
+      <div className="mb-6">
+        <h1 className="font-display text-2xl font-extrabold tracking-tight text-gradient-gold">
+          Card Wallet
+        </h1>
+        <p className="mt-1 text-sm text-text-secondary">
+          All the business cards you&apos;ve collected.
+        </p>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <div className="rounded-2xl border border-border-subtle bg-surface-1 p-4 card-magical">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold/10 text-gold">
+              <CreditCard className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-text-primary">{stats.total}</p>
+              <p className="text-xs text-text-secondary">Total Cards</p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-border-subtle bg-surface-1 p-4 card-magical">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-neon-cyan/10 text-neon-cyan">
+              <TrendingUp className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-text-primary">{stats.thisWeek}</p>
+              <p className="text-xs text-text-secondary">This Week</p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-border-subtle bg-surface-1 p-4 card-magical">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-neon-purple/10 text-neon-purple">
+              <Calendar className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-text-primary">{stats.thisMonth}</p>
+              <p className="text-xs text-text-secondary">This Month</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="mb-6 max-w-md">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by name, company, or title..."
+            className={cn(
+              'w-full rounded-xl border border-border-subtle bg-surface-2 py-2.5 pl-10 pr-4 text-sm text-text-primary',
+              'placeholder:text-text-tertiary',
+              'focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold',
+              'transition-all duration-200',
+            )}
+          />
+        </div>
+      </div>
+
+      {/* Cards Grid */}
+      {filteredCards.length === 0 ? (
+        <EmptyState
+          icon={<Wallet className="h-10 w-10" />}
+          title={cards.length === 0 ? 'No cards collected yet' : 'No cards match your search'}
+          description={
+            cards.length === 0
+              ? 'Scan or exchange business cards to build your collection.'
+              : 'Try a different search term.'
+          }
+        />
+      ) : (
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredCards.map((card) => (
+            <CardPreview key={card.id} card={card} className="w-full" />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default CardWalletPage;
