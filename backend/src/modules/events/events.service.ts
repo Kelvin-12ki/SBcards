@@ -292,7 +292,7 @@ export class EventsService {
           userId: p.userId,
           cardId: p.cardId,
           isVisible: p.isVisible,
-          joinedAt: p.joinedAt?.toISOString?.() ?? p.joinedAt,
+          joinedAt: p.joinedAt ? p.joinedAt.toISOString() : '',
           user: userDoc
             ? {
                 id: userDoc._id?.toString() ?? userDoc.id,

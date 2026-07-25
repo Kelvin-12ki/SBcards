@@ -165,10 +165,10 @@ export class OrganizationsService {
         return {
           id: m._id?.toString() ?? m.id,
           userId: m.userId,
-          role: m.role,
+          role: m.role as Role,
           isActive: m.isActive,
           invitedBy: m.invitedBy,
-          joinedAt: m.joinedAt?.toISOString?.() ?? m.joinedAt,
+          joinedAt: m.joinedAt ? m.joinedAt.toISOString() : '',
           user: userDoc
             ? {
                 id: userDoc._id?.toString() ?? userDoc.id,
@@ -288,7 +288,7 @@ export class OrganizationsService {
       .findOne({ organizationId: orgId, userId, isActive: true })
       .exec();
 
-    return membership?.role ?? null;
+    return (membership?.role as Role) ?? null;
   }
 
   /**
