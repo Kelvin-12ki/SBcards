@@ -28,8 +28,11 @@ async function bootstrap() {
       }
 
       if (nodeEnv === 'production') {
-        // Production: only allow the configured FRONTEND_URL
-        const allowed = origin === frontendUrl || origin.startsWith('http://localhost:');
+        // Production: allow the configured FRONTEND_URL, any vercel.app deployment, and localhost
+        const allowed =
+          origin === frontendUrl ||
+          origin.endsWith('.vercel.app') ||
+          origin.startsWith('http://localhost:');
         return callback(null, allowed);
       }
 
