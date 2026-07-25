@@ -31,6 +31,16 @@ export interface Connection {
     company?: string;
     industry?: string;
   };
+  otherUser?: {
+    id: string;
+    displayName?: string;
+    email: string;
+    avatarUrl?: string;
+    title?: string;
+    company?: string;
+    jobRole?: string;
+    industry?: string;
+  };
   connectedCard?: {
     id: string;
     fullName: string;

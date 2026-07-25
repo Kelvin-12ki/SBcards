@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { MessageSquare } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/auth/useAuth';
 import { cn } from '@/utils/helpers';
 import { getConversations, getMessages, sendMessage, markAsRead, setTypingStatus, getTypingStatus } from '@/api/messaging';
@@ -12,6 +12,7 @@ import EmptyState from '@/components/ui/EmptyState';
 
 const MessagesPage: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | undefined>();
@@ -23,6 +24,7 @@ const MessagesPage: React.FC = () => {
   const [isOtherTyping, setIsOtherTyping] = useState(false);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTypingSentRef = useRef<number>(0);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const currentUserId = user?.id || '';
 
@@ -32,6 +34,11 @@ const MessagesPage: React.FC = () => {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     };
   }, []);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   // Fetch conversations
   useEffect(() => {
@@ -58,7 +65,28 @@ const MessagesPage: React.FC = () => {
     return () => { cancelled = true; };
   }, []);
 
-  // Fetch messages when active conversation changes
+  // Poll conversations list every 5 seconds for new messages in sidebar
+  useEffect(() => {
+    let cancelled = false;
+    const pollConversations = async () => {
+      try {
+        const data = await getConversations();
+        if (!cancelled) {
+          setConversations(data);
+        }
+      } catch {
+        // Ignore polling errors
+      }
+    };
+
+    const interval = setInterval(pollConversations, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [activeConvId]);
+
+  // Fetch messages when active conversation changes (initial load)
   useEffect(() => {
     if (!activeConvId) {
       setMessages([]);
@@ -86,6 +114,37 @@ const MessagesPage: React.FC = () => {
     };
     fetchMessages();
     return () => { cancelled = true; };
+  }, [activeConvId]);
+
+  // Poll for new messages every 2 seconds for real-time feel
+  useEffect(() => {
+    if (!activeConvId) return;
+
+    let cancelled = false;
+    const pollMessages = async () => {
+      try {
+        const data = await getMessages(activeConvId);
+        if (!cancelled) {
+          setMessages(data);
+          // Mark as read
+          markAsRead(activeConvId).catch(() => {});
+          // Update unread count
+          setConversations((prev) =>
+            prev.map((c) =>
+              c.id === activeConvId ? { ...c, unreadCount: 0 } : c,
+            ),
+          );
+        }
+      } catch {
+        // Ignore polling errors
+      }
+    };
+
+    const interval = setInterval(pollMessages, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [activeConvId]);
 
   // Poll typing status for the active conversation
@@ -159,9 +218,32 @@ const MessagesPage: React.FC = () => {
   const handleSend = useCallback(
     async (content: string) => {
       if (!activeConvId) return;
+      // Optimistic: add message immediately
+      const tempId = `temp-${Date.now()}`;
+      const optimisticMsg: Message = {
+        id: tempId,
+        conversationId: activeConvId,
+        senderId: currentUserId,
+        content,
+        createdAt: new Date().toISOString(),
+        read: false,
+      };
+      setMessages((prev) => [...prev, optimisticMsg]);
+
       try {
         const newMsg = await sendMessage(activeConvId, content);
-        setMessages((prev) => [...prev, newMsg]);
+        // Replace temp message with real one
+        setMessages((prev) =>
+          prev.map((m) => (m.id === tempId ? newMsg : m)),
+        );
+        // Update conversation list with latest message
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === activeConvId
+              ? { ...c, lastMessage: content, lastMessageAt: new Date().toISOString() }
+              : c,
+          ),
+        );
         // Clear typing status after sending
         setTypingStatus(activeConvId, false).catch(() => {});
         if (typingTimeoutRef.current) {
@@ -169,10 +251,12 @@ const MessagesPage: React.FC = () => {
           typingTimeoutRef.current = null;
         }
       } catch (err) {
+        // Remove optimistic message on failure
+        setMessages((prev) => prev.filter((m) => m.id !== tempId));
         console.error('Failed to send message:', err);
       }
     },
-    [activeConvId],
+    [activeConvId, currentUserId],
   );
 
   const handleSelectConversation = (id: string) => {

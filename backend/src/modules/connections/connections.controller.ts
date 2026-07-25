@@ -45,7 +45,7 @@ export class ConnectionsController {
     const userId = await this.resolveUserId(jwtUser);
     const connections = await this.connectionsService.findIncomingRequests(userId);
     return Promise.all(
-      connections.map((conn) => this.connectionsService.getEnrichedConnection(conn)),
+      connections.map((conn) => this.connectionsService.getEnrichedConnection(conn, userId)),
     );
   }
 
@@ -57,7 +57,7 @@ export class ConnectionsController {
     const userId = await this.resolveUserId(jwtUser);
     const connections = await this.connectionsService.findOutgoingRequests(userId);
     return Promise.all(
-      connections.map((conn) => this.connectionsService.getEnrichedConnection(conn)),
+      connections.map((conn) => this.connectionsService.getEnrichedConnection(conn, userId)),
     );
   }
 
@@ -80,7 +80,7 @@ export class ConnectionsController {
   ): Promise<Record<string, any>> {
     const userId = await this.resolveUserId(jwtUser);
     const connection = await this.connectionsService.acceptRequest(id, userId);
-    return this.connectionsService.getEnrichedConnection(connection);
+    return this.connectionsService.getEnrichedConnection(connection, userId);
   }
 
   @Post(':id/decline')
@@ -92,7 +92,7 @@ export class ConnectionsController {
   ): Promise<Record<string, any>> {
     const userId = await this.resolveUserId(jwtUser);
     const connection = await this.connectionsService.declineRequest(id, userId);
-    return this.connectionsService.getEnrichedConnection(connection);
+    return this.connectionsService.getEnrichedConnection(connection, userId);
   }
 
   @Post(':id/cancel')
@@ -126,7 +126,7 @@ export class ConnectionsController {
       search,
     });
     return Promise.all(
-      connections.map((conn) => this.connectionsService.getEnrichedConnection(conn)),
+      connections.map((conn) => this.connectionsService.getEnrichedConnection(conn, userId)),
     );
   }
 
@@ -138,7 +138,7 @@ export class ConnectionsController {
     const userId = await this.resolveUserId(jwtUser);
     const connections = await this.connectionsService.findFavorites(userId);
     return Promise.all(
-      connections.map((conn) => this.connectionsService.getEnrichedConnection(conn)),
+      connections.map((conn) => this.connectionsService.getEnrichedConnection(conn, userId)),
     );
   }
 
@@ -151,7 +151,7 @@ export class ConnectionsController {
   ): Promise<Record<string, any>> {
     const userId = await this.resolveUserId(jwtUser);
     const connection = await this.connectionsService.create(userId, createConnectionDto);
-    return this.connectionsService.getEnrichedConnection(connection);
+    return this.connectionsService.getEnrichedConnection(connection, userId);
   }
 
   @Get(':id')
@@ -162,7 +162,7 @@ export class ConnectionsController {
   ): Promise<Record<string, any>> {
     const userId = await this.resolveUserId(jwtUser);
     const connection = await this.connectionsService.findById(id, userId);
-    return this.connectionsService.getEnrichedConnection(connection);
+    return this.connectionsService.getEnrichedConnection(connection, userId);
   }
 
   @Patch(':id')
@@ -175,7 +175,7 @@ export class ConnectionsController {
   ): Promise<Record<string, any>> {
     const userId = await this.resolveUserId(jwtUser);
     const connection = await this.connectionsService.update(id, userId, updateConnectionDto);
-    return this.connectionsService.getEnrichedConnection(connection);
+    return this.connectionsService.getEnrichedConnection(connection, userId);
   }
 
   @Delete(':id')
@@ -198,7 +198,7 @@ export class ConnectionsController {
   ): Promise<Record<string, any>> {
     const userId = await this.resolveUserId(jwtUser);
     const connection = await this.connectionsService.toggleFavorite(id, userId);
-    return this.connectionsService.getEnrichedConnection(connection);
+    return this.connectionsService.getEnrichedConnection(connection, userId);
   }
 
   @Post('bulk-tag')

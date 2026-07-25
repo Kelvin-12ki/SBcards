@@ -24,14 +24,20 @@ const statusVariants: Record<string, 'default' | 'primary' | 'success' | 'warnin
 };
 
 const ConnectionCard: React.FC<ConnectionCardProps> = ({ connection, onClick, className }) => {
-  const person = connection.connectedUser || connection.connectedCard;
+  // Prefer 'otherUser' (the person who isn't the current user), then fallback
+  const person = connection.otherUser || connection.connectedUser || null;
+  const card = connection.connectedCard;
+  const p = person as any;
+  const c = card as any;
   const displayName =
-    ('displayName' in (person || {}) ? (person as any)?.displayName : undefined) ||
-    ('fullName' in (person || {}) ? (person as any)?.fullName : undefined) ||
+    p?.displayName ||
+    c?.fullName ||
+    p?.email ||
+    c?.email ||
     'Unknown User';
-  const company = (person as any)?.company || connection.connectedCard?.company;
-  const role = (person as any)?.jobRole || (person as any)?.role || connection.connectedCard?.role;
-  const avatarUrl = (person as any)?.avatarUrl || connection.connectedCard?.avatarUrl;
+  const company = p?.company || c?.company;
+  const role = p?.jobRole || c?.role;
+  const avatarUrl = p?.avatarUrl || c?.avatarUrl;
 
   const initials = displayName
     .split(' ')

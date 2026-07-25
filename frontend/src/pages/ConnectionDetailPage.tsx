@@ -3,7 +3,6 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, MessageSquare, Trash2, Star, Briefcase } from 'lucide-react';
 import { getConnection, deleteConnection, toggleFavorite } from '@/api/connections';
 import { findOrCreateConversation } from '@/api/messaging';
-import { useAuth } from '@/auth/useAuth';
 import type { Connection } from '@/types/connection';
 import Spinner from '@/components/ui/Spinner';
 import toast from 'react-hot-toast';
@@ -11,8 +10,6 @@ import toast from 'react-hot-toast';
 const ConnectionDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const currentUserId = user?.id || '';
 
   const [connection, setConnection] = useState<Connection | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,18 +31,8 @@ const ConnectionDetailPage: React.FC = () => {
     fetchData();
   }, [id, navigate]);
 
-  // Determine who the "other person" is
-  const getOtherPerson = (): { id: string; displayName?: string; email: string; avatarUrl?: string; title?: string; company?: string } | null => {
-    if (!connection) return null;
-    if (connection.userId === currentUserId) {
-      // I am the sender → other person is the connected user
-      return connection.connectedUser ?? { id: connection.connectedUserId, email: '' };
-    }
-    // I am the recipient → other person is the sender
-    return connection.senderUser ?? { id: connection.userId, email: '' };
-  };
-
-  const otherPerson = getOtherPerson();
+  // Use the backend-provided 'otherUser' which is always the correct person
+  const otherPerson = connection?.otherUser || null;
   const displayName =
     otherPerson?.displayName || otherPerson?.email || 'Unknown User';
   const initials = displayName

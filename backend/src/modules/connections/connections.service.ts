@@ -528,9 +528,11 @@ export class ConnectionsService {
 
   /**
    * Enrich a connection document with user and card display info.
+   * When currentUserId is provided, also returns 'otherUser' (the person who isn't the viewer).
    */
   async getEnrichedConnection(
     connection: ConnectionDocument,
+    currentUserId?: string,
   ): Promise<Record<string, any>> {
     let connectedUser = null;
     let senderUser = null;
@@ -564,30 +566,52 @@ export class ConnectionsService {
 
     const plain = connection.toJSON();
 
+    const connectedUserData = connectedUser
+      ? {
+          id: connectedUser._id?.toString() ?? connectedUser.id,
+          displayName: connectedUser.displayName,
+          email: connectedUser.email,
+          avatarUrl: connectedUser.avatarUrl,
+          title: connectedUser.title,
+          company: connectedUser.company,
+          industry: connectedUser.industry,
+          jobRole: connectedUser.jobRole,
+        }
+      : null;
+
+    const senderUserData = senderUser
+      ? {
+          id: senderUser._id?.toString() ?? senderUser.id,
+          displayName: senderUser.displayName,
+          email: senderUser.email,
+          avatarUrl: senderUser.avatarUrl,
+          title: senderUser.title,
+          company: senderUser.company,
+          industry: senderUser.industry,
+          jobRole: senderUser.jobRole,
+        }
+      : null;
+
+    // Compute the "other user" — the person who isn't the current viewer
+    let otherUser = null;
+    if (currentUserId) {
+      if (connection.userId === currentUserId) {
+        // I sent this connection, so the other person is connectedUserId
+        otherUser = connectedUserData;
+      } else {
+        // They sent this connection, so the other person is userId (sender)
+        otherUser = senderUserData;
+      }
+    } else {
+      // No current user context — default to connectedUser
+      otherUser = connectedUserData;
+    }
+
     return {
       ...plain,
-      connectedUser: connectedUser
-        ? {
-            id: connectedUser._id?.toString() ?? connectedUser.id,
-            displayName: connectedUser.displayName,
-            email: connectedUser.email,
-            avatarUrl: connectedUser.avatarUrl,
-            title: connectedUser.title,
-            company: connectedUser.company,
-            industry: connectedUser.industry,
-          }
-        : null,
-      senderUser: senderUser
-        ? {
-            id: senderUser._id?.toString() ?? senderUser.id,
-            displayName: senderUser.displayName,
-            email: senderUser.email,
-            avatarUrl: senderUser.avatarUrl,
-            title: senderUser.title,
-            company: senderUser.company,
-            industry: senderUser.industry,
-          }
-        : null,
+      connectedUser: connectedUserData,
+      senderUser: senderUserData,
+      otherUser,
       connectedCard: connectedCard
         ? {
             id: connectedCard._id?.toString() ?? connectedCard.id,

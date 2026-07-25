@@ -74,10 +74,16 @@ export class AuthController {
     const user = await this.usersService.findByFirebaseUid(jwtUser.uid);
 
     if (!user) {
+      // Derive a displayName from email prefix if no name from Firebase
+      const emailPrefix = (jwtUser.email || '').split('@')[0] || 'User';
+      const displayName = emailPrefix
+        .replace(/[._-]/g, ' ')
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+
       return this.usersService.upsertFirebaseUser(
         jwtUser.uid,
         jwtUser.email || '',
-        null,
+        displayName,
       );
     }
 

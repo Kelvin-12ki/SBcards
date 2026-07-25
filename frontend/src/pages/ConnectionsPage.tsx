@@ -154,7 +154,7 @@ const ConnectionsPage: React.FC = () => {
           </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {incomingRequests.map((req) => {
-              const person = req.senderUser || req.connectedUser;
+              const person = req.otherUser || req.senderUser || req.connectedUser;
               const displayName =
                 person?.displayName || person?.email || 'Unknown User';
               const initials = displayName
@@ -234,7 +234,7 @@ const ConnectionsPage: React.FC = () => {
           </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {outgoingRequests.map((req) => {
-              const person = req.connectedUser;
+              const person = req.otherUser || req.connectedUser;
               const displayName =
                 person?.displayName || person?.email || 'Unknown User';
               const initials = displayName
