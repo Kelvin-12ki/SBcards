@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { AuthProvider } from '@/auth/AuthProvider';
 import RoutesTree from '@/routes';
 import './index.css';
@@ -22,6 +23,7 @@ const App: React.FC = () => {
             },
           }}
         />
+        <SpeedInsights />
       </AuthProvider>
     </BrowserRouter>
   );
