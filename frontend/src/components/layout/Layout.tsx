@@ -12,7 +12,7 @@ const Layout: React.FC = () => {
       <div className="flex flex-1">
         <Sidebar />
 
-        <main className="flex-1 overflow-y-auto p-4 pb-24 md:p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto p-4 pb-24 md:p-6 lg:ml-64 lg:p-8">
           <Outlet />
         </main>
       </div>
