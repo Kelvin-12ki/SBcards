@@ -42,7 +42,11 @@ const CreateCardPage: React.FC = () => {
         await createCard(data);
         toast.success('Card created!');
       }
-      navigate('/dashboard');
+      if (isEditing && id) {
+        navigate('/my-cards');
+      } else {
+        navigate('/my-cards');
+      }
     } catch (err: any) {
       toast.error(err?.message || 'Failed to save card.');
     } finally {

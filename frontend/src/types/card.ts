@@ -9,6 +9,34 @@ export interface Interest {
   name: string;
 }
 
+export interface WalletCard {
+  card: Card;
+  sender: {
+    id: string;
+    displayName?: string;
+    email?: string;
+    avatarUrl?: string;
+    title?: string;
+    company?: string;
+    bio?: string;
+    industry?: string;
+    jobRole?: string;
+  };
+}
+
+export interface PublicCard {
+  card: Card;
+  owner: {
+    id: string;
+    displayName?: string;
+    email?: string;
+    avatarUrl?: string;
+    title?: string;
+    company?: string;
+    bio?: string;
+  };
+}
+
 export interface Card {
   id: string;
   userId: string;

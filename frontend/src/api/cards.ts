@@ -82,3 +82,41 @@ export async function setDefaultCard(id: string): Promise<Card> {
   const { data } = await apiClient.patch<Card>(`/cards/${id}/default`);
   return data;
 }
+
+export interface WalletCardEntry {
+  card: Card;
+  sender: {
+    id: string;
+    displayName?: string;
+    email?: string;
+    avatarUrl?: string;
+    title?: string;
+    company?: string;
+    bio?: string;
+    industry?: string;
+    jobRole?: string;
+  };
+}
+
+export interface PublicCardEntry {
+  card: Card;
+  owner: {
+    id: string;
+    displayName?: string;
+    email?: string;
+    avatarUrl?: string;
+    title?: string;
+    company?: string;
+    bio?: string;
+  };
+}
+
+export async function getWalletCards(): Promise<WalletCardEntry[]> {
+  const { data } = await apiClient.get<WalletCardEntry[]>('/cards/wallet');
+  return data;
+}
+
+export async function getPublicCard(id: string): Promise<PublicCardEntry> {
+  const { data } = await apiClient.get<PublicCardEntry>(`/cards/public/${id}`);
+  return data;
+}

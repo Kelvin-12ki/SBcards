@@ -35,6 +35,8 @@ const SearchPage = React.lazy(() => import('@/pages/SearchPage'));
 const PublicProfilePage = React.lazy(() => import('@/pages/PublicProfilePage'));
 const InsightsPage = React.lazy(() => import('@/pages/InsightsPage'));
 const HeatmapPage = React.lazy(() => import('@/pages/HeatmapPage'));
+const MyCardsPage = React.lazy(() => import('@/pages/MyCardsPage'));
+const PublicCardPage = React.lazy(() => import('@/pages/PublicCardPage'));
 
 // Placeholder Layout component (to be created later)
 const Layout = React.lazy(() => import('@/components/Layout'));
@@ -56,6 +58,7 @@ const RoutesTree: React.FC = () => {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/scan" element={<ScanLandingPage />} />
+        <Route path="/card/:id" element={<PublicCardPage />} />
 
         {/* Protected routes */}
         <Route element={<ProtectedRoute />}>
@@ -64,6 +67,7 @@ const RoutesTree: React.FC = () => {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/profile/:userId" element={<PublicProfilePage />} />
             <Route path="/profile/setup" element={<ProfileSetupPage />} />
+            <Route path="/my-cards" element={<MyCardsPage />} />
             <Route path="/cards/new" element={<CreateCardPage />} />
             <Route path="/cards/:id/edit" element={<CreateCardPage />} />
             <Route path="/events" element={<EventsPage />} />

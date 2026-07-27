@@ -106,7 +106,7 @@ const navLinks = [
   { to: '/timeline', label: 'Timeline', icon: TimelineIcon, badge: undefined },
   { to: '/insights', label: 'Insights', icon: InsightsIcon, badge: undefined },
   { to: '/wallet', label: 'Wallet', icon: WalletIcon, badge: undefined },
-  { to: '/cards/new', label: 'My Cards', icon: CardsIcon, badge: undefined },
+  { to: '/my-cards', label: 'My Cards', icon: CardsIcon, badge: undefined },
   { to: '/organizations', label: 'Organizations', icon: OrganizationsIcon, badge: undefined },
   { to: '/connections', label: 'Connections', icon: ConnectionsIcon, badge: 'requests' as const },
   { to: '/events', label: 'Events', icon: EventsIcon, badge: undefined },

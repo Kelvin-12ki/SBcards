@@ -55,6 +55,16 @@ export class CardsController {
     return this.cardsService.create(user.id, createCardDto);
   }
 
+  @Get('wallet')
+  @ApiOperation({ summary: 'Get wallet cards from accepted connections' })
+  async getWallet(@CurrentUser() jwtUser: JwtUser): Promise<any[]> {
+    const user = await this.usersService.findByFirebaseUid(jwtUser.uid);
+    if (!user) {
+      return [];
+    }
+    return this.cardsService.findWalletCards(user.id);
+  }
+
   @Get('user/:userId')
   @ApiOperation({ summary: 'Get all public cards for a user' })
   async findByUserId(@Param('userId') userId: string): Promise<Card[]> {

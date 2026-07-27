@@ -9,6 +9,11 @@ import { Model } from 'mongoose';
 import { Card, CardDocument } from './entities/card.entity';
 import { CreateCardDto } from './dto/create-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
+import {
+  Connection,
+  ConnectionDocument,
+} from '../connections/entities/connection.entity';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class CardsService {
@@ -17,6 +22,9 @@ export class CardsService {
   constructor(
     @InjectModel(Card.name)
     private readonly cardModel: Model<CardDocument>,
+    @InjectModel(Connection.name)
+    private readonly connectionModel: Model<ConnectionDocument>,
+    private readonly usersService: UsersService,
   ) {}
 
   /**
@@ -149,5 +157,91 @@ export class CardsService {
     }
 
     await this.cardModel.updateMany(filter, { isDefault: false }).exec();
+  }
+
+  /**
+   * Get wallet cards — cards of accepted connections for a user.
+   * Returns an array of { card, sender } objects.
+   */
+  async findWalletCards(userId: string): Promise<any[]> {
+    // Find all accepted connections where user is either party
+    const connections = await this.connectionModel
+      .find({
+        $or: [{ userId }, { connectedUserId: userId }],
+        status: 'accepted',
+      })
+      .exec();
+
+    // Extract the other user's ID from each connection
+    const otherUserIds = connections.map((conn) =>
+      conn.userId === userId ? conn.connectedUserId : conn.userId,
+    );
+
+    // Deduplicate
+    const uniqueIds = [...new Set(otherUserIds)];
+
+    // Fetch user profiles for the connected users
+    const users = await this.usersService.findByIds(uniqueIds);
+
+    const walletCards: any[] = [];
+
+    for (const connectedUser of users) {
+      // Find their default card, or fall back to the first card
+      const cards = await this.cardModel
+        .find({ userId: connectedUser.id })
+        .sort({ isDefault: -1, createdAt: -1 })
+        .limit(1)
+        .exec();
+
+      if (cards.length > 0) {
+        walletCards.push({
+          card: cards[0].toJSON(),
+          sender: {
+            id: connectedUser.id,
+            displayName: connectedUser.displayName,
+            email: connectedUser.email,
+            avatarUrl: connectedUser.avatarUrl,
+            title: connectedUser.title,
+            company: connectedUser.company,
+            bio: connectedUser.bio,
+            industry: connectedUser.industry,
+            jobRole: connectedUser.jobRole,
+          },
+        });
+      }
+    }
+
+    return walletCards;
+  }
+
+  /**
+   * Find a card by ID (no auth check) and return it with owner profile info.
+   */
+  async findPublicCard(id: string): Promise<{ card: any; owner: any } | null> {
+    const card = await this.cardModel.findById(id).exec();
+
+    if (!card) {
+      throw new NotFoundException(`Card with ID "${id}" not found`);
+    }
+
+    let owner = null;
+    try {
+      const user = await this.usersService.findById(card.userId);
+      if (user) {
+        owner = {
+          id: user.id,
+          displayName: user.displayName,
+          email: user.email,
+          avatarUrl: user.avatarUrl,
+          title: user.title,
+          company: user.company,
+          bio: user.bio,
+        };
+      }
+    } catch {
+      // Owner may have been deleted
+    }
+
+    return { card: card.toJSON(), owner };
   }
 }

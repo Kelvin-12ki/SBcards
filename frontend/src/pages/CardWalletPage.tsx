@@ -1,60 +1,45 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Wallet, Search, CreditCard, TrendingUp, Calendar } from 'lucide-react';
-import { getCards } from '@/api/cards';
-import type { Card } from '@/types/card';
+import { Wallet, Search, CreditCard } from 'lucide-react';
+import { getWalletCards, type WalletCardEntry } from '@/api/cards';
 import CardPreview from '@/components/cards/CardPreview';
+import WalletCardModal from '@/components/cards/WalletCardModal';
 import Spinner from '@/components/ui/Spinner';
 import EmptyState from '@/components/ui/EmptyState';
 import { cn } from '@/utils/helpers';
 
 const CardWalletPage: React.FC = () => {
-  const [cards, setCards] = useState<Card[]>([]);
+  const [walletCards, setWalletCards] = useState<WalletCardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCard, setSelectedCard] = useState<WalletCardEntry | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    const fetchCards = async () => {
+    const fetchWalletCards = async () => {
       try {
-        const data = await getCards();
-        if (!cancelled) setCards(data);
+        const data = await getWalletCards();
+        if (!cancelled) setWalletCards(data);
       } catch (err) {
-        console.error('Failed to load cards:', err);
+        console.error('Failed to load wallet cards:', err);
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
-    fetchCards();
+    fetchWalletCards();
     return () => { cancelled = true; };
   }, []);
 
-  // Filter cards by search
+  // Filter wallet cards by sender name
   const filteredCards = useMemo(() => {
-    if (!searchQuery.trim()) return cards;
+    if (!searchQuery.trim()) return walletCards;
     const query = searchQuery.toLowerCase();
-    return cards.filter(
-      (card) =>
-        card.fullName.toLowerCase().includes(query) ||
-        (card.company && card.company.toLowerCase().includes(query)) ||
-        (card.headline && card.headline.toLowerCase().includes(query)),
+    return walletCards.filter(
+      (entry) =>
+        entry.sender.displayName?.toLowerCase().includes(query) ||
+        entry.sender.company?.toLowerCase().includes(query) ||
+        entry.sender.title?.toLowerCase().includes(query),
     );
-  }, [cards, searchQuery]);
-
-  // Stats
-  const stats = useMemo(() => {
-    const total = cards.length;
-    const now = new Date();
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay());
-    startOfWeek.setHours(0, 0, 0, 0);
-
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-    const thisWeek = cards.filter((c) => new Date(c.createdAt) >= startOfWeek).length;
-    const thisMonth = cards.filter((c) => new Date(c.createdAt) >= startOfMonth).length;
-
-    return { total, thisWeek, thisMonth };
-  }, [cards]);
+  }, [walletCards, searchQuery]);
 
   if (loading) {
     return (
@@ -72,7 +57,7 @@ const CardWalletPage: React.FC = () => {
           Card Wallet
         </h1>
         <p className="mt-1 text-sm text-text-secondary">
-          All the business cards you&apos;ve collected.
+          Business cards from your connections.
         </p>
       </div>
 
@@ -84,30 +69,8 @@ const CardWalletPage: React.FC = () => {
               <CreditCard className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-text-primary">{stats.total}</p>
+              <p className="text-2xl font-bold text-text-primary">{walletCards.length}</p>
               <p className="text-xs text-text-secondary">Total Cards</p>
-            </div>
-          </div>
-        </div>
-        <div className="rounded-2xl border border-border-subtle bg-surface-1 p-4 card-magical">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-neon-cyan/10 text-neon-cyan">
-              <TrendingUp className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-text-primary">{stats.thisWeek}</p>
-              <p className="text-xs text-text-secondary">This Week</p>
-            </div>
-          </div>
-        </div>
-        <div className="rounded-2xl border border-border-subtle bg-surface-1 p-4 card-magical">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-neon-purple/10 text-neon-purple">
-              <Calendar className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-text-primary">{stats.thisMonth}</p>
-              <p className="text-xs text-text-secondary">This Month</p>
             </div>
           </div>
         </div>
@@ -136,20 +99,46 @@ const CardWalletPage: React.FC = () => {
       {filteredCards.length === 0 ? (
         <EmptyState
           icon={<Wallet className="h-10 w-10" />}
-          title={cards.length === 0 ? 'No cards collected yet' : 'No cards match your search'}
+          title={walletCards.length === 0 ? 'No cards in your wallet yet' : 'No cards match your search'}
           description={
-            cards.length === 0
-              ? 'Scan or exchange business cards to build your collection.'
+            walletCards.length === 0
+              ? 'Connect with other users to collect their business cards.'
               : 'Try a different search term.'
           }
         />
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredCards.map((card) => (
-            <CardPreview key={card.id} card={card} className="w-full" />
+          {filteredCards.map((entry) => (
+            <div
+              key={entry.card.id}
+              onClick={() => setSelectedCard(entry)}
+              className="cursor-pointer group flex flex-col rounded-2xl border border-border-subtle bg-surface-1 overflow-hidden card-magical transition-all duration-300 hover:border-gold/30 hover:shadow-lg hover:shadow-gold/5"
+            >
+              <div className="p-4 pb-2">
+                <CardPreview card={entry.card} className="w-full" />
+              </div>
+              <div className="px-4 pb-4">
+                <h3 className="font-semibold text-text-primary truncate">
+                  {entry.sender.displayName || entry.card.fullName}
+                </h3>
+                {entry.sender.title && (
+                  <p className="text-xs text-text-tertiary truncate mt-0.5">
+                    {entry.sender.title}
+                    {entry.sender.company ? ` at ${entry.sender.company}` : ''}
+                  </p>
+                )}
+              </div>
+            </div>
           ))}
         </div>
       )}
+
+      {/* Wallet Card Modal */}
+      <WalletCardModal
+        walletCard={selectedCard}
+        isOpen={!!selectedCard}
+        onClose={() => setSelectedCard(null)}
+      />
     </div>
   );
 };

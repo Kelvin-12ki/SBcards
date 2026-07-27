@@ -8,7 +8,7 @@ const tabs = [
   { to: '/connections', icon: Users, label: 'Network' },
   { to: '/events', icon: Calendar, label: 'Events' },
   { to: '/qr', icon: QrCode, label: 'My QR' },
-  { to: '/cards/new', icon: CreditCard, label: 'Cards' },
+  { to: '/my-cards', icon: CreditCard, label: 'Cards' },
   { to: '/profile', icon: User, label: 'Profile' },
 ];
 
