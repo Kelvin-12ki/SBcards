@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, MessageSquare, ArrowLeft, Loader2 } from 'lucide-react';
 import { cn } from '@/utils/helpers';
+import Avatar from '@/components/ui/Avatar';
 import MessageBubble from './MessageBubble';
 import TypingIndicator from './TypingIndicator';
 import type { Message } from '@/types/messaging';
@@ -79,17 +80,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </button>
         )}
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          {otherUser?.avatarUrl ? (
-            <img
-              src={otherUser.avatarUrl}
-              alt={displayName}
-              className="h-9 w-9 rounded-full object-cover border border-border-subtle"
-            />
-          ) : (
-            <div className="flex h-9 w-9 items-center justify-center rounded-full gradient-magical text-sm font-bold text-white">
-              {initials}
-            </div>
-          )}
+          <Avatar
+            src={otherUser?.avatarUrl}
+            alt={displayName}
+            size="md"
+            className="border border-border-subtle"
+            fallbackInitials={initials}
+          />
           <div className="min-w-0">
             <p className="text-sm font-semibold text-text-primary truncate">{displayName}</p>
           </div>

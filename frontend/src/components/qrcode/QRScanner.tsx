@@ -14,120 +14,70 @@ type ScannerState = 'initializing' | 'active' | 'error';
 const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => {
   const [state, setState] = useState<ScannerState>('initializing');
   const [errorMessage, setErrorMessage] = useState('');
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const scanIntervalRef = useRef<number | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const scannerRef = useRef<any>(null);
 
-  // Start camera on mount
   useEffect(() => {
     let cancelled = false;
 
-    const startCamera = async () => {
+    const initScanner = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: 'environment',
-            width: { ideal: 640 },
-            height: { ideal: 480 },
-          },
-        });
-
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-
-        streamRef.current = stream;
-
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-        }
-
+        const { Html5Qrcode } = await import('html5-qrcode');
+        if (cancelled) return;
+        scannerRef.current = new Html5Qrcode('qr-scanner-element');
         if (!cancelled) {
           setState('active');
         }
       } catch (err: any) {
         if (cancelled) return;
-
-        let message = 'Could not access camera.';
-        if (err.name === 'NotAllowedError') {
-          message = 'Camera access denied. Please allow camera permissions in your browser settings.';
-        } else if (err.name === 'NotFoundError') {
-          message = 'No camera found on this device.';
-        }
-
+        const message = err?.message || 'Failed to initialize QR scanner.';
         setErrorMessage(message);
         setState('error');
         onError(message);
       }
     };
 
-    startCamera();
+    initScanner();
 
     return () => {
       cancelled = true;
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
-        streamRef.current = null;
+      if (scannerRef.current) {
+        scannerRef.current.stop().catch(() => {});
+        scannerRef.current = null;
       }
     };
   }, [onError]);
 
-  // Cleanup scan interval
-  useEffect(() => {
-    return () => {
-      if (scanIntervalRef.current !== null) {
-        clearInterval(scanIntervalRef.current);
-      }
-    };
-  }, []);
-
   const startScanning = async () => {
-    if (isScanning) return;
+    if (isScanning || !scannerRef.current) return;
     setIsScanning(true);
 
     try {
-      const { Html5Qrcode } = await import('html5-qrcode');
+      await scannerRef.current.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText: string) => {
+          scannerRef.current?.stop().catch(() => {});
+          setIsScanning(false);
 
-      const scanner = new Html5Qrcode('qr-scanner-element');
-
-      // If we have a video stream, we can use it directly
-      if (videoRef.current && streamRef.current) {
-        // We use the camera directly via html5-qrcode's camera handling
-        await scanner.start(
-          { facingMode: 'environment' },
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
-          },
-          (decodedText) => {
-            // Success callback - decodedText should be a URL containing the userId
-            scanner.stop().catch(() => {});
-            setIsScanning(false);
-
-            // Extract userId from the QR data
-            // Expected format: a URL like "https://sbcards.app/qr/userId" or just "userId"
-            let userId = decodedText;
-            try {
-              const url = new URL(decodedText);
-              // Extract the last path segment as userId
-              const segments = url.pathname.split('/').filter(Boolean);
-              if (segments.length > 0) {
-                userId = segments[segments.length - 1];
-              }
-            } catch {
-              // Not a URL, use the decoded text as-is
+          // Extract userId from the QR data
+          let userId = decodedText;
+          try {
+            const url = new URL(decodedText);
+            const segments = url.pathname.split('/').filter(Boolean);
+            if (segments.length > 0) {
+              userId = segments[segments.length - 1];
             }
+          } catch {
+            // Not a URL, use the decoded text as-is
+          }
 
-            onScan(userId);
-          },
-          () => {
-            // Error callback (scan failure, not fatal)
-          },
-        );
-      }
+          onScan(userId);
+        },
+        () => {
+          // Scan failure callback (not fatal)
+        },
+      );
     } catch (err: any) {
       const message = err?.message || 'Failed to start QR scanner.';
       setErrorMessage(message);
@@ -139,9 +89,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => 
 
   const handleRetry = () => {
     setErrorMessage('');
-    setState('initializing');
     setIsScanning(false);
-    // Re-initialize by mounting effect - will happen on next render
     window.location.reload();
   };
 
@@ -152,8 +100,8 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => 
         className,
       )}
     >
-      {/* Hidden div for html5-qrcode to render into */}
-      <div id="qr-scanner-element" className="hidden" />
+      {/* Div for html5-qrcode to render into - must be visible for the library to work */}
+      <div id="qr-scanner-element" className="w-full" />
 
       {state === 'initializing' && (
         <div className="flex aspect-[4/3] flex-col items-center justify-center gap-3">
@@ -163,18 +111,9 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => 
       )}
 
       {state === 'active' && (
-        <div className="relative aspect-[4/3]">
-          {/* Video element for camera preview */}
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="h-full w-full object-cover"
-          />
-
-          {/* Scanning overlay with neon-cyan border */}
-          <div className="absolute inset-0 pointer-events-none">
+        <div className="relative">
+          {/* Scanning overlay with neon-cyan border - CSS positioned on top */}
+          <div className="absolute inset-0 pointer-events-none z-10">
             {/* Corner brackets */}
             <div className="absolute left-4 top-4 h-8 w-8 border-l-2 border-t-2 border-neon-cyan rounded-tl-lg" />
             <div className="absolute right-4 top-4 h-8 w-8 border-r-2 border-t-2 border-neon-cyan rounded-tr-lg" />

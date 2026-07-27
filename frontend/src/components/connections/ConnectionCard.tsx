@@ -2,6 +2,7 @@ import React from 'react';
 import { cn } from '@/utils/helpers';
 import type { Connection } from '@/types/connection';
 import Badge from '@/components/ui/Badge';
+import Avatar from '@/components/ui/Avatar';
 
 export interface ConnectionCardProps {
   connection: Connection;
@@ -58,17 +59,7 @@ const ConnectionCard: React.FC<ConnectionCardProps> = ({ connection, onClick, cl
     >
       <div className="flex items-start gap-4">
         {/* Avatar */}
-        {avatarUrl ? (
-          <img
-            src={avatarUrl}
-            alt={displayName}
-            className="h-12 w-12 flex-shrink-0 rounded-full object-cover"
-          />
-        ) : (
-          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-surface-3 text-sm font-bold text-text-secondary">
-            {initials}
-          </div>
-        )}
+        <Avatar src={avatarUrl} alt={displayName} size="lg" fallbackInitials={initials} />
 
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">

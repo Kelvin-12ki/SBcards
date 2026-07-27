@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/auth/useAuth';
 import { cn } from '@/utils/helpers';
+import Avatar from '@/components/ui/Avatar';
 import {
   getNotifications,
   getUnreadCount,
@@ -148,9 +149,7 @@ const Navbar: React.FC<NavbarProps> = () => {
             aria-haspopup="true"
           >
             <div className="relative">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full gradient-magical text-sm font-bold text-white shadow-lg shadow-neon-purple/20">
-                {initials}
-              </div>
+              <Avatar size="sm" fallbackInitials={initials} />
               <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-surface-1 bg-success animate-glow-pulse" />
             </div>
             <span className="hidden text-sm font-medium text-text-primary sm:block">

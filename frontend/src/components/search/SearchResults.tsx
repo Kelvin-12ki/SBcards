@@ -71,7 +71,7 @@ function getResultUrl(result: any): string {
 
 /** Get display name for any result type */
 function getResultTitle(result: any): string {
-  return result.title || result.fullName || result.displayName || result.name || result.companyName || 'Untitled';
+  return result.title || result.fullName || result.displayName || result.name || result.email || result.companyName || 'Unknown User';
 }
 
 /** Get subtitle for any result type */

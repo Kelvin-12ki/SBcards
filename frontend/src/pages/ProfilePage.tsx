@@ -9,6 +9,7 @@ import Spinner from '@/components/ui/Spinner';
 import Modal from '@/components/ui/Modal';
 import Badge from '@/components/ui/Badge';
 import Input from '@/components/ui/Input';
+import Avatar from '@/components/ui/Avatar';
 import CardForm from '@/components/cards/CardForm';
 import { updateCard } from '@/api/cards';
 import toast from 'react-hot-toast';
@@ -122,9 +123,7 @@ const ProfilePage: React.FC = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
         <div className="flex items-center gap-4 sm:gap-6">
           <div className="relative">
-            <div className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full gradient-magical text-2xl font-bold text-white shadow-lg shadow-neon-purple/30">
-              {initials}
-            </div>
+            <Avatar size="xl" fallbackInitials={initials} className="shadow-lg shadow-neon-purple/30" />
             <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-surface-1 bg-success animate-glow-pulse" />
           </div>
           <div>

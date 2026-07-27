@@ -30,6 +30,7 @@ import type { Card } from '@/types/card';
 import type { Connection } from '@/types/connection';
 import Spinner from '@/components/ui/Spinner';
 import Badge from '@/components/ui/Badge';
+import Avatar from '@/components/ui/Avatar';
 import { cn } from '@/utils/helpers';
 import toast from 'react-hot-toast';
 
@@ -321,17 +322,13 @@ const PublicProfilePage: React.FC = () => {
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
           {/* Avatar */}
           <div className="relative shrink-0">
-            {profile.avatarUrl ? (
-              <img
-                src={profile.avatarUrl}
-                alt={profile.displayName || 'Profile'}
-                className="h-16 w-16 sm:h-20 sm:w-20 rounded-full object-cover border-2 border-neon-cyan/30 shadow-lg shadow-neon-cyan/10"
-              />
-            ) : (
-              <div className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full gradient-magical text-2xl font-bold text-white shadow-lg shadow-neon-purple/30">
-                {initials}
-              </div>
-            )}
+            <Avatar
+              src={profile.avatarUrl}
+              alt={profile.displayName || 'Profile'}
+              size="xl"
+              className="border-2 border-neon-cyan/30 shadow-lg shadow-neon-cyan/10"
+              fallbackInitials={initials}
+            />
             {/* Online indicator */}
             <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-surface-1 bg-success animate-glow-pulse" />
           </div>
@@ -558,17 +555,13 @@ const PublicProfilePage: React.FC = () => {
                 {/* Card header */}
                 <div className="flex items-start gap-3 mb-3">
                   {/* Avatar */}
-                  {card.avatarUrl ? (
-                    <img
-                      src={card.avatarUrl}
-                      alt={card.fullName}
-                      className="h-10 w-10 rounded-lg object-cover border border-border-subtle"
-                    />
-                  ) : (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg gradient-magical text-sm font-bold text-white">
-                      {getInitials(card.fullName)}
-                    </div>
-                  )}
+                  <Avatar
+                    src={card.avatarUrl}
+                    alt={card.fullName}
+                    size="md"
+                    className="rounded-lg border border-border-subtle"
+                    fallbackInitials={getInitials(card.fullName)}
+                  />
                   <div className="min-w-0 flex-1">
                     <h3 className="font-display text-base font-bold text-text-primary truncate group-hover:text-neon-cyan transition-colors">
                       {card.fullName}

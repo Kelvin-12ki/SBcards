@@ -71,7 +71,7 @@ export class SearchService {
     exhibitors: any[];
     organizations: any[];
   }> {
-    if (!query || query.trim().length === 0) {
+    if (!query || query.trim().length < 2) {
       return { users: [], cards: [], events: [], sessions: [], exhibitors: [], organizations: [] };
     }
 
@@ -102,7 +102,7 @@ export class SearchService {
       seniority?: string;
     },
   ): Promise<any[]> {
-    if (!query || query.trim().length === 0) {
+    if (!query || query.trim().length < 2) {
       return [];
     }
 
@@ -111,8 +111,6 @@ export class SearchService {
     const filter: any = {
       $or: [
         { displayName: regex },
-        { firstName: regex },
-        { lastName: regex },
         { email: regex },
         { company: regex },
         { industry: regex },
@@ -149,7 +147,7 @@ export class SearchService {
       tags?: string;
     },
   ): Promise<any[]> {
-    if (!query || query.trim().length === 0) {
+    if (!query || query.trim().length < 2) {
       return [];
     }
 
@@ -188,7 +186,7 @@ export class SearchService {
     users: any[];
     exhibitors: any[];
   }> {
-    if (!query || query.trim().length === 0) {
+    if (!query || query.trim().length < 2) {
       return { users: [], exhibitors: [] };
     }
 
@@ -230,8 +228,6 @@ export class SearchService {
       .find({
         $or: [
           { displayName: regex },
-          { firstName: regex },
-          { lastName: regex },
           { email: regex },
           { company: regex },
           { industry: regex },
@@ -399,7 +395,7 @@ export class SearchService {
       return {
         id: this.docId(u),
         firebaseUid: u.firebaseUid,
-        displayName: u.displayName,
+        displayName: u.displayName || u.email,
         email: u.email,
         avatarUrl: u.avatarUrl,
         title: u.title,

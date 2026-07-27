@@ -1,6 +1,7 @@
 import React from 'react';
 import { MessageSquare } from 'lucide-react';
 import { cn, timeAgo } from '@/utils/helpers';
+import Avatar from '@/components/ui/Avatar';
 import type { Conversation } from '@/types/messaging';
 
 export interface ConversationListProps {
@@ -53,22 +54,18 @@ const ConversationList: React.FC<ConversationListProps> = ({
           >
             {/* Avatar */}
             <div className="relative flex-shrink-0">
-              {otherUser?.avatarUrl ? (
-                <img
-                  src={otherUser.avatarUrl}
-                  alt={displayName}
-                  className="h-11 w-11 rounded-full object-cover border border-border-subtle"
-                />
-              ) : (
-                <div className="flex h-11 w-11 items-center justify-center rounded-full gradient-magical text-sm font-bold text-white">
-                  {displayName
-                    .split(' ')
-                    .map((n) => n[0])
-                    .join('')
-                    .toUpperCase()
-                    .slice(0, 2)}
-                </div>
-              )}
+              <Avatar
+                src={otherUser?.avatarUrl}
+                alt={displayName}
+                size="md"
+                className="border border-border-subtle"
+                fallbackInitials={displayName
+                  .split(' ')
+                  .map((n) => n[0])
+                  .join('')
+                  .toUpperCase()
+                  .slice(0, 2)}
+              />
               {conv.unreadCount && conv.unreadCount > 0 && (
                 <div className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] flex items-center justify-center rounded-full bg-gold px-1 text-[10px] font-bold text-gold-ink shadow-lg shadow-gold/30">
                   {conv.unreadCount > 99 ? '99+' : conv.unreadCount}

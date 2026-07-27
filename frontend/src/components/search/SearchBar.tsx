@@ -28,7 +28,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
       }
 
       debounceRef.current = setTimeout(() => {
-        if (value.trim()) {
+        if (value.trim().length >= 2) {
           onSearch(value.trim());
         }
       }, 300);
@@ -45,7 +45,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Enter' && query.trim()) {
+      if (e.key === 'Enter' && query.trim().length >= 2) {
         if (debounceRef.current) {
           clearTimeout(debounceRef.current);
         }
