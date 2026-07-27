@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/auth/useAuth';
 import { getCards } from '@/api/cards';
-import { updateProfile } from '@/api/users';
+import { updateProfile, uploadProfilePhoto } from '@/api/users';
 import type { Card } from '@/types/card';
 import CardPreview from '@/components/cards/CardPreview';
 import Button from '@/components/ui/Button';
@@ -16,7 +16,7 @@ import toast from 'react-hot-toast';
 import { useNavigate, Link } from 'react-router-dom';
 
 const ProfilePage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
 
   const [cards, setCards] = useState<Card[]>([]);
@@ -37,6 +37,11 @@ const ProfilePage: React.FC = () => {
     portfolioUrl: '',
   });
   const [profileSaving, setProfileSaving] = useState(false);
+
+  // Photo upload state
+  const [avatarUrl, setAvatarUrl] = useState<string>('');
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const defaultCard = cards.find((c) => c.isDefault) || cards[0];
 
@@ -89,13 +94,37 @@ const ProfilePage: React.FC = () => {
       whatsapp: user?.whatsapp || '',
       portfolioUrl: user?.portfolioUrl || '',
     });
+    setAvatarUrl(user?.avatarUrl || '');
     setEditProfileModalOpen(true);
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    setPhotoUploading(true);
+    try {
+      const url = await uploadProfilePhoto(file, user.id);
+      setAvatarUrl(url);
+      toast.success('Photo uploaded! Save your profile to confirm.');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to upload photo.');
+    } finally {
+      setPhotoUploading(false);
+      // Reset file input so the same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setAvatarUrl('');
   };
 
   const handleSaveProfile = async () => {
     setProfileSaving(true);
     try {
-      await updateProfile(profileForm);
+      await updateProfile({ ...profileForm, avatarUrl: avatarUrl || undefined });
+      await refreshUser();
       toast.success('Profile updated!');
       setEditProfileModalOpen(false);
     } catch (err: any) {
@@ -123,7 +152,7 @@ const ProfilePage: React.FC = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
         <div className="flex items-center gap-4 sm:gap-6">
           <div className="relative">
-            <Avatar size="xl" fallbackInitials={initials} className="shadow-lg shadow-neon-purple/30" />
+            <Avatar size="xl" src={user?.avatarUrl} fallbackInitials={initials} className="shadow-lg shadow-neon-purple/30" />
             <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-surface-1 bg-success animate-glow-pulse" />
           </div>
           <div>
@@ -296,6 +325,56 @@ const ProfilePage: React.FC = () => {
         size="lg"
       >
         <div className="space-y-4">
+          {/* Photo Upload */}
+          <div className="flex flex-col items-center gap-3 pb-4 border-b border-border-subtle">
+            <div className="relative">
+              <Avatar
+                size="xl"
+                src={avatarUrl || undefined}
+                fallbackInitials={
+                  user?.displayName
+                    ? user.displayName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+                    : user?.email?.charAt(0).toUpperCase() || '?'
+                }
+                className="shadow-lg shadow-neon-purple/30 cursor-pointer"
+                onClick={() => fileInputRef.current?.click()}
+              />
+              {photoUploading && (
+                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50">
+                  <Spinner size="sm" />
+                </div>
+              )}
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoUpload}
+              disabled={photoUploading}
+            />
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={photoUploading}
+              >
+                {avatarUrl ? 'Change Photo' : 'Upload Photo'}
+              </Button>
+              {avatarUrl && (
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={handleRemovePhoto}
+                  disabled={photoUploading}
+                >
+                  Remove
+                </Button>
+              )}
+            </div>
+          </div>
+
           <Input
             label="Display Name"
             value={profileForm.displayName}

@@ -12,6 +12,7 @@ export interface AuthContextValue {
   register: (email: string, password: string, displayName?: string) => Promise<void>;
   logout: () => Promise<void>;
   demoLogin: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -142,8 +143,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null); setToken(null);
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const freshUser = await authApi.getCurrentUser();
+      localStorage.setItem('user', JSON.stringify(freshUser));
+      setUser(freshUser);
+    } catch (err) {
+      console.error('Failed to refresh user:', err);
+    }
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, demoLogin }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout, demoLogin, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

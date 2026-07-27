@@ -7,6 +7,7 @@ export interface AvatarProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
   fallbackInitials?: string;
+  onClick?: () => void;
 }
 
 const sizeClasses: Record<string, string> = {
@@ -22,6 +23,7 @@ const Avatar: React.FC<AvatarProps> = ({
   size = 'md',
   className,
   fallbackInitials,
+  onClick,
 }) => {
   const [imgError, setImgError] = useState(false);
   const sizeClass = sizeClasses[size] || sizeClasses.md;
@@ -30,7 +32,7 @@ const Avatar: React.FC<AvatarProps> = ({
   // If src is provided and hasn't errored, render the image
   if (src && !imgError) {
     return (
-      <div className={cn('relative flex-shrink-0', className)}>
+      <div className={cn('relative flex-shrink-0', className)} onClick={onClick}>
         <img
           src={src}
           alt={alt}
@@ -50,6 +52,7 @@ const Avatar: React.FC<AvatarProps> = ({
           'relative flex-shrink-0 rounded-full bg-surface-3 text-text-tertiary flex items-center justify-center overflow-hidden',
           className,
         )}
+        onClick={onClick}
       >
         <svg
           viewBox="0 0 24 24"
@@ -76,6 +79,7 @@ const Avatar: React.FC<AvatarProps> = ({
         'relative flex-shrink-0 rounded-full gradient-magical flex items-center justify-center text-sm font-bold text-white',
         className,
       )}
+      onClick={onClick}
     >
       {initials}
     </div>
