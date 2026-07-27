@@ -1,6 +1,7 @@
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  updateProfile,
   signOut,
 } from 'firebase/auth';
 import { auth } from '@/utils/firebase';
@@ -38,8 +39,26 @@ export async function login(
 export async function register(
   email: string,
   password: string,
+  displayName?: string,
 ): Promise<AuthResponse> {
-  await createUserWithEmailAndPassword(auth, email, password);
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    // Set the display name on the Firebase profile
+    if (displayName) {
+      await updateProfile(userCredential.user, { displayName });
+    }
+  } catch (err: any) {
+    if (err?.code === 'auth/email-already-in-use') {
+      throw new Error('An account with this email already exists. Please sign in instead.');
+    }
+    if (err?.code === 'auth/weak-password') {
+      throw new Error('Password must be at least 6 characters.');
+    }
+    if (err?.code === 'auth/invalid-email') {
+      throw new Error('Please enter a valid email address.');
+    }
+    throw err;
+  }
   // After creation, log in to get the backend token
   return login(email, password);
 }

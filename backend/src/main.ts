@@ -14,6 +14,24 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   const logger = new Logger('Bootstrap');
 
+  // One-time: drop the stale unique_participants index if it exists
+  try {
+    const mongoose = app.get('DatabaseConnection') || app.get('MongooseConnection');
+    if (mongoose?.connection?.db) {
+      const collections = await mongoose.connection.db.listCollections({ name: 'conversations' });
+      if (collections.length > 0) {
+        const indexes = await mongoose.connection.db.collection('conversations').indexes();
+        const hasStale = indexes.some((idx: any) => idx.name === 'unique_participants');
+        if (hasStale) {
+          await mongoose.connection.db.collection('conversations').dropIndex('unique_participants');
+          logger.log('Dropped stale unique_participants index from conversations collection');
+        }
+      }
+    }
+  } catch (err) {
+    logger.warn('Could not check/drop stale index (may not exist): ' + (err as Error).message);
+  }
+
   const frontendUrl = configService.get<string>('FRONTEND_URL', 'http://localhost:5174');
   const port = configService.get<number>('PORT', 3005);
   const nodeEnv = configService.get<string>('NODE_ENV', 'development');

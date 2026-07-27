@@ -38,7 +38,7 @@ const RegisterPage: React.FC = () => {
 
     setLoading(true);
     try {
-      await register(email.trim(), password.trim());
+      await register(email.trim(), password.trim(), displayName.trim() || undefined);
       toast.success('Account created successfully!');
       navigate('/dashboard', { replace: true });
     } catch (err: any) {

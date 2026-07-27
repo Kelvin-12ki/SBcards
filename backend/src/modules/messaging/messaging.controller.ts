@@ -18,7 +18,6 @@ import { MessagingService } from './messaging.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { SetTypingDto } from './dto/set-typing.dto';
-import { UpdateReadDto } from './dto/update-read.dto';
 
 @ApiTags('messaging')
 @Controller('conversations')
@@ -137,7 +136,6 @@ export class MessagingController {
   async markAsRead(
     @Param('id') conversationId: string,
     @CurrentUser() jwtUser: JwtUser,
-    @Body() _dto: UpdateReadDto,
   ) {
     const userId = this.resolveUserId(jwtUser);
     const count = await this.messagingService.markAsRead(

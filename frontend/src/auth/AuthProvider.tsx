@@ -9,7 +9,7 @@ export interface AuthContextValue {
   token: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, displayName?: string) => Promise<void>;
   logout: () => Promise<void>;
   demoLogin: () => void;
 }
@@ -126,8 +126,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setToken(r.accessToken);
   }, []);
 
-  const register = useCallback(async (email: string, password: string) => {
-    const r = await authApi.register(email, password);
+  const register = useCallback(async (email: string, password: string, displayName?: string) => {
+    const r = await authApi.register(email, password, displayName);
     localStorage.setItem('accessToken', r.accessToken);
     localStorage.setItem('user', JSON.stringify(r.user));
     setUser(r.user);
