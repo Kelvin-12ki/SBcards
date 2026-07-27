@@ -107,6 +107,7 @@ export class CardsService {
 
   /**
    * Delete a card. Only the owner can delete.
+   * If the deleted card was the default, auto-assign another card as default.
    */
   async delete(id: string, userId: string): Promise<void> {
     const card = await this.findById(id);
@@ -119,7 +120,25 @@ export class CardsService {
       throw new ForbiddenException('You can only delete your own cards');
     }
 
+    const wasDefault = card.isDefault;
+
     await this.cardModel.findByIdAndDelete(id).exec();
+
+    // If the deleted card was the default, promote the most recent remaining card
+    if (wasDefault) {
+      const nextCard = await this.cardModel
+        .findOne({ userId, _id: { $ne: id } })
+        .sort({ createdAt: -1 })
+        .exec();
+
+      if (nextCard) {
+        nextCard.isDefault = true;
+        await nextCard.save();
+        this.logger.log(
+          `Default card was deleted; promoted card "${nextCard._id}" as new default for user "${userId}"`,
+        );
+      }
+    }
   }
 
   /**

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Star, Edit3, CreditCard } from 'lucide-react';
-import { getCards, setDefaultCard } from '@/api/cards';
+import { Plus, Star, Edit3, CreditCard, Trash2 } from 'lucide-react';
+import { getCards, setDefaultCard, deleteCard } from '@/api/cards';
 import type { Card } from '@/types/card';
 import CardPreview from '@/components/cards/CardPreview';
 import Spinner from '@/components/ui/Spinner';
@@ -37,6 +37,21 @@ const MyCardsPage: React.FC = () => {
       await fetchCards();
     } catch (err: any) {
       toast.error(err?.message || 'Failed to set default card.');
+    }
+  };
+
+  const handleDelete = async (id: string, cardName: string) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete the card for "${cardName}"? This action cannot be undone.`,
+    );
+    if (!confirmed) return;
+
+    try {
+      await deleteCard(id);
+      toast.success('Card deleted successfully.');
+      await fetchCards();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to delete card.');
     }
   };
 
@@ -122,6 +137,13 @@ const MyCardsPage: React.FC = () => {
                 >
                   <Edit3 className="h-3.5 w-3.5" />
                   Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(card.id, card.fullName)}
+                  className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-400/10 hover:text-red-300 transition-colors"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete
                 </button>
                 {!card.isDefault && (
                   <button
