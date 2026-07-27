@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef, type FormEvent } from 'react';
 import { cn } from '@/utils/helpers';
 import type { Card } from '@/types/card';
+import type { TemplateId } from '@/types/cardTemplate';
 import { useAuth } from '@/auth/useAuth';
 import { uploadCardPhoto } from '@/api/cards';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import CardPreview from './CardPreview';
+import TemplatePicker from './TemplatePicker';
 import toast from 'react-hot-toast';
 
 export interface CardFormProps {
@@ -46,6 +48,7 @@ const CardForm: React.FC<CardFormProps> = ({
   );
   const [interestInput, setInterestInput] = useState('');
   const [isDefault, setIsDefault] = useState(initialData?.isDefault || false);
+  const [theme, setTheme] = useState<TemplateId>((initialData?.theme as TemplateId) || 'classic');
   const [errors, setErrors] = useState<FormErrors>({});
   const [avatarUrl, setAvatarUrl] = useState(initialData?.avatarUrl || '');
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -70,6 +73,7 @@ const CardForm: React.FC<CardFormProps> = ({
       setInterests(initialData.interests?.map((i) => ({ name: i.name })) || []);
       setIsDefault(initialData.isDefault || false);
       setAvatarUrl(initialData.avatarUrl || '');
+      setTheme((initialData.theme as TemplateId) || 'classic');
       setPhotoError('');
     }
   }, [initialData]);
@@ -169,6 +173,7 @@ const CardForm: React.FC<CardFormProps> = ({
       website: website.trim(),
       linkedinUrl: linkedinUrl.trim(),
       twitterUrl: twitterUrl.trim(),
+      theme,
       skills,
       interests,
       isDefault,
@@ -187,6 +192,7 @@ const CardForm: React.FC<CardFormProps> = ({
     phone,
     website,
     linkedinUrl,
+    theme,
     avatarUrl: avatarUrl || undefined,
     skills: skills.map((s, i) => ({ id: `preview-${i}`, name: s.name })),
     interests: interests.map((i, idx) => ({ id: `preview-int-${idx}`, name: i.name })),
@@ -210,6 +216,9 @@ const CardForm: React.FC<CardFormProps> = ({
     <div className={cn('grid gap-8 lg:grid-cols-2', className)}>
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Template Picker */}
+        <TemplatePicker selected={theme} onSelect={setTheme} />
+
         {/* Profile Photo Upload */}
         <div className="flex items-center gap-5">
           <div className="relative">

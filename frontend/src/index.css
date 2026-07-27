@@ -257,3 +257,20 @@ select:-webkit-autofill:focus {
   0%, 60%, 100% { transform: translateY(0); }
   30% { transform: translateY(-4px); }
 }
+
+/* ── Template Utilities ── */
+.template-card-base {
+  aspect-ratio: 1.75 / 1;
+  overflow: hidden;
+  border-radius: 1rem;
+  position: relative;
+}
+
+.template-picker-scroll {
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.template-picker-scroll > * {
+  scroll-snap-align: start;
+}

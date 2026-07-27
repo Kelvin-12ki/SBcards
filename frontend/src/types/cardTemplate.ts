@@ -1,60 +1,21 @@
-export interface CardTemplateField {
-  key: string;
-  label: string;
-  type: 'text' | 'textarea' | 'select' | 'color' | 'image';
-  required?: boolean;
-  placeholder?: string;
-  options?: string[];
-}
+export type TemplateId = 'classic' | 'bold-wave' | 'corporate' | 'creative' | 'neon';
 
-export interface CardTemplate {
-  id: string;
+export interface CardTemplateDef {
+  id: TemplateId;
   name: string;
   description: string;
-  thumbnail?: string;
-  fields: CardTemplateField[];
-  defaultTheme?: string;
+  accentColors: string[];
+  thumbnail: string; // CSS gradient for picker thumbnail
 }
 
-export const PLACEHOLDER_TEMPLATES: CardTemplate[] = [
-  {
-    id: 'classic',
-    name: 'Classic',
-    description: 'A timeless business card layout with a clean, professional look.',
-    fields: [
-      { key: 'fullName', label: 'Full Name', type: 'text', required: true, placeholder: 'John Doe' },
-      { key: 'headline', label: 'Headline', type: 'text', placeholder: 'Software Engineer' },
-      { key: 'company', label: 'Company', type: 'text', placeholder: 'Acme Corp' },
-      { key: 'email', label: 'Email', type: 'text', placeholder: 'john@example.com' },
-      { key: 'phone', label: 'Phone', type: 'text', placeholder: '+1 234 567 890' },
-      { key: 'bio', label: 'Bio', type: 'textarea', placeholder: 'Tell people about yourself...' },
-    ],
-    defaultTheme: 'classic',
-  },
-  {
-    id: 'modern',
-    name: 'Modern',
-    description: 'A sleek, contemporary design with bold colors and gradients.',
-    fields: [
-      { key: 'fullName', label: 'Full Name', type: 'text', required: true, placeholder: 'Jane Smith' },
-      { key: 'headline', label: 'Headline', type: 'text', placeholder: 'Product Designer' },
-      { key: 'company', label: 'Company', type: 'text', placeholder: 'Design Studio' },
-      { key: 'email', label: 'Email', type: 'text', placeholder: 'jane@example.com' },
-      { key: 'website', label: 'Website', type: 'text', placeholder: 'https://janesmith.dev' },
-      { key: 'skills', label: 'Skills', type: 'text', placeholder: 'UX, UI, Prototyping' },
-    ],
-    defaultTheme: 'modern',
-  },
-  {
-    id: 'minimal',
-    name: 'Minimal',
-    description: 'A clean, minimal design focused on essential contact information.',
-    fields: [
-      { key: 'fullName', label: 'Full Name', type: 'text', required: true, placeholder: 'Alex Johnson' },
-      { key: 'company', label: 'Company', type: 'text', placeholder: 'Startup Inc.' },
-      { key: 'email', label: 'Email', type: 'text', placeholder: 'alex@example.com' },
-      { key: 'phone', label: 'Phone', type: 'text', placeholder: '+1 987 654 321' },
-    ],
-    defaultTheme: 'minimal',
-  },
+export const TEMPLATES: CardTemplateDef[] = [
+  { id: 'classic', name: 'Classic', description: 'Clean geometric design', accentColors: ['#D4A853', '#0A0A0B'], thumbnail: 'linear-gradient(135deg, #0A0A0B 60%, #D4A853 60%)' },
+  { id: 'bold-wave', name: 'Bold Wave', description: 'Dynamic red waves on dark', accentColors: ['#E63946', '#1A1A2E', '#FFFFFF'], thumbnail: 'linear-gradient(135deg, #1A1A2E 50%, #E63946 50%, #FFFFFF 80%)' },
+  { id: 'corporate', name: 'Corporate', description: 'Professional gray with blue accents', accentColors: ['#2D3436', '#0984E3'], thumbnail: 'linear-gradient(135deg, #2D3436 60%, #0984E3 60%)' },
+  { id: 'creative', name: 'Creative', description: 'Bold split-panel with orange accents', accentColors: ['#000000', '#F39C12', '#FFFFFF'], thumbnail: 'linear-gradient(135deg, #000000 50%, #FFFFFF 50%)' },
+  { id: 'neon', name: 'Neon', description: 'Vibrant gradient streaks on dark', accentColors: ['#0D1B2A', '#FF6EC7', '#3B82F6', '#00F5FF'], thumbnail: 'linear-gradient(135deg, #0D1B2A 40%, #FF6EC7 60%, #00F5FF 80%)' },
 ];
+
+export function getTemplateById(id: string): CardTemplateDef {
+  return TEMPLATES.find(t => t.id === id) || TEMPLATES[0];
+}

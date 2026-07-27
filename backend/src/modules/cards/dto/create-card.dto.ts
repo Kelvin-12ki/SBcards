@@ -4,6 +4,7 @@ import {
   IsString,
   IsEmail,
   IsArray,
+  IsIn,
   ValidateNested,
   ArrayMinSize,
 } from 'class-validator';
@@ -105,12 +106,13 @@ export class CreateCardDto {
   twitterUrl?: string;
 
   @ApiPropertyOptional({
-    description: 'Card theme',
+    description: 'Card template theme',
     example: 'classic',
     default: 'classic',
   })
   @IsOptional()
   @IsString()
+  @IsIn(['classic', 'bold-wave', 'corporate', 'creative', 'neon'])
   theme?: string;
 
   @ApiPropertyOptional({
