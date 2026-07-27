@@ -4,6 +4,8 @@ import { Sparkles } from 'lucide-react';
 import { cn } from '@/utils/helpers';
 import { getUnreadCount } from '@/api/messaging';
 import { getIncomingRequestsCount } from '@/api/connections';
+import { useAuth } from '@/auth/useAuth';
+import Avatar from '@/components/ui/Avatar';
 
 const DashboardIcon = () => (
   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -87,6 +89,12 @@ const WalletIcon = () => (
   </svg>
 );
 
+const ProfileIcon = () => (
+  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+  </svg>
+);
+
 export interface SidebarProps {
   isOpen?: boolean;
   onClose?: () => void;
@@ -107,11 +115,17 @@ const navLinks = [
   { to: '/qr', label: 'My QR Code', icon: QRIcon, badge: undefined },
   { to: '/scan/qr', label: 'Scan QR', icon: ScanQRIcon, badge: undefined },
   { to: '/cards/scan', label: 'Scan Card', icon: ScanIcon, badge: undefined },
+  { to: '/profile', label: 'Profile', icon: ProfileIcon, badge: undefined },
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
+  const { user } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
   const [requestsCount, setRequestsCount] = useState(0);
+
+  const initials = user?.displayName
+    ? user.displayName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+    : user?.email?.charAt(0).toUpperCase() || '?';
 
   useEffect(() => {
     let cancelled = false;
@@ -152,21 +166,31 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       {/* Sidebar */}
       <aside
         className={cn(
-          // Desktop: always visible, fixed to left
-          'hidden lg:flex lg:flex-col w-64 border-r border-border-subtle bg-surface-1',
-          'fixed left-0 top-16 h-[calc(100vh-4rem)]',
-          // Mobile: slide in from left when open
-          isOpen
-            ? 'fixed inset-y-0 left-0 z-40 flex w-64 translate-x-0 flex-col border-r border-border-subtle bg-surface-1 shadow-2xl transition-transform duration-300 ease-in-out'
-            : 'fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-border-subtle bg-surface-1 transition-transform duration-300 ease-in-out lg:hidden',
+          // Base: fixed, full-height column, styling, transition
+          'fixed left-0 z-40 flex w-64 flex-col border-r border-border-subtle bg-surface-1 shadow-2xl transition-transform duration-300 ease-in-out',
+          // Desktop (lg+): always visible, positioned below navbar
+          'lg:top-16 lg:h-[calc(100vh-4rem)] lg:translate-x-0',
+          // Mobile: full-screen (overlaps navbar), slides in/out
+          'top-0 h-full',
+          isOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
-        {/* Mobile close button */}
-        <div className="flex items-center justify-between border-b border-border-subtle px-4 py-3 lg:hidden">
-          <span className="font-display text-lg font-bold text-gradient-gold">Menu</span>
+        {/* Mobile header: user info + close button */}
+        <div className="flex items-center justify-between border-b border-border-subtle px-4 py-4 lg:hidden">
+          <div className="flex items-center gap-3 min-w-0">
+            <Avatar size="md" fallbackInitials={initials} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-text-primary">
+                {user?.displayName || 'User'}
+              </p>
+              <p className="truncate text-xs text-text-tertiary">
+                {user?.email || ''}
+              </p>
+            </div>
+          </div>
           <button
             onClick={onClose}
-            className="rounded-xl p-1.5 text-text-secondary hover:bg-surface-2 hover:text-text-primary transition-colors"
+            className="flex-shrink-0 rounded-xl p-2 text-text-secondary hover:bg-surface-2 hover:text-text-primary transition-colors"
             aria-label="Close sidebar menu"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -175,36 +199,44 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        <nav className="flex flex-col gap-1 p-4">
-          {navLinks.map((link) => (
-            <NavLink
-              key={link.to + link.label}
-              to={link.to}
-              end={link.to === '/dashboard'}
-              onClick={onClose}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-300',
-                  isActive
-                    ? 'bg-gradient-to-r from-neon-purple/20 to-neon-cyan/10 text-neon-cyan border border-neon-purple/20 shadow-lg shadow-neon-purple/10'
-                    : 'text-text-secondary hover:bg-surface-2 hover:text-text-primary',
-                )
-              }
-            >
-              <link.icon />
-              <span className="flex-1">{link.label}</span>
-              {link.badge === 'unread' && unreadCount > 0 && (
-                <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gold px-1.5 text-[10px] font-bold text-gold-ink shadow-lg shadow-gold/30">
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </span>
-              )}
-              {link.badge === 'requests' && requestsCount > 0 && (
-                <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-neon-cyan px-1.5 text-[10px] font-bold text-background shadow-lg shadow-neon-cyan/30">
-                  {requestsCount > 99 ? '99+' : requestsCount}
-                </span>
-              )}
-            </NavLink>
-          ))}
+        {/* Desktop-only menu label (hidden on mobile since user info is shown) */}
+        <div className="hidden lg:flex items-center justify-between border-b border-border-subtle px-4 py-3">
+          <span className="font-display text-base font-bold text-gradient-gold">Menu</span>
+        </div>
+
+        {/* Scrollable nav links */}
+        <nav className="flex-1 overflow-y-auto p-4">
+          <div className="flex flex-col gap-1">
+            {navLinks.map((link) => (
+              <NavLink
+                key={link.to + link.label}
+                to={link.to}
+                end={link.to === '/dashboard'}
+                onClick={onClose}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-3 rounded-xl px-3 min-h-[44px] text-sm font-medium transition-all duration-300',
+                    isActive
+                      ? 'bg-gradient-to-r from-neon-purple/20 to-neon-cyan/10 text-neon-cyan border border-neon-purple/20 shadow-lg shadow-neon-purple/10'
+                      : 'text-text-secondary hover:bg-surface-2 hover:text-text-primary',
+                  )
+                }
+              >
+                <link.icon />
+                <span className="flex-1">{link.label}</span>
+                {link.badge === 'unread' && unreadCount > 0 && (
+                  <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gold px-1.5 text-[10px] font-bold text-gold-ink shadow-lg shadow-gold/30">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+                {link.badge === 'requests' && requestsCount > 0 && (
+                  <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-neon-cyan px-1.5 text-[10px] font-bold text-background shadow-lg shadow-neon-cyan/30">
+                    {requestsCount > 99 ? '99+' : requestsCount}
+                  </span>
+                )}
+              </NavLink>
+            ))}
+          </div>
         </nav>
       </aside>
     </>
