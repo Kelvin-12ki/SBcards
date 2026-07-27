@@ -14,6 +14,7 @@ const EventDetailPage = React.lazy(() => import('@/pages/EventDetailPage'));
 const EventActivePage = React.lazy(() => import('@/pages/EventActivePage'));
 const MatchesPage = React.lazy(() => import('@/pages/MatchesPage'));
 const ScanCardPage = React.lazy(() => import('@/pages/ScanCardPage'));
+const ScanLandingPage = React.lazy(() => import('@/pages/ScanLandingPage'));
 const NotFoundPage = React.lazy(() => import('@/pages/NotFoundPage'));
 const OrganizationsPage = React.lazy(() => import('@/pages/OrganizationsPage'));
 const OrganizationDetailPage = React.lazy(() => import('@/pages/OrganizationDetailPage'));
@@ -54,6 +55,7 @@ const RoutesTree: React.FC = () => {
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/scan" element={<ScanLandingPage />} />
 
         {/* Protected routes */}
         <Route element={<ProtectedRoute />}>
@@ -70,7 +72,7 @@ const RoutesTree: React.FC = () => {
             <Route path="/events/:id/matches" element={<MatchesPage />} />
             <Route path="/events/:eventId/recommendations" element={<RecommendationsPage />} />
             <Route path="/events/:eventId/recommendations/why/:targetUserId" element={<MatchDetailPage />} />
-            <Route path="/scan" element={<ScanCardPage />} />
+            <Route path="/cards/scan" element={<ScanCardPage />} />
             <Route path="/organizations" element={<OrganizationsPage />} />
             <Route path="/organizations/:id" element={<OrganizationDetailPage />} />
             <Route path="/connections" element={<ConnectionsPage />} />

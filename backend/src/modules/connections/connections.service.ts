@@ -527,6 +527,150 @@ export class ConnectionsService {
   }
 
   /**
+   * Create an accepted connection from a QR code scan.
+   * - Validates both users exist
+   * - Prevents self-connection
+   * - If already accepted, throws ConflictException
+   * - If pending request exists in either direction, accepts it
+   * - Otherwise creates two accepted connection records (A→B and B→A) with source 'qr_scan'
+   */
+  async createFromQrScan(
+    scannerUserId: string,
+    scannedUserId: string,
+  ): Promise<ConnectionDocument> {
+    // Validate both users exist
+    const scanner = await this.usersService.findById(scannerUserId);
+    if (!scanner) {
+      throw new NotFoundException(`Scanner user with ID "${scannerUserId}" not found`);
+    }
+
+    const scannedUser = await this.usersService.findById(scannedUserId);
+    if (!scannedUser) {
+      throw new NotFoundException(`Scanned user with ID "${scannedUserId}" not found`);
+    }
+
+    // Prevent self-connection
+    if (scannerUserId === scannedUserId) {
+      throw new ConflictException('Cannot connect with yourself');
+    }
+
+    // Check for existing connections in both directions
+    const existingForward = await this.connectionModel
+      .findOne({ userId: scannerUserId, connectedUserId: scannedUserId })
+      .exec();
+
+    if (existingForward) {
+      if (existingForward.status === 'accepted') {
+        throw new ConflictException('Already connected');
+      }
+      if (existingForward.status === 'pending') {
+        // Accept the pending request
+        const updated = await this.connectionModel
+          .findByIdAndUpdate(
+            existingForward._id,
+            { $set: { status: 'accepted', source: 'qr_scan' } },
+            { new: true },
+          )
+          .exec();
+
+        await this.sendQrConnectionNotifications(scannerUserId, scannedUserId, scanner, scannedUser);
+
+        this.logger.log(`QR scan: accepted existing pending connection ${scannerUserId} → ${scannedUserId}`);
+
+        return updated!;
+      }
+    }
+
+    const existingReverse = await this.connectionModel
+      .findOne({ userId: scannedUserId, connectedUserId: scannerUserId })
+      .exec();
+
+    if (existingReverse) {
+      if (existingReverse.status === 'accepted') {
+        throw new ConflictException('Already connected');
+      }
+      if (existingReverse.status === 'pending') {
+        // Accept the pending request (reverse direction)
+        const updated = await this.connectionModel
+          .findByIdAndUpdate(
+            existingReverse._id,
+            { $set: { status: 'accepted', source: 'qr_scan' } },
+            { new: true },
+          )
+          .exec();
+
+        await this.sendQrConnectionNotifications(scannerUserId, scannedUserId, scanner, scannedUser);
+
+        this.logger.log(`QR scan: accepted existing pending reverse connection ${scannedUserId} → ${scannerUserId}`);
+
+        return updated!;
+      }
+    }
+
+    // Create a single accepted connection record (A→B) — the system
+    // looks up connections in both directions so one record suffices.
+    const connection = await this.connectionModel.create({
+      userId: scannerUserId,
+      connectedUserId: scannedUserId,
+      status: 'accepted',
+      source: 'qr_scan',
+    });
+
+    // Send notifications to both users
+    await this.sendQrConnectionNotifications(scannerUserId, scannedUserId, scanner, scannedUser);
+
+    this.logger.log(
+      `QR scan: accepted connection created between ${scannerUserId} ↔ ${scannedUserId}`,
+    );
+
+    return connection;
+  }
+
+  /**
+   * Send notifications for a QR scan connection.
+   */
+  private async sendQrConnectionNotifications(
+    scannerUserId: string,
+    scannedUserId: string,
+    scanner: any,
+    scannedUser: any,
+  ): Promise<void> {
+    try {
+      await this.notificationsService.create(
+        scannedUserId,
+        'connection_accepted',
+        'New Connection!',
+        `${scanner?.displayName || scanner?.email || 'Someone'} connected with you via QR scan.`,
+        `/connections`,
+      );
+
+      await this.timelineService.record(scannedUserId, 'connected', {
+        connectionId: '',
+        targetUserName: scanner?.displayName || scanner?.email || 'Unknown',
+        targetUserAvatar: scanner?.avatarUrl || '',
+      });
+
+      await this.notificationsService.create(
+        scannerUserId,
+        'connection_accepted',
+        'New Connection!',
+        `${scannedUser?.displayName || scannedUser?.email || 'Someone'} connected with you via QR scan.`,
+        `/connections`,
+      );
+
+      await this.timelineService.record(scannerUserId, 'connected', {
+        connectionId: '',
+        targetUserName: scannedUser?.displayName || scannedUser?.email || 'Unknown',
+        targetUserAvatar: scannedUser?.avatarUrl || '',
+      });
+    } catch (hookError) {
+      this.logger.error(
+        `Failed to send QR connection notifications: ${(hookError as Error).message}`,
+      );
+    }
+  }
+
+  /**
    * Enrich a connection document with user and card display info.
    * When currentUserId is provided, also returns 'otherUser' (the person who isn't the viewer).
    */

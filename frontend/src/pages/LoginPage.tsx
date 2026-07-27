@@ -1,6 +1,7 @@
 import React, { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/auth/useAuth';
+import { qrConnect } from '@/api/connections';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import toast from 'react-hot-toast';
@@ -8,6 +9,7 @@ import NetworkIllustration from '@/components/ui/NetworkIllustration';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login, demoLogin } = useAuth();
 
   const [email, setEmail] = useState('');
@@ -28,8 +30,26 @@ const LoginPage: React.FC = () => {
     setLoading(true);
     try {
       await login(email.trim(), password);
-      toast.success('Welcome back!');
-      navigate('/dashboard', { replace: true });
+
+      // Handle QR ref flow
+      const ref = searchParams.get('ref');
+      const redirect = searchParams.get('redirect');
+
+      if (redirect && redirect.includes('/scan?ref=')) {
+        navigate(redirect, { replace: true });
+      } else if (ref) {
+        try {
+          await qrConnect(ref);
+          toast.success('Connected!');
+          navigate('/connections', { replace: true });
+        } catch (connErr: any) {
+          toast.error('Logged in but could not auto-connect.');
+          navigate('/dashboard', { replace: true });
+        }
+      } else {
+        toast.success('Welcome back!');
+        navigate('/dashboard', { replace: true });
+      }
     } catch (err: any) {
       const message =
         err?.response?.data?.message ||
@@ -44,6 +64,11 @@ const LoginPage: React.FC = () => {
 
   const handleDemoLogin = () => {
     demoLogin();
+    // Also handle ref for demo login
+    const ref = searchParams.get('ref');
+    if (ref) {
+      qrConnect(ref).catch(() => {}); // fire-and-forget, user already navigated
+    }
     toast.success('Logged in as Demo User');
     navigate('/dashboard', { replace: true });
   };

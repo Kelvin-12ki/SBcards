@@ -15,10 +15,10 @@ import NotificationBell from '@/components/notifications/NotificationBell';
 import NotificationPanel from '@/components/notifications/NotificationPanel';
 
 export interface NavbarProps {
-  onMenuToggle?: never;
+  onMenuToggle?: () => void;
 }
 
-const Navbar: React.FC<NavbarProps> = () => {
+const Navbar: React.FC<NavbarProps> = ({ onMenuToggle }) => {
   const { user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -115,6 +115,17 @@ const Navbar: React.FC<NavbarProps> = () => {
   return (
     <nav className="flex h-16 items-center justify-between border-b border-border-subtle bg-surface-1 px-5 lg:px-6">
       <div className="flex items-center gap-3">
+        {/* Mobile hamburger menu toggle */}
+        <button
+          onClick={onMenuToggle}
+          className="lg:hidden rounded-xl p-2 text-text-secondary hover:bg-surface-2 hover:text-text-primary transition-colors"
+          aria-label="Toggle sidebar menu"
+        >
+          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+          </svg>
+        </button>
+
         <Link to="/dashboard" className="flex items-center gap-2 group">
           <span className="font-display text-xl font-extrabold tracking-tight text-text-primary">
             SB<span className="text-gradient-gold">Cards</span>

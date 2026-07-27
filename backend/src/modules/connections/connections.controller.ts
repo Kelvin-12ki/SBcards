@@ -21,6 +21,7 @@ import { ConnectionsService } from './connections.service';
 import { CreateConnectionDto } from './dto/create-connection.dto';
 import { UpdateConnectionDto } from './dto/update-connection.dto';
 import { AddTagDto } from './dto/add-tag.dto';
+import { QrConnectDto } from './dto/qr-connect.dto';
 
 @ApiTags('connections')
 @Controller('connections')
@@ -104,6 +105,21 @@ export class ConnectionsController {
   ): Promise<void> {
     const userId = await this.resolveUserId(jwtUser);
     await this.connectionsService.cancelRequest(id, userId);
+  }
+
+  @Post('qr-connect')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Create an accepted connection from a QR code scan' })
+  async qrConnect(
+    @CurrentUser() jwtUser: JwtUser,
+    @Body() qrConnectDto: QrConnectDto,
+  ): Promise<Record<string, any>> {
+    const userId = await this.resolveUserId(jwtUser);
+    const connection = await this.connectionsService.createFromQrScan(
+      userId,
+      qrConnectDto.scannedUserId,
+    );
+    return this.connectionsService.getEnrichedConnection(connection, userId);
   }
 
   // ────────── CONNECTIONS ──────────

@@ -106,7 +106,7 @@ const navLinks = [
   { to: '/events', label: 'AI Match', icon: AIRecommendationsIcon, badge: undefined },
   { to: '/qr', label: 'My QR Code', icon: QRIcon, badge: undefined },
   { to: '/scan/qr', label: 'Scan QR', icon: ScanQRIcon, badge: undefined },
-  { to: '/scan', label: 'Scan Card', icon: ScanIcon, badge: undefined },
+  { to: '/cards/scan', label: 'Scan Card', icon: ScanIcon, badge: undefined },
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
@@ -140,12 +140,41 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
   return (
     <>
+      {/* Mobile overlay backdrop */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm lg:hidden"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar */}
       <aside
         className={cn(
+          // Desktop: always visible, fixed to left
           'hidden lg:flex lg:flex-col w-64 border-r border-border-subtle bg-surface-1',
           'fixed left-0 top-16 h-[calc(100vh-4rem)]',
+          // Mobile: slide in from left when open
+          isOpen
+            ? 'fixed inset-y-0 left-0 z-40 flex w-64 translate-x-0 flex-col border-r border-border-subtle bg-surface-1 shadow-2xl transition-transform duration-300 ease-in-out'
+            : 'fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-border-subtle bg-surface-1 transition-transform duration-300 ease-in-out lg:hidden',
         )}
       >
+        {/* Mobile close button */}
+        <div className="flex items-center justify-between border-b border-border-subtle px-4 py-3 lg:hidden">
+          <span className="font-display text-lg font-bold text-gradient-gold">Menu</span>
+          <button
+            onClick={onClose}
+            className="rounded-xl p-1.5 text-text-secondary hover:bg-surface-2 hover:text-text-primary transition-colors"
+            aria-label="Close sidebar menu"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
         <nav className="flex flex-col gap-1 p-4">
           {navLinks.map((link) => (
             <NavLink

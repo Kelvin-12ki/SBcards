@@ -71,7 +71,7 @@ const QRCodePage: React.FC = () => {
             Show this QR code to connect with others
           </p>
           <p className="text-xs text-text-tertiary mt-2">
-            Other SBCards users can scan your code to instantly add you as a connection.
+            Others can scan this with their phone camera to instantly connect
           </p>
         </div>
 

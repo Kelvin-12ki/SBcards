@@ -1,6 +1,7 @@
 import React, { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/auth/useAuth';
+import { qrConnect } from '@/api/connections';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import toast from 'react-hot-toast';
@@ -8,6 +9,7 @@ import NetworkIllustration from '@/components/ui/NetworkIllustration';
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { register } = useAuth();
 
   const [displayName, setDisplayName] = useState('');
@@ -39,8 +41,27 @@ const RegisterPage: React.FC = () => {
     setLoading(true);
     try {
       await register(email.trim(), password.trim(), displayName.trim() || undefined);
-      toast.success('Account created successfully!');
-      navigate('/dashboard', { replace: true });
+
+      // Check for QR ref from query param or sessionStorage
+      const ref = searchParams.get('ref') || sessionStorage.getItem('qr_ref');
+      if (ref) {
+        try {
+          await qrConnect(ref);
+          sessionStorage.removeItem('qr_ref');
+          toast.success('Account created! You\'re now connected.');
+          navigate('/connections', { replace: true });
+        } catch (connErr: any) {
+          const connMessage =
+            connErr?.response?.data?.message ||
+            connErr?.message ||
+            'Account created but could not auto-connect.';
+          toast.error(connMessage);
+          navigate('/connections', { replace: true });
+        }
+      } else {
+        toast.success('Account created successfully!');
+        navigate('/dashboard', { replace: true });
+      }
     } catch (err: any) {
       const message =
         err?.response?.data?.message ||

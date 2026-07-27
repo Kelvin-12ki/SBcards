@@ -75,3 +75,10 @@ export async function toggleFavorite(id: string): Promise<Connection> {
 export async function bulkTagConnections(connectionIds: string[], tag: string): Promise<void> {
   await apiClient.post('/connections/bulk-tag', { connectionIds, tag });
 }
+
+// ────────── QR CONNECT ──────────
+
+export async function qrConnect(scannedUserId: string): Promise<any> {
+  const { data } = await apiClient.post('/connections/qr-connect', { scannedUserId });
+  return data;
+}
