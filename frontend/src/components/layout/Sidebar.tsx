@@ -237,6 +237,35 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               </NavLink>
             ))}
           </div>
+
+          {/* Admin Panel link - only visible for admin users */}
+          {user?.role === 'admin' && (
+            <div className="mt-4 pt-4 border-t border-border-subtle">
+              <div className="flex flex-col gap-1">
+                <NavLink
+                  to="/admin"
+                  end
+                  onClick={onClose}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-3 rounded-xl px-3 min-h-[44px] text-sm font-medium transition-all duration-300',
+                      isActive
+                        ? 'bg-gradient-to-r from-gold/20 to-amber-500/10 text-gold border border-gold/20 shadow-lg shadow-gold/10'
+                        : 'text-gold/70 hover:bg-gold/10 hover:text-gold',
+                    )
+                  }
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                  </svg>
+                  <span className="flex-1">Admin Panel</span>
+                  <span className="text-[10px] uppercase tracking-wider text-gold px-1.5 py-0.5 rounded-full bg-gold/10 border border-gold/20">
+                    Admin
+                  </span>
+                </NavLink>
+              </div>
+            </div>
+          )}
         </nav>
       </aside>
     </>

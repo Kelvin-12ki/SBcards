@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from '@/auth/ProtectedRoute';
+import AdminRoute from '@/auth/AdminRoute';
 
 // Lazy-loaded page components
 const LoginPage = React.lazy(() => import('@/pages/LoginPage'));
@@ -37,6 +38,16 @@ const InsightsPage = React.lazy(() => import('@/pages/InsightsPage'));
 const HeatmapPage = React.lazy(() => import('@/pages/HeatmapPage'));
 const MyCardsPage = React.lazy(() => import('@/pages/MyCardsPage'));
 const PublicCardPage = React.lazy(() => import('@/pages/PublicCardPage'));
+
+// Admin pages
+const AdminDashboardPage = React.lazy(() => import('@/pages/admin/AdminDashboardPage'));
+const AdminUsersPage = React.lazy(() => import('@/pages/admin/AdminUsersPage'));
+const AdminUserDetailPage = React.lazy(() => import('@/pages/admin/AdminUserDetailPage'));
+const AdminEventsPage = React.lazy(() => import('@/pages/admin/AdminEventsPage'));
+const AdminAnalyticsPage = React.lazy(() => import('@/pages/admin/AdminAnalyticsPage'));
+
+// Admin layout
+const AdminLayout = React.lazy(() => import('@/components/admin/AdminLayout'));
 
 // Placeholder Layout component (to be created later)
 const Layout = React.lazy(() => import('@/components/Layout'));
@@ -93,6 +104,19 @@ const RoutesTree: React.FC = () => {
             <Route path="/search" element={<SearchPage />} />
             <Route path="/insights" element={<InsightsPage />} />
             <Route path="/events/:eventId/heatmap" element={<HeatmapPage />} />
+          </Route>
+        </Route>
+
+        {/* Admin routes */}
+        <Route element={<ProtectedRoute />}>
+          <Route element={<AdminRoute />}>
+            <Route element={<AdminLayout />}>
+              <Route path="/admin" element={<AdminDashboardPage />} />
+              <Route path="/admin/users" element={<AdminUsersPage />} />
+              <Route path="/admin/users/:userId" element={<AdminUserDetailPage />} />
+              <Route path="/admin/events" element={<AdminEventsPage />} />
+              <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
+            </Route>
           </Route>
         </Route>
 

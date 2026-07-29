@@ -21,6 +21,8 @@ export interface User {
   location?: string;
   timezone?: string;
   profileComplete?: boolean;
+  role?: 'user' | 'admin';
+  status?: 'active' | 'suspended' | 'banned';
   createdAt?: string;
 }
 

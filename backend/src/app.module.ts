@@ -20,6 +20,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { SearchModule } from './modules/search/search.module';
 import { InsightsModule } from './modules/insights/insights.module';
 import { HeatmapModule } from './modules/heatmap/heatmap.module';
+import { AdminModule } from './modules/admin/admin.module';
 import databaseConfig from './config/database.config';
 import { FirebaseConfig } from './config/firebase.config';
 
@@ -58,6 +59,7 @@ import { FirebaseConfig } from './config/firebase.config';
     SearchModule,
     InsightsModule,
     HeatmapModule,
+    AdminModule,
   ],
   controllers: [],
   providers: [FirebaseConfig],

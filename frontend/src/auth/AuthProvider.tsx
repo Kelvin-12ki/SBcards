@@ -58,6 +58,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         } else {
           if (!cancelled) { setToken(storedToken); try { setUser(JSON.parse(storedUser!)); } catch {} }
+          // Refresh user from API in background to pick up role/status changes
+          try {
+            const freshUser = await authApi.getCurrentUser();
+            if (!cancelled) {
+              localStorage.setItem('user', JSON.stringify(freshUser));
+              setUser(freshUser);
+            }
+          } catch { /* token may be expired, use cached user */ }
         }
         if (!cancelled) setLoading(false);
         return;

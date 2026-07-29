@@ -14,6 +14,24 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   const logger = new Logger('Bootstrap');
 
+  // Seed admin role: set first user as admin if no admin exists yet (dev convenience)
+  try {
+    const mongoose = app.get('DatabaseConnection') || app.get('MongooseConnection');
+    if (mongoose?.connection?.db) {
+      const usersColl = mongoose.connection.db.collection('users');
+      const adminExists = await usersColl.findOne({ role: 'admin' });
+      if (!adminExists) {
+        const firstUser = await usersColl.findOne({}, { sort: { createdAt: 1 } });
+        if (firstUser) {
+          await usersColl.updateOne({ _id: firstUser._id }, { $set: { role: 'admin' } });
+          logger.log(`Seeded admin role for user: ${firstUser.email}`);
+        }
+      }
+    }
+  } catch (err) {
+    logger.warn('Could not seed admin role: ' + (err as Error).message);
+  }
+
   // One-time: drop the stale unique_participants index if it exists
   try {
     const mongoose = app.get('DatabaseConnection') || app.get('MongooseConnection');

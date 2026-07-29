@@ -7,12 +7,14 @@ export interface JwtPayload {
   sub: string;       // MongoDB user ID
   uid: string;       // Firebase UID
   email: string;
+  role: string;      // User role
 }
 
 export interface JwtUser {
   uid: string;       // Firebase UID (compatible with FirebaseUser interface)
   email: string;
   userId: string;    // MongoDB user ID
+  role: string;      // User role
 }
 
 @Injectable()
@@ -30,6 +32,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       uid: payload.uid,
       email: payload.email,
       userId: payload.sub,
+      role: payload.role,
     };
   }
 }

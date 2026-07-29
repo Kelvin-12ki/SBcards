@@ -75,6 +75,7 @@ export class AuthService {
       sub: user.id,
       uid: user.firebaseUid,
       email: user.email,
+      role: user.role || 'user',
     };
 
     return this.jwtService.sign(payload);

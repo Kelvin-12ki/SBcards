@@ -75,6 +75,12 @@ export class User {
 
   @Prop({ default: false })
   profileComplete!: boolean;
+
+  @Prop({ enum: ['user', 'admin'], default: 'user' })
+  role!: string;
+
+  @Prop({ enum: ['active', 'suspended', 'banned'], default: 'active' })
+  status!: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
