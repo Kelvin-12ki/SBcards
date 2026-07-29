@@ -5,6 +5,10 @@ import {
   signOut,
   signInWithPopup,
   GoogleAuthProvider,
+  sendEmailVerification,
+  sendSignInLinkToEmail,
+  isSignInWithEmailLink,
+  signInWithEmailLink,
 } from 'firebase/auth';
 import { auth } from '@/utils/firebase';
 import apiClient from './client';
@@ -37,6 +41,7 @@ export async function login(
 
 /**
  * Register a new user with Firebase, then log them in.
+ * Sends a verification email after registration.
  */
 export async function register(
   email: string,
@@ -48,6 +53,15 @@ export async function register(
     // Set the display name on the Firebase profile
     if (displayName) {
       await updateProfile(userCredential.user, { displayName });
+    }
+    // Send verification email
+    try {
+      await sendEmailVerification(userCredential.user, {
+        url: window.location.origin + '/login',
+        handleCodeInApp: true,
+      });
+    } catch {
+      // Verification email failure is non-blocking — user can still use the app
     }
   } catch (err: any) {
     if (err?.code === 'auth/email-already-in-use') {
@@ -63,6 +77,29 @@ export async function register(
   }
   // After creation, log in to get the backend token
   return login(email, password);
+}
+
+/**
+ * Resend verification email to the currently signed-in Firebase user.
+ */
+export async function resendVerificationEmail(): Promise<void> {
+  const fbUser = auth?.currentUser;
+  if (!fbUser) throw new Error('No authenticated user');
+  await sendEmailVerification(fbUser, {
+    url: window.location.origin + '/login',
+    handleCodeInApp: true,
+  });
+}
+
+/**
+ * Check if the current Firebase user's email is verified.
+ */
+export async function isEmailVerified(): Promise<boolean> {
+  const fbUser = auth?.currentUser;
+  if (!fbUser) return false;
+  // Reload to get fresh verification status
+  await fbUser.reload();
+  return fbUser.emailVerified;
 }
 
 /**

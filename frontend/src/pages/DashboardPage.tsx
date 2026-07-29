@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MessageSquare, Clock, Wallet, Sparkles, Search } from 'lucide-react';
+import { MessageSquare, Clock, Wallet, Sparkles, Search, Mail, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/auth/useAuth';
 import { getCards } from '@/api/cards';
 import { getEvents } from '@/api/events';
@@ -8,6 +8,8 @@ import { getMatches } from '@/api/matching';
 import { getUnreadCount } from '@/api/messaging';
 import { getUserFeed } from '@/api/timeline';
 import { getInsights } from '@/api/insights';
+import { isEmailVerified, resendVerificationEmail } from '@/api/auth';
+import toast from 'react-hot-toast';
 import type { Card } from '@/types/card';
 import type { Event } from '@/types/event';
 import type { Match } from '@/types/match';
@@ -39,6 +41,10 @@ const DashboardPage: React.FC = () => {
   // AI Insights state
   const [insights, setInsights] = useState<Insight[]>([]);
   const [insightsLoading, setInsightsLoading] = useState(true);
+
+  // Email verification state
+  const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
+  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -76,6 +82,9 @@ const DashboardPage: React.FC = () => {
     };
 
     fetchData();
+
+    // Check email verification status
+    isEmailVerified().then(setEmailVerified).catch(() => setEmailVerified(false));
   }, []);
 
   const defaultCard = cards.find((c) => c.isDefault) || cards[0];
@@ -90,6 +99,44 @@ const DashboardPage: React.FC = () => {
           Here&apos;s your networking overview.
         </p>
       </div>
+
+      {/* Email Verification Banner */}
+      {emailVerified === false && (
+        <div className="rounded-2xl border border-gold/30 bg-gold/5 p-4 flex items-center gap-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gold/10 text-gold">
+            <Mail className="h-5 w-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-text-primary">Verify your email address</p>
+            <p className="text-xs text-text-secondary truncate">Check your inbox for a verification link.</p>
+          </div>
+          <Button
+            size="sm"
+            variant="secondary"
+            loading={resending}
+            onClick={async () => {
+              setResending(true);
+              try {
+                await resendVerificationEmail();
+                toast.success('Verification email sent!');
+              } catch {
+                toast.error('Failed to send verification email');
+              } finally {
+                setResending(false);
+              }
+            }}
+          >
+            Resend
+          </Button>
+        </div>
+      )}
+
+      {emailVerified === true && (
+        <div className="flex items-center gap-2 text-sm text-green-400">
+          <CheckCircle className="h-4 w-4" />
+          <span>Email verified</span>
+        </div>
+      )}
 
       {/* Quick Search */}
       <div>
