@@ -6,9 +6,7 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
   sendEmailVerification,
-  sendSignInLinkToEmail,
-  isSignInWithEmailLink,
-  signInWithEmailLink,
+  sendPasswordResetEmail,
 } from 'firebase/auth';
 import { auth } from '@/utils/firebase';
 import apiClient from './client';
@@ -127,6 +125,14 @@ export async function loginWithGoogle(): Promise<AuthResponse> {
   localStorage.setItem('user', JSON.stringify(data.user));
 
   return data;
+}
+
+/**
+ * Send a password reset email via Firebase.
+ */
+export async function sendPasswordReset(email: string): Promise<void> {
+  if (!auth) throw new Error('Firebase not configured');
+  await sendPasswordResetEmail(auth, email);
 }
 
 /**
