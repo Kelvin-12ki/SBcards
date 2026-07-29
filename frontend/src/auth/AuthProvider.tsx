@@ -58,7 +58,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         } else {
           if (!cancelled) { setToken(storedToken); try { setUser(JSON.parse(storedUser!)); } catch {} }
-          // Refresh user from API in background to pick up role/status changes
+          // Refresh user from API BEFORE marking loading complete (picks up role/status changes)
           try {
             const freshUser = await authApi.getCurrentUser();
             if (!cancelled) {
