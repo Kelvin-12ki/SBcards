@@ -74,8 +74,14 @@ export async function logout(): Promise<void> {
 
 /**
  * Fetch the currently authenticated user from the backend.
+ * If the role changed, saves the fresh JWT token.
  */
 export async function getCurrentUser(): Promise<User> {
-  const { data } = await apiClient.get<User>('/auth/me');
-  return data;
+  const { data } = await apiClient.get<{ user: User; accessToken?: string }>('/auth/me');
+  // If backend issued a fresh token (role changed), save it
+  if (data.accessToken) {
+    localStorage.setItem('accessToken', data.accessToken);
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
+  }
+  return data.user;
 }

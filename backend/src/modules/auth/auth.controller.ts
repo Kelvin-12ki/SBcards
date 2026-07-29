@@ -70,7 +70,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Get current authenticated user' })
   async getMe(
     @CurrentUser() jwtUser: JwtUser,
-  ): Promise<User> {
+  ): Promise<{ user: User; accessToken?: string }> {
     const user = await this.usersService.findByFirebaseUid(jwtUser.uid);
 
     if (!user) {
@@ -80,13 +80,20 @@ export class AuthController {
         .replace(/[._-]/g, ' ')
         .replace(/\b\w/g, (c) => c.toUpperCase());
 
-      return this.usersService.upsertFirebaseUser(
+      const newUser = await this.usersService.upsertFirebaseUser(
         jwtUser.uid,
         jwtUser.email || '',
         displayName,
       );
+      return { user: newUser, accessToken: this.authService.generateToken(newUser) };
     }
 
-    return user;
+    // If DB role differs from JWT role, issue a fresh token
+    const tokenRole = jwtUser.role || 'user';
+    if (user.role !== tokenRole) {
+      return { user, accessToken: this.authService.generateToken(user) };
+    }
+
+    return { user };
   }
 }

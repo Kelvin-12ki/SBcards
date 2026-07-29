@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
+import { AdminGuard } from '../../common/guards/admin.guard';
 import { User, UserSchema } from '../users/entities/user.entity';
 import { Card, CardSchema } from '../cards/entities/card.entity';
 import { Connection, ConnectionSchema } from '../connections/entities/connection.entity';
@@ -23,7 +24,7 @@ import { EventsModule } from '../events/events.module';
     EventsModule,
   ],
   controllers: [AdminController],
-  providers: [AdminService],
-  exports: [AdminService],
+  providers: [AdminService, AdminGuard],
+  exports: [AdminService, AdminGuard],
 })
 export class AdminModule {}
