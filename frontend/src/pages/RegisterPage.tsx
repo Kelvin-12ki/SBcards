@@ -42,6 +42,9 @@ const RegisterPage: React.FC = () => {
     try {
       await register(email.trim(), password.trim(), displayName.trim() || undefined);
 
+      // Mark as new user so Dashboard shows "Welcome" instead of "Welcome back"
+      localStorage.setItem('sbcards_just_registered', '1');
+
       // Check for QR ref from query param or sessionStorage
       const ref = searchParams.get('ref') || sessionStorage.getItem('qr_ref');
       if (ref) {
@@ -59,7 +62,7 @@ const RegisterPage: React.FC = () => {
           navigate('/connections', { replace: true });
         }
       } else {
-        toast.success('Account created successfully!');
+        toast.success('Welcome to SBCards!');
         navigate('/dashboard', { replace: true });
       }
     } catch (err: any) {

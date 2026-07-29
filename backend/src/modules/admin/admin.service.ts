@@ -373,9 +373,14 @@ export class AdminService {
           { $sort: { count: -1 as const } },
           { $limit: limit },
           {
+            $addFields: {
+              _idObj: { $toObjectId: '$_id' },
+            },
+          },
+          {
             $lookup: {
               from: 'users',
-              localField: '_id',
+              localField: '_idObj',
               foreignField: '_id',
               as: 'user',
             },
@@ -386,9 +391,9 @@ export class AdminService {
               _id: 0,
               userId: '$_id',
               count: 1,
-              displayName: '$user.displayName',
-              email: '$user.email',
-              avatarUrl: '$user.avatarUrl',
+              displayName: { $ifNull: ['$user.displayName', ''] },
+              email: { $ifNull: ['$user.email', ''] },
+              avatarUrl: { $ifNull: ['$user.avatarUrl', ''] },
             },
           },
         ];
@@ -401,9 +406,14 @@ export class AdminService {
           { $sort: { count: -1 as const } },
           { $limit: limit },
           {
+            $addFields: {
+              _idObj: { $toObjectId: '$_id' },
+            },
+          },
+          {
             $lookup: {
               from: 'users',
-              localField: '_id',
+              localField: '_idObj',
               foreignField: '_id',
               as: 'user',
             },
@@ -414,9 +424,9 @@ export class AdminService {
               _id: 0,
               userId: '$_id',
               count: 1,
-              displayName: '$user.displayName',
-              email: '$user.email',
-              avatarUrl: '$user.avatarUrl',
+              displayName: { $ifNull: ['$user.displayName', ''] },
+              email: { $ifNull: ['$user.email', ''] },
+              avatarUrl: { $ifNull: ['$user.avatarUrl', ''] },
             },
           },
         ];
@@ -429,9 +439,14 @@ export class AdminService {
           { $sort: { count: -1 as const } },
           { $limit: limit },
           {
+            $addFields: {
+              _idObj: { $toObjectId: '$_id' },
+            },
+          },
+          {
             $lookup: {
               from: 'users',
-              localField: '_id',
+              localField: '_idObj',
               foreignField: '_id',
               as: 'user',
             },
@@ -442,9 +457,9 @@ export class AdminService {
               _id: 0,
               userId: '$_id',
               count: 1,
-              displayName: '$user.displayName',
-              email: '$user.email',
-              avatarUrl: '$user.avatarUrl',
+              displayName: { $ifNull: ['$user.displayName', ''] },
+              email: { $ifNull: ['$user.email', ''] },
+              avatarUrl: { $ifNull: ['$user.avatarUrl', ''] },
             },
           },
         ];

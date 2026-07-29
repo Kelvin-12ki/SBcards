@@ -46,6 +46,9 @@ const DashboardPage: React.FC = () => {
   const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
   const [resending, setResending] = useState(false);
 
+  // New user welcome state (flag set by RegisterPage)
+  const [isNewUser, setIsNewUser] = useState(false);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -87,16 +90,24 @@ const DashboardPage: React.FC = () => {
     isEmailVerified().then(setEmailVerified).catch(() => setEmailVerified(false));
   }, []);
 
+  // Check if user just registered
+  useEffect(() => {
+    if (localStorage.getItem('sbcards_just_registered') === '1') {
+      setIsNewUser(true);
+      localStorage.removeItem('sbcards_just_registered');
+    }
+  }, []);
+
   const defaultCard = cards.find((c) => c.isDefault) || cards[0];
 
   return (
     <div className="space-y-6 md:space-y-10">
       <div>
         <h1 className="font-display text-2xl md:text-3xl font-extrabold tracking-tight text-gradient-gold">
-          Welcome back{user?.displayName ? `, ${user.displayName}` : ''}!
+          {isNewUser ? 'Welcome' : 'Welcome back'}{user?.displayName ? `, ${user.displayName}` : ''}!
         </h1>
         <p className="mt-1.5 text-base text-text-secondary">
-          Here&apos;s your networking overview.
+          {isNewUser ? 'Let\'s get you started with SBCards.' : 'Here\'s your networking overview.'}
         </p>
       </div>
 

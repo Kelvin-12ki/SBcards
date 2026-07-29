@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getAnalytics, getLeaderboard, type AnalyticsData, type LeaderboardData } from '@/api/admin';
 import {
-  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 
 // ─── Period Selector ────────────────────────────────────────────────────────
