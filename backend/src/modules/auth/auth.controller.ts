@@ -6,6 +6,8 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
@@ -13,8 +15,10 @@ import { UsersService } from '../users/users.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtUser } from '../../common/strategies/jwt.strategy';
-import { User } from '../users/entities/user.entity';
+import { User, UserDocument } from '../users/entities/user.entity';
 import { IsNotEmpty, IsString } from 'class-validator';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 
 class VerifyTokenDto {
   @IsNotEmpty()
@@ -28,6 +32,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
+    @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
   ) {}
 
   @Post('verify')
@@ -95,5 +100,37 @@ export class AuthController {
     }
 
     return { user };
+  }
+
+  /**
+   * Bootstrap: first authenticated user to call this becomes admin.
+   * Only works when NO admin exists yet. Safe for production.
+   */
+  @Post('bootstrap-admin')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'First user to call this becomes admin (only if no admin exists)' })
+  async bootstrapAdmin(@CurrentUser() jwtUser: JwtUser) {
+    // Check if any admin already exists
+    const adminExists = await this.userModel.findOne({ role: 'admin' });
+    if (adminExists) {
+      return { message: 'Admin already exists', claimed: false };
+    }
+
+    // Promote this user to admin
+    const user = await this.userModel.findOneAndUpdate(
+      { firebaseUid: jwtUser.uid },
+      { $set: { role: 'admin' } },
+      { new: true },
+    );
+
+    if (!user) {
+      return { message: 'User not found', claimed: false };
+    }
+
+    // Issue fresh JWT with admin role
+    const accessToken = this.authService.generateToken(user as any);
+    return { message: 'You are now the admin!', claimed: true, role: user.role, accessToken };
   }
 }
