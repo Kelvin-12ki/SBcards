@@ -3,6 +3,8 @@ import {
   createUserWithEmailAndPassword,
   updateProfile,
   signOut,
+  signInWithPopup,
+  GoogleAuthProvider,
 } from 'firebase/auth';
 import { auth } from '@/utils/firebase';
 import apiClient from './client';
@@ -70,6 +72,24 @@ export async function logout(): Promise<void> {
   await signOut(auth);
   localStorage.removeItem('accessToken');
   localStorage.removeItem('user');
+}
+
+/**
+ * Log in with Google account using Firebase popup, then verify with the backend.
+ */
+export async function loginWithGoogle(): Promise<AuthResponse> {
+  const provider = new GoogleAuthProvider();
+  const userCredential = await signInWithPopup(auth, provider);
+  const idToken = await userCredential.user.getIdToken();
+
+  const { data } = await apiClient.post<AuthResponse>('/auth/verify', {
+    idToken,
+  });
+
+  localStorage.setItem('accessToken', data.accessToken);
+  localStorage.setItem('user', JSON.stringify(data.user));
+
+  return data;
 }
 
 /**

@@ -9,24 +9,15 @@ export interface AuthContextValue {
   token: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   register: (email: string, password: string, displayName?: string) => Promise<void>;
   logout: () => Promise<void>;
-  demoLogin: () => void;
   refreshUser: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 interface AuthProviderProps { children: ReactNode; }
-
-const DEMO_USER: User = {
-  id: 'demo-user-id',
-  firebaseUid: 'demo-uid',
-  email: 'demo@sbcards.app',
-  displayName: 'Demo User',
-  avatarUrl: '',
-  createdAt: new Date().toISOString(),
-};
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -38,35 +29,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     let cancelled = false;
 
     async function init() {
-      const isDemo = localStorage.getItem('demoMode') === 'true';
       const storedToken = localStorage.getItem('accessToken');
       const storedUser = localStorage.getItem('user');
 
-      if (isDemo || (storedToken && storedUser)) {
-        if (isDemo) {
-          // Try to get a real JWT from the backend for demo mode
-          try {
-            const { data } = await apiClient.post<{ accessToken: string; user: User }>('/auth/demo-login');
-            localStorage.setItem('user', JSON.stringify(data.user));
-            localStorage.setItem('accessToken', data.accessToken);
-            if (!cancelled) { setToken(data.accessToken); setUser(data.user); }
-          } catch {
-            // Fallback to local demo user
-            localStorage.setItem('user', JSON.stringify(DEMO_USER));
-            localStorage.setItem('accessToken', 'demo-token');
-            if (!cancelled) { setToken('demo-token'); setUser(DEMO_USER); }
+      if (storedToken && storedUser) {
+        if (!cancelled) { setToken(storedToken); try { setUser(JSON.parse(storedUser!)); } catch {} }
+        // Refresh user from API BEFORE marking loading complete (picks up role/status changes)
+        try {
+          const freshUser = await authApi.getCurrentUser();
+          if (!cancelled) {
+            localStorage.setItem('user', JSON.stringify(freshUser));
+            setUser(freshUser);
           }
-        } else {
-          if (!cancelled) { setToken(storedToken); try { setUser(JSON.parse(storedUser!)); } catch {} }
-          // Refresh user from API BEFORE marking loading complete (picks up role/status changes)
-          try {
-            const freshUser = await authApi.getCurrentUser();
-            if (!cancelled) {
-              localStorage.setItem('user', JSON.stringify(freshUser));
-              setUser(freshUser);
-            }
-          } catch { /* token may be expired, use cached user */ }
-        }
+        } catch { /* token may be expired, use cached user */ }
         if (!cancelled) setLoading(false);
         return;
       }
@@ -78,7 +53,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             if (fbUser) {
               // Skip if we already have a valid token (user just logged in via login())
               const existingToken = localStorage.getItem('accessToken');
-              if (existingToken && existingToken !== 'demo-token') {
+              if (existingToken) {
                 if (!cancelled) setLoading(false);
                 return;
               }
@@ -108,27 +83,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => { cancelled = true; if (unsubRef.current) { unsubRef.current(); unsubRef.current = null; } };
   }, []);
 
-  const demoLogin = useCallback(async () => {
-    try {
-      const { data } = await apiClient.post<{ accessToken: string; user: User }>('/auth/demo-login');
-      localStorage.setItem('demoMode', 'true');
-      localStorage.setItem('user', JSON.stringify(data.user));
-      localStorage.setItem('accessToken', data.accessToken);
-      setToken(data.accessToken);
-      setUser(data.user);
-    } catch (err) {
-      console.error('Demo login failed:', err);
-      // Fallback: use local demo user with no backend access
-      localStorage.setItem('demoMode', 'true');
-      localStorage.setItem('user', JSON.stringify(DEMO_USER));
-      localStorage.setItem('accessToken', 'demo-token');
-      setToken('demo-token');
-      setUser(DEMO_USER);
-    }
-  }, []);
-
   const login = useCallback(async (email: string, password: string) => {
     const r = await authApi.login(email, password);
+    localStorage.setItem('accessToken', r.accessToken);
+    localStorage.setItem('user', JSON.stringify(r.user));
+    setUser(r.user);
+    setToken(r.accessToken);
+  }, []);
+
+  const loginWithGoogle = useCallback(async () => {
+    const r = await authApi.loginWithGoogle();
     localStorage.setItem('accessToken', r.accessToken);
     localStorage.setItem('user', JSON.stringify(r.user));
     setUser(r.user);
@@ -147,7 +111,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try { await authApi.logout(); } catch {}
     localStorage.removeItem('accessToken');
     localStorage.removeItem('user');
-    localStorage.removeItem('demoMode');
     setUser(null); setToken(null);
   }, []);
 
@@ -162,7 +125,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, demoLogin, refreshUser }}>
+    <AuthContext.Provider value={{ user, token, loading, login, loginWithGoogle, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
