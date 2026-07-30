@@ -116,16 +116,21 @@ const ProfilePage: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
+    // Show instant preview for responsiveness
+    const previewUrl = URL.createObjectURL(file);
+    setAvatarUrl(previewUrl);
     setPhotoUploading(true);
+
     try {
       const url = await uploadProfilePhoto(file, user.id);
+      URL.revokeObjectURL(previewUrl); // clean up preview
       setAvatarUrl(url);
       toast.success('Photo uploaded! Save your profile to confirm.');
     } catch (err: any) {
+      setAvatarUrl(user?.avatarUrl || ''); // revert on error
       toast.error(err?.message || 'Failed to upload photo.');
     } finally {
       setPhotoUploading(false);
-      // Reset file input so the same file can be re-selected
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
