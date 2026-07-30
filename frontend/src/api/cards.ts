@@ -3,50 +3,95 @@ import { storage } from '@/utils/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { Card } from '@/types/card';
 
-const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const CARD_IMG_MAX_DIMENSION = 400; // px
+const CARD_IMG_QUALITY = 0.8;
 
 /**
- * Convert a File to a base64 data URL (fallback when Firebase Storage is unavailable).
+ * Compress and resize an image using Canvas.
  */
-function fileToDataURL(file: File): Promise<string> {
+function compressImage(file: File): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+
+      let { width, height } = img;
+      if (width > CARD_IMG_MAX_DIMENSION || height > CARD_IMG_MAX_DIMENSION) {
+        const scale = CARD_IMG_MAX_DIMENSION / Math.max(width, height);
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject(new Error('Canvas not supported')); return; }
+
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            console.log(`[CardUpload] Compressed: ${(file.size / 1024).toFixed(0)}KB → ${(blob.size / 1024).toFixed(0)}KB`);
+            resolve(blob);
+          } else {
+            reject(new Error('Failed to compress image'));
+          }
+        },
+        'image/jpeg',
+        CARD_IMG_QUALITY,
+      );
+    };
+
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Failed to load image')); };
+    img.src = url;
+  });
+}
+
+function blobToDataURL(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
     reader.onerror = () => reject(new Error('Failed to read file.'));
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(blob);
   });
 }
 
 /**
- * Upload a profile photo. Tries Firebase Storage first, falls back to base64 data URL.
+ * Upload a card photo. Compresses first, tries Firebase Storage, falls back to base64.
  */
 export async function uploadCardPhoto(file: File, userId: string): Promise<string> {
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-    throw new Error('Invalid file type. Please upload a JPEG, PNG, WebP, or GIF image.');
+    throw new Error('Invalid file type. Please upload a JPEG, PNG, or WebP image.');
   }
 
   if (file.size > MAX_FILE_SIZE) {
-    throw new Error('File is too large. Maximum size is 5MB.');
+    throw new Error('File is too large. Maximum size is 10MB.');
   }
 
-  // Try Firebase Storage first
+  // Compress first
+  const compressed = await compressImage(file);
+
+  // Try Firebase Storage
   if (storage) {
     try {
       const timestamp = Date.now();
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const storageRef = ref(storage, `card-photos/${userId}/${timestamp}-${safeName}`);
-
-      const snapshot = await uploadBytes(storageRef, file);
+      const storageRef = ref(storage, `card-photos/${userId}/${timestamp}.jpg`);
+      const snapshot = await uploadBytes(storageRef, compressed, { contentType: 'image/jpeg' });
       return await getDownloadURL(snapshot.ref);
     } catch (err: any) {
-      console.warn('Firebase Storage upload failed, falling back to local storage:', err?.message || err);
-      // Fall through to base64 fallback
+      console.warn('Firebase Storage upload failed, falling back to base64:', err?.message || err);
     }
   }
 
-  // Fallback: convert to base64 data URL so the feature still works
-  return fileToDataURL(file);
+  // Fallback: compressed base64
+  return blobToDataURL(compressed);
 }
 
 export async function getCards(): Promise<Card[]> {
