@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MessageSquare, Clock, Wallet, Sparkles, Search, Mail, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/auth/useAuth';
-import { getCards } from '@/api/cards';
+import { getCards, getWalletCards } from '@/api/cards';
 import { getEvents } from '@/api/events';
 import { getMatches } from '@/api/matching';
 import { getUnreadCount } from '@/api/messaging';
@@ -42,6 +42,10 @@ const DashboardPage: React.FC = () => {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [insightsLoading, setInsightsLoading] = useState(true);
 
+  // Wallet cards count
+  const [walletCount, setWalletCount] = useState<number>(0);
+  const [walletLoading, setWalletLoading] = useState(true);
+
   // Email verification state
   const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
   const [resending, setResending] = useState(false);
@@ -52,18 +56,20 @@ const DashboardPage: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [cardsData, eventsData, unreadData, activityData, insightsData] = await Promise.all([
+        const [cardsData, eventsData, unreadData, activityData, insightsData, walletData] = await Promise.all([
           getCards(),
           getEvents({ limit: 5 }),
           getUnreadCount().catch(() => ({ count: 0 })),
           getUserFeed(1, 5).catch(() => [] as Activity[]),
           getInsights().catch(() => [] as Insight[]),
+          getWalletCards().catch(() => []),
         ]);
         setCards(cardsData);
         setEvents(eventsData.slice(0, 3));
         setUnreadCount(unreadData.count);
         setRecentActivities(activityData.slice(0, 3));
         setInsights(insightsData);
+        setWalletCount(walletData.length);
 
         const activeEvents = eventsData.filter((e) => e.status === 'active');
         if (activeEvents.length > 0) {
@@ -81,6 +87,7 @@ const DashboardPage: React.FC = () => {
         setUnreadLoading(false);
         setActivitiesLoading(false);
         setInsightsLoading(false);
+        setWalletLoading(false);
       }
     };
 
@@ -227,7 +234,7 @@ const DashboardPage: React.FC = () => {
           </div>
           <h3 className="text-sm font-semibold text-text-primary">Card Wallet</h3>
           <p className="text-xs text-text-secondary mt-1">
-            {cardsLoading ? 'Loading...' : `${cards.length} card${cards.length !== 1 ? 's' : ''} collected`}
+            {walletLoading ? 'Loading...' : `${walletCount} card${walletCount !== 1 ? 's' : ''} collected`}
           </p>
         </button>
 
