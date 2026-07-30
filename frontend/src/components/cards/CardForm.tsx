@@ -51,6 +51,7 @@ const CardForm: React.FC<CardFormProps> = ({
   const [theme, setTheme] = useState<TemplateId>((initialData?.theme as TemplateId) || 'classic');
   const [errors, setErrors] = useState<FormErrors>({});
   const [avatarUrl, setAvatarUrl] = useState(initialData?.avatarUrl || '');
+  const [photoChanged, setPhotoChanged] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoError, setPhotoError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -119,6 +120,7 @@ const CardForm: React.FC<CardFormProps> = ({
       const url = await uploadCardPhoto(file, user?.id || 'anonymous');
       if (url) {
         setAvatarUrl(url);
+        setPhotoChanged(true);
         toast.success('Photo uploaded successfully!');
       } else {
         throw new Error('Upload returned no URL.');
@@ -138,6 +140,7 @@ const CardForm: React.FC<CardFormProps> = ({
 
   const handleRemovePhoto = useCallback(() => {
     setAvatarUrl('');
+    setPhotoChanged(true);
     setPhotoError('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -177,7 +180,8 @@ const CardForm: React.FC<CardFormProps> = ({
       skills,
       interests,
       isDefault,
-      avatarUrl: avatarUrl || undefined,
+      // Only send avatarUrl if the photo was actually changed (avoids sending huge base64 strings)
+      ...(photoChanged ? { avatarUrl: avatarUrl || undefined } : {}),
     });
   };
 

@@ -65,7 +65,7 @@ export class CardsService {
 
   /**
    * Update a card. Only the owner can update.
-   * If skills/interests are provided, they are replaced entirely.
+   * Uses findByIdAndUpdate to only set provided fields (avoids saving huge existing avatarUrl).
    */
   async update(
     id: string,
@@ -89,24 +89,29 @@ export class CardsService {
       await this.unsetOtherDefaults(userId, id);
     }
 
-    // Update card fields — only set defined values to avoid overwriting with empty strings
+    // Build $set update — only include defined fields
+    const updateFields: Record<string, any> = {};
     for (const [key, value] of Object.entries(cardData)) {
       if (value !== undefined && value !== null) {
-        (card as any)[key] = value;
+        updateFields[key] = value;
       }
     }
 
-    // Replace skills if provided
+    // Build $set for skills/interests if provided
     if (skills !== undefined) {
-      card.skills = skills;
+      updateFields.skills = skills;
     }
-
-    // Replace interests if provided
     if (interests !== undefined) {
-      card.interests = interests;
+      updateFields.interests = interests;
     }
 
-    return card.save();
+    if (Object.keys(updateFields).length === 0) {
+      return card; // nothing to update
+    }
+
+    return this.cardModel
+      .findByIdAndUpdate(id, { $set: updateFields }, { new: true })
+      .exec();
   }
 
   /**

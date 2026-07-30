@@ -108,6 +108,24 @@ async function bootstrap() {
   } catch (err) {
     logger.warn('Could not seed admin role: ' + (err as Error).message);
   }
+
+  // One-time cleanup: strip huge base64 avatarUrls from cards
+  try {
+    const mongoose = app.get('DatabaseConnection') || app.get('MongooseConnection');
+    if (mongoose?.connection?.db) {
+      const cardsColl = mongoose.connection.db.collection('cards');
+      // base64 data URLs start with "data:image" and are typically > 1KB
+      const result = await cardsColl.updateMany(
+        { avatarUrl: { $regex: '^data:image', $options: 'i' } },
+        { $unset: { avatarUrl: '' } },
+      );
+      if (result.modifiedCount > 0) {
+        logger.log(`Cleaned ${result.modifiedCount} cards with huge base64 avatarUrls`);
+      }
+    }
+  } catch (err) {
+    logger.warn('Could not cleanup base64 avatarUrls: ' + (err as Error).message);
+  }
 }
 
 void bootstrap();
