@@ -89,8 +89,12 @@ export class CardsService {
       await this.unsetOtherDefaults(userId, id);
     }
 
-    // Update card fields
-    Object.assign(card, cardData);
+    // Update card fields — only set defined values to avoid overwriting with empty strings
+    for (const [key, value] of Object.entries(cardData)) {
+      if (value !== undefined && value !== null) {
+        (card as any)[key] = value;
+      }
+    }
 
     // Replace skills if provided
     if (skills !== undefined) {
