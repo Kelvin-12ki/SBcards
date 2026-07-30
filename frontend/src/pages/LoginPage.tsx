@@ -2,11 +2,11 @@ import React, { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/auth/useAuth';
 import { qrConnect } from '@/api/connections';
+import { sendPasswordReset, getFirebaseAuthErrorMessage } from '@/api/auth';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import toast from 'react-hot-toast';
 import NetworkIllustration from '@/components/ui/NetworkIllustration';
-import { sendPasswordReset } from '@/api/auth';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -43,28 +43,6 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  /** Map Firebase error codes to user-friendly messages */
-  const getFirebaseErrorMessage = (err: any): string => {
-    const code = err?.code || '';
-
-    switch (code) {
-      case 'auth/invalid-credential':
-      case 'auth/user-not-found':
-      case 'auth/wrong-password':
-        return 'Incorrect email or password. If you signed up with Google, use the "Continue with Google" button below.';
-      case 'auth/too-many-requests':
-        return 'Too many failed attempts. Please wait a few minutes before trying again.';
-      case 'auth/user-disabled':
-        return 'This account has been disabled. Please contact support.';
-      case 'auth/network-request-failed':
-        return 'Network error. Please check your connection and try again.';
-      case 'auth/invalid-email':
-        return 'Please enter a valid email address.';
-      default:
-        return err?.message || 'Login failed. Please check your credentials.';
-    }
-  };
-
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
@@ -80,7 +58,7 @@ const LoginPage: React.FC = () => {
       toast.success('Welcome back!');
       await handlePostLogin();
     } catch (err: any) {
-      const message = getFirebaseErrorMessage(err);
+      const message = getFirebaseAuthErrorMessage(err);
       setError(message);
       toast.error(message);
     } finally {
@@ -96,10 +74,7 @@ const LoginPage: React.FC = () => {
       toast.success('Welcome back!');
       await handlePostLogin();
     } catch (err: any) {
-      const message =
-        err?.response?.data?.message ||
-        err?.message ||
-        'Google sign-in failed. Please try again.';
+      const message = getFirebaseAuthErrorMessage(err);
       setError(message);
       toast.error(message);
     } finally {
@@ -119,12 +94,8 @@ const LoginPage: React.FC = () => {
       setResetSent(true);
       toast.success('Password reset email sent! Check your inbox.');
     } catch (err: any) {
-      const code = err?.code || '';
-      if (code === 'auth/user-not-found') {
-        setError('No account found with this email. Please check and try again.');
-      } else {
-        setError(err?.message || 'Failed to send reset email. Please try again.');
-      }
+      const message = getFirebaseAuthErrorMessage(err);
+      setError(message);
     } finally {
       setResetLoading(false);
     }
