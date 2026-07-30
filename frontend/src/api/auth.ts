@@ -2,6 +2,11 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   updateProfile,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+  linkWithCredential,
+  fetchSignInMethodsForEmail,
   signOut,
   signInWithPopup,
   GoogleAuthProvider,
@@ -218,6 +223,70 @@ export async function loginWithGoogle(): Promise<AuthResponse> {
 export async function sendPasswordReset(email: string): Promise<void> {
   const firebaseAuth = requireAuth();
   await sendPasswordResetEmail(firebaseAuth, email);
+}
+
+/**
+ * Check if the current Firebase user has an email/password credential.
+ * Returns false for Google-only accounts.
+ */
+export async function hasPasswordProvider(): Promise<boolean> {
+  const firebaseAuth = requireAuth();
+  const fbUser = firebaseAuth.currentUser;
+  if (!fbUser) return false;
+  await fbUser.reload();
+  // Firebase providerData includes 'password' if user signed up with email/password
+  return fbUser.providerData.some((p) => p.providerId === 'password');
+}
+
+/**
+ * Set a password on an existing account (e.g. Google-only user wanting email/password login).
+ * Uses linkWithCredential to add email/password auth to a Google-only account.
+ */
+export async function setPasswordForGoogleUser(password: string): Promise<void> {
+  const firebaseAuth = requireAuth();
+  const fbUser = firebaseAuth.currentUser;
+  if (!fbUser || !fbUser.email) throw new Error('No authenticated user');
+
+  console.log('[Auth] Setting password for Google user:', fbUser.email);
+
+  try {
+    // Try updatePassword first (works if user already has a password provider)
+    await updatePassword(fbUser, password);
+    console.log('[Auth] Password updated successfully via updatePassword');
+  } catch (err: any) {
+    if (err?.code === 'auth/requires-recent-login') {
+      // For Google-only users, we need to link email/password credential
+      console.log('[Auth] requires-recent-login, trying linkWithCredential...');
+      const credential = EmailAuthProvider.credential(fbUser.email, password);
+      await linkWithCredential(fbUser, credential);
+      console.log('[Auth] Email/password credential linked successfully');
+    } else {
+      throw err;
+    }
+  }
+}
+
+/**
+ * Change password for users who already have email/password.
+ * Requires re-authentication first.
+ */
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> {
+  const firebaseAuth = requireAuth();
+  const fbUser = firebaseAuth.currentUser;
+  if (!fbUser || !fbUser.email) throw new Error('No authenticated user');
+
+  console.log('[Auth] Changing password for:', fbUser.email);
+
+  // Re-authenticate with current password first
+  const credential = EmailAuthProvider.credential(fbUser.email, currentPassword);
+  await reauthenticateWithCredential(fbUser, credential);
+
+  // Now update to new password
+  await updatePassword(fbUser, newPassword);
+  console.log('[Auth] Password changed successfully');
 }
 
 /**

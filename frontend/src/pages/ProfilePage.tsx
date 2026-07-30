@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/auth/useAuth';
 import { getCards } from '@/api/cards';
 import { updateProfile, uploadProfilePhoto } from '@/api/users';
+import { hasPasswordProvider, setPasswordForGoogleUser, changePassword, getFirebaseAuthErrorMessage } from '@/api/auth';
 import type { Card } from '@/types/card';
 import CardPreview from '@/components/cards/CardPreview';
 import Button from '@/components/ui/Button';
@@ -43,6 +44,14 @@ const ProfilePage: React.FC = () => {
   const [photoUploading, setPhotoUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Security / password state
+  const [hasPassword, setHasPassword] = useState<boolean | null>(null);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+
   const defaultCard = cards.find((c) => c.isDefault) || cards[0];
 
   useEffect(() => {
@@ -57,6 +66,11 @@ const ProfilePage: React.FC = () => {
       }
     };
     fetchCards();
+
+    // Check if user has a password provider
+    hasPasswordProvider()
+      .then(setHasPassword)
+      .catch(() => setHasPassword(false));
   }, []);
 
   const handleEditCard = () => {
@@ -131,6 +145,53 @@ const ProfilePage: React.FC = () => {
       toast.error(err?.message || 'Failed to update profile.');
     } finally {
       setProfileSaving(false);
+    }
+  };
+
+  const handleSetPassword = async () => {
+    setPasswordError('');
+
+    if (!newPassword.trim() || !confirmNewPassword.trim()) {
+      setPasswordError('Please fill in all password fields.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordError('Password must be at least 6 characters.');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError('Passwords do not match.');
+      return;
+    }
+    if (!hasPassword && !currentPassword.trim()) {
+      // Google-only user doesn't need current password
+    }
+
+    setPasswordSaving(true);
+    try {
+      if (hasPassword) {
+        // Already has password — change it
+        if (!currentPassword.trim()) {
+          setPasswordError('Current password is required.');
+          setPasswordSaving(false);
+          return;
+        }
+        await changePassword(currentPassword, newPassword);
+        toast.success('Password changed! You can now sign in with email/password.');
+      } else {
+        // Google-only user — set a new password
+        await setPasswordForGoogleUser(newPassword);
+        toast.success('Password set! You can now also sign in with email/password.');
+      }
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+    } catch (err: any) {
+      const message = getFirebaseAuthErrorMessage(err);
+      setPasswordError(message);
+      toast.error(message);
+    } finally {
+      setPasswordSaving(false);
     }
   };
 
@@ -304,6 +365,78 @@ const ProfilePage: React.FC = () => {
           ))}
         </section>
       )}
+
+      {/* Security / Password Section */}
+      <section className="card-magical rounded-2xl border border-border-subtle p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <svg className="h-5 w-5 text-gold" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+          </svg>
+          <h3 className="font-display text-sm font-bold text-gradient-gold">Security</h3>
+          {hasPassword === false && (
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20">
+              Google Only
+            </span>
+          )}
+          {hasPassword === true && (
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20">
+              Email + Password
+            </span>
+          )}
+        </div>
+
+        <p className="text-xs text-text-secondary">
+          {hasPassword === false
+            ? 'You signed up with Google. Set a password below so you can also sign in with your email and password.'
+            : hasPassword === true
+              ? 'Change your password below. You sign in with email and password.'
+              : 'Loading...'}
+        </p>
+
+        {hasPassword !== null && (
+          <div className="space-y-3">
+            {passwordError && (
+              <div className="rounded-xl bg-danger/10 border border-danger/20 px-3 py-2 text-xs text-danger">
+                {passwordError}
+              </div>
+            )}
+
+            {hasPassword && (
+              <Input
+                label="Current Password"
+                type="password"
+                placeholder="Enter current password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+              />
+            )}
+            <Input
+              label={hasPassword ? 'New Password' : 'Set Password'}
+              type="password"
+              placeholder="At least 6 characters"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+            />
+            <Input
+              label="Confirm Password"
+              type="password"
+              placeholder="Repeat password"
+              value={confirmNewPassword}
+              onChange={(e) => setConfirmNewPassword(e.target.value)}
+            />
+            <div className="flex justify-end">
+              <Button
+                variant="primary"
+                size="sm"
+                loading={passwordSaving}
+                onClick={handleSetPassword}
+              >
+                {hasPassword ? 'Change Password' : 'Set Password'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </section>
 
       {/* Edit Card Modal */}
       <Modal
