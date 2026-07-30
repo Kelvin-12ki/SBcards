@@ -19,6 +19,7 @@ const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
+  const [debugInfo, setDebugInfo] = useState('');
   const [resetSent, setResetSent] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [showResetForm, setShowResetForm] = useState(false);
@@ -46,6 +47,7 @@ const LoginPage: React.FC = () => {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
+    setDebugInfo('');
 
     if (!email.trim() || !password.trim()) {
       setError('Please enter both email and password.');
@@ -58,8 +60,10 @@ const LoginPage: React.FC = () => {
       toast.success('Welcome back!');
       await handlePostLogin();
     } catch (err: any) {
+      console.error('[LoginPage] Login failed:', err);
       const message = getFirebaseAuthErrorMessage(err);
       setError(message);
+      setDebugInfo(err?.code || err?.message || 'Unknown error');
       toast.error(message);
     } finally {
       setLoading(false);
@@ -69,13 +73,16 @@ const LoginPage: React.FC = () => {
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
     setError('');
+    setDebugInfo('');
     try {
       await loginWithGoogle();
       toast.success('Welcome back!');
       await handlePostLogin();
     } catch (err: any) {
+      console.error('[LoginPage] Google login failed:', err);
       const message = getFirebaseAuthErrorMessage(err);
       setError(message);
+      setDebugInfo(err?.code || err?.message || 'Unknown error');
       toast.error(message);
     } finally {
       setGoogleLoading(false);
@@ -89,13 +96,16 @@ const LoginPage: React.FC = () => {
     }
     setResetLoading(true);
     setError('');
+    setDebugInfo('');
     try {
       await sendPasswordReset(email.trim());
       setResetSent(true);
       toast.success('Password reset email sent! Check your inbox.');
     } catch (err: any) {
+      console.error('[LoginPage] Password reset failed:', err);
       const message = getFirebaseAuthErrorMessage(err);
       setError(message);
+      setDebugInfo(err?.code || err?.message || 'Unknown error');
     } finally {
       setResetLoading(false);
     }
@@ -126,6 +136,12 @@ const LoginPage: React.FC = () => {
           {error && (
             <div className="rounded-xl bg-danger/10 border border-danger/20 px-4 py-2.5 text-sm text-danger">
               {error}
+            </div>
+          )}
+
+          {debugInfo && (
+            <div className="rounded-xl bg-surface-2/50 border border-border-subtle px-4 py-2 text-xs text-text-tertiary font-mono">
+              Debug: {debugInfo}
             </div>
           )}
 
@@ -176,6 +192,7 @@ const LoginPage: React.FC = () => {
               type="button"
               onClick={() => {
                 setError('');
+                setDebugInfo('');
                 setResetSent(false);
                 setShowResetForm((prev) => !prev);
               }}

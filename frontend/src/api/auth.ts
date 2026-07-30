@@ -7,6 +7,7 @@ import {
   GoogleAuthProvider,
   sendEmailVerification,
   sendPasswordResetEmail,
+  type UserCredential,
 } from 'firebase/auth';
 import { auth } from '@/utils/firebase';
 import apiClient from './client';
@@ -17,9 +18,11 @@ interface AuthResponse {
   user: User;
 }
 
-/** Ensure Firebase auth is initialized */
+/** Ensure Firebase auth is initialized and log state */
 function requireAuth() {
+  console.log('[Auth] Firebase auth object:', auth ? 'initialized' : 'NULL');
   if (!auth) {
+    console.error('[Auth] Firebase auth is null — Firebase may not be initialized');
     throw new Error(
       'Firebase is not configured. Please check your environment settings.',
     );
@@ -30,10 +33,11 @@ function requireAuth() {
 /** Map Firebase error codes to friendly messages */
 export function getFirebaseAuthErrorMessage(err: any): string {
   const code = err?.code || '';
+  console.error('[Auth] Firebase error:', code, err?.message);
 
   const messages: Record<string, string> = {
     'auth/invalid-credential':
-      'Incorrect email or password. Please try again.',
+      'Incorrect email or password. If you signed up with Google, use "Continue with Google" instead.',
     'auth/user-not-found':
       'No account found with this email. Please register first.',
     'auth/wrong-password':
@@ -80,21 +84,34 @@ export async function login(
 ): Promise<AuthResponse> {
   const firebaseAuth = requireAuth();
 
-  const userCredential = await signInWithEmailAndPassword(
+  console.log('[Auth] Attempting signInWithEmailAndPassword for:', email);
+  const userCredential: UserCredential = await signInWithEmailAndPassword(
     firebaseAuth,
     email,
     password,
   );
+  console.log('[Auth] Firebase sign-in successful, getting ID token...');
+
   const idToken = await userCredential.user.getIdToken();
+  console.log('[Auth] ID token obtained, calling backend /auth/verify...');
 
-  const { data } = await apiClient.post<AuthResponse>('/auth/verify', {
-    idToken,
-  });
+  try {
+    const { data } = await apiClient.post<AuthResponse>('/auth/verify', {
+      idToken,
+    });
+    console.log('[Auth] Backend verify successful');
 
-  localStorage.setItem('accessToken', data.accessToken);
-  localStorage.setItem('user', JSON.stringify(data.user));
+    localStorage.setItem('accessToken', data.accessToken);
+    localStorage.setItem('user', JSON.stringify(data.user));
 
-  return data;
+    return data;
+  } catch (backendErr: any) {
+    console.error('[Auth] Backend verify failed:', backendErr?.response?.data || backendErr?.message);
+    throw new Error(
+      backendErr?.response?.data?.message ||
+      'Account created but server verification failed. Please try signing in again.',
+    );
+  }
 }
 
 /**
@@ -108,15 +125,18 @@ export async function register(
 ): Promise<AuthResponse> {
   const firebaseAuth = requireAuth();
 
+  console.log('[Auth] Attempting createUserWithEmailAndPassword for:', email);
   try {
-    const userCredential = await createUserWithEmailAndPassword(
+    const userCredential: UserCredential = await createUserWithEmailAndPassword(
       firebaseAuth,
       email,
       password,
     );
+    console.log('[Auth] Firebase user created successfully');
 
     // Set the display name on the Firebase profile
     if (displayName) {
+      console.log('[Auth] Setting displayName:', displayName);
       await updateProfile(userCredential.user, { displayName });
     }
 
@@ -124,13 +144,14 @@ export async function register(
     sendEmailVerification(userCredential.user, {
       url: window.location.origin + '/login',
       handleCodeInApp: true,
-    }).catch(() => {});
+    }).catch((e) => console.warn('[Auth] Verification email failed:', e));
   } catch (err: any) {
-    // Re-throw with a friendly message
+    console.error('[Auth] createUserWithEmailAndPassword failed:', err?.code, err?.message);
     throw new Error(getFirebaseAuthErrorMessage(err));
   }
 
   // After creation, log in to get the backend token
+  console.log('[Auth] User created, now signing in...');
   return login(email, password);
 }
 
@@ -174,8 +195,11 @@ export async function logout(): Promise<void> {
 export async function loginWithGoogle(): Promise<AuthResponse> {
   const firebaseAuth = requireAuth();
 
+  console.log('[Auth] Attempting Google sign-in...');
   const provider = new GoogleAuthProvider();
   const userCredential = await signInWithPopup(firebaseAuth, provider);
+  console.log('[Auth] Google sign-in successful, getting ID token...');
+
   const idToken = await userCredential.user.getIdToken();
 
   const { data } = await apiClient.post<AuthResponse>('/auth/verify', {
