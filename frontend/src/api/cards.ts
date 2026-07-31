@@ -2,6 +2,7 @@ import apiClient from './client';
 import { storage } from '@/utils/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { Card } from '@/types/card';
+import { cacheSet, cacheGet, CACHE_KEYS } from '@/utils/offlineCache';
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -95,8 +96,17 @@ export async function uploadCardPhoto(file: File, userId: string): Promise<strin
 }
 
 export async function getCards(): Promise<Card[]> {
-  const { data } = await apiClient.get<Card[]>('/cards');
-  return data;
+  try {
+    const { data } = await apiClient.get<Card[]>('/cards');
+    await cacheSet(CACHE_KEYS.MY_CARDS, data);
+    return data;
+  } catch (err) {
+    if (!navigator.onLine) {
+      const cached = await cacheGet<Card[]>(CACHE_KEYS.MY_CARDS);
+      if (cached) return cached;
+    }
+    throw err;
+  }
 }
 
 export async function getCard(id: string): Promise<Card> {
@@ -157,8 +167,17 @@ export interface PublicCardEntry {
 }
 
 export async function getWalletCards(): Promise<WalletCardEntry[]> {
-  const { data } = await apiClient.get<WalletCardEntry[]>('/cards/wallet');
-  return data;
+  try {
+    const { data } = await apiClient.get<WalletCardEntry[]>('/cards/wallet');
+    await cacheSet(CACHE_KEYS.WALLET_CARDS, data);
+    return data;
+  } catch (err) {
+    if (!navigator.onLine) {
+      const cached = await cacheGet<WalletCardEntry[]>(CACHE_KEYS.WALLET_CARDS);
+      if (cached) return cached;
+    }
+    throw err;
+  }
 }
 
 export async function getPublicCard(id: string): Promise<PublicCardEntry> {

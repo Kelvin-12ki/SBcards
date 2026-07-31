@@ -1,8 +1,18 @@
 import apiClient from './client';
+import { cacheSet, cacheGet, CACHE_KEYS } from '@/utils/offlineCache';
 
 export async function getMyQrCode(): Promise<string> {
-  const { data } = await apiClient.get<{ dataUrl: string }>('/qrcode/my');
-  return data.dataUrl;
+  try {
+    const { data } = await apiClient.get<{ dataUrl: string }>('/qrcode/my');
+    await cacheSet(CACHE_KEYS.MY_QRCODE, data.dataUrl);
+    return data.dataUrl;
+  } catch (err) {
+    if (!navigator.onLine) {
+      const cached = await cacheGet<string>(CACHE_KEYS.MY_QRCODE);
+      if (cached) return cached;
+    }
+    throw err;
+  }
 }
 
 export async function getUserQrCode(userId: string): Promise<string> {

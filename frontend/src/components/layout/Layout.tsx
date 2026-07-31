@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 import BottomTabBar from './BottomTabBar';
+import OfflineBanner from '@/components/ui/OfflineBanner';
 
 const Layout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -23,6 +24,7 @@ const Layout: React.FC = () => {
         <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
 
         <main className="flex-1 overflow-y-auto p-4 pb-24 md:p-6 lg:ml-64 lg:p-8">
+          <OfflineBanner />
           <Outlet />
         </main>
       </div>

@@ -1,5 +1,6 @@
 import apiClient from './client';
 import type { Connection } from '@/types/connection';
+import { cacheSet, cacheGet, CACHE_KEYS } from '@/utils/offlineCache';
 
 // ────────── CONNECTION REQUESTS ──────────
 
@@ -39,8 +40,20 @@ export async function getConnections(filters?: { tag?: string; status?: string; 
   if (filters?.tag) params.append('tag', filters.tag);
   if (filters?.status) params.append('status', filters.status);
   if (filters?.search) params.append('search', filters.search);
-  const { data } = await apiClient.get<Connection[]>(`/connections?${params.toString()}`);
-  return data;
+  try {
+    const { data } = await apiClient.get<Connection[]>(`/connections?${params.toString()}`);
+    // Only cache the unfiltered list so a filtered view never replaces the full list
+    if (!filters || !(filters.tag || filters.status || filters.search)) {
+      await cacheSet(CACHE_KEYS.CONNECTIONS, data);
+    }
+    return data;
+  } catch (err) {
+    if (!navigator.onLine) {
+      const cached = await cacheGet<Connection[]>(CACHE_KEYS.CONNECTIONS);
+      if (cached) return cached;
+    }
+    throw err;
+  }
 }
 
 export async function getFavoriteConnections(): Promise<Connection[]> {
