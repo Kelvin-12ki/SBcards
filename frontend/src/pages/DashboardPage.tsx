@@ -9,6 +9,7 @@ import { getUnreadCount } from '@/api/messaging';
 import { getUserFeed } from '@/api/timeline';
 import { getInsights } from '@/api/insights';
 import { isEmailVerified, resendVerificationEmail } from '@/api/auth';
+import { showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 import type { Card } from '@/types/card';
 import type { Event } from '@/types/event';
@@ -137,8 +138,8 @@ const DashboardPage: React.FC = () => {
               try {
                 await resendVerificationEmail();
                 toast.success('Verification email sent!');
-              } catch {
-                toast.error('Failed to send verification email');
+              } catch (err: any) {
+                showApiError(err, 'Failed to send verification email.');
               } finally {
                 setResending(false);
               }

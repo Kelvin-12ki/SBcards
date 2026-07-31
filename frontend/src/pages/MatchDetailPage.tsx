@@ -6,6 +6,7 @@ import MatchExplanation from '@/components/matching/MatchExplanation';
 import ConversationStarters from '@/components/matching/ConversationStarters';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
+import { showApiError } from '@/utils/errorHandler';
 import { cn } from '@/utils/helpers';
 import toast from 'react-hot-toast';
 
@@ -147,8 +148,7 @@ const MatchDetailPage: React.FC = () => {
         const result = await getWhyRecommendation(eventId, targetUserId);
         setData(result);
       } catch (err: any) {
-        const message = err?.response?.data?.message || err?.message || 'Failed to load recommendation details.';
-        toast.error(message);
+        showApiError(err, 'Failed to load recommendation details.');
         navigate(`/events/${eventId}/recommendations`);
       } finally {
         setLoading(false);

@@ -7,7 +7,7 @@ import { globalSearch } from '@/api/search';
 import type { SearchResponse, SearchResult } from '@/types/search';
 import Spinner from '@/components/ui/Spinner';
 import EmptyState from '@/components/ui/EmptyState';
-import toast from 'react-hot-toast';
+import { showApiError } from '@/utils/errorHandler';
 
 const RECENT_SEARCHES_KEY = 'sbcards_recent_searches';
 const MAX_RECENT = 8;
@@ -51,7 +51,7 @@ const SearchPage: React.FC = () => {
         setResults(data);
         saveRecentSearch(trimmed);
       } catch (err: any) {
-        toast.error('Search failed. Please try again.');
+        showApiError(err, 'Search failed. Please try again.');
         setResults(null);
       } finally {
         setLoading(false);

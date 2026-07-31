@@ -8,6 +8,7 @@ import InviteMemberModal from '@/components/organizations/InviteMemberModal';
 import RoleGate from '@/components/auth/RoleGate';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
+import { showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 
 type Tab = 'overview' | 'members' | 'settings';
@@ -34,7 +35,7 @@ const OrganizationDetailPage: React.FC = () => {
       setOrg(orgData);
       setMembers(membersData);
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to load organization.');
+      showApiError(err, 'Failed to load organization.');
       navigate('/organizations');
     } finally {
       setLoading(false);
@@ -53,7 +54,7 @@ const OrganizationDetailPage: React.FC = () => {
       setOrg(updated);
       toast.success('Organization updated!');
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to update organization.');
+      showApiError(err, 'Failed to update organization.');
     } finally {
       setSaving(false);
     }
@@ -66,7 +67,7 @@ const OrganizationDetailPage: React.FC = () => {
       setMembers((prev) => [...prev, membership]);
       toast.success('Member invited!');
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to invite member.');
+      showApiError(err, 'Failed to invite member.');
     }
   };
 
@@ -77,7 +78,7 @@ const OrganizationDetailPage: React.FC = () => {
       setMembers((prev) => prev.filter((m) => m.userId !== userId));
       toast.success('Member removed.');
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to remove member.');
+      showApiError(err, 'Failed to remove member.');
     }
   };
 
@@ -88,7 +89,7 @@ const OrganizationDetailPage: React.FC = () => {
       setMembers((prev) => prev.map((m) => (m.userId === userId ? updated : m)));
       toast.success('Role updated!');
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to update role.');
+      showApiError(err, 'Failed to update role.');
     }
   };
 

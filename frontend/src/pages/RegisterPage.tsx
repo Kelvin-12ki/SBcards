@@ -2,6 +2,7 @@ import React, { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/auth/useAuth';
 import { qrConnect } from '@/api/connections';
+import { showApiError, getFriendlyErrorMessage } from '@/utils/errorHandler';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import toast from 'react-hot-toast';
@@ -28,7 +29,7 @@ const RegisterPage: React.FC = () => {
         toast.success('Account created! You\'re now connected.');
         navigate('/connections', { replace: true });
       } catch (connErr: any) {
-        toast.error('Account created but could not auto-connect.');
+        showApiError(connErr, 'Account created but could not auto-connect.');
         navigate('/dashboard', { replace: true });
       }
     } else {
@@ -66,12 +67,9 @@ const RegisterPage: React.FC = () => {
       const ref = searchParams.get('ref') || sessionStorage.getItem('qr_ref');
       await handlePostRegister(ref);
     } catch (err: any) {
-      const message =
-        err?.response?.data?.message ||
-        err?.message ||
-        'Registration failed. Please try again.';
+      const message = getFriendlyErrorMessage(err, 'Registration failed. Please try again.');
       setError(message);
-      toast.error(message);
+      showApiError(err, message);
     } finally {
       setLoading(false);
     }
@@ -87,12 +85,9 @@ const RegisterPage: React.FC = () => {
       const ref = searchParams.get('ref') || sessionStorage.getItem('qr_ref');
       await handlePostRegister(ref);
     } catch (err: any) {
-      const message =
-        err?.response?.data?.message ||
-        err?.message ||
-        'Google sign-up failed. Please try again.';
+      const message = getFriendlyErrorMessage(err, 'Google sign-up failed. Please try again.');
       setError(message);
-      toast.error(message);
+      showApiError(err, message);
     } finally {
       setGoogleLoading(false);
     }

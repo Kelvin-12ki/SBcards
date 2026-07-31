@@ -7,6 +7,7 @@ import CardPreview from '@/components/cards/CardPreview';
 import Spinner from '@/components/ui/Spinner';
 import EmptyState from '@/components/ui/EmptyState';
 import Button from '@/components/ui/Button';
+import { showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 
 const MyCardsPage: React.FC = () => {
@@ -20,7 +21,7 @@ const MyCardsPage: React.FC = () => {
       setCards(data);
     } catch (err) {
       console.error('Failed to load cards:', err);
-      toast.error('Failed to load your cards.');
+      showApiError(err, 'Failed to load your cards.');
     } finally {
       setLoading(false);
     }
@@ -36,7 +37,7 @@ const MyCardsPage: React.FC = () => {
       toast.success('Default card updated!');
       await fetchCards();
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to set default card.');
+      showApiError(err, 'Failed to set default card.');
     }
   };
 
@@ -51,7 +52,7 @@ const MyCardsPage: React.FC = () => {
       toast.success('Card deleted successfully.');
       await fetchCards();
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to delete card.');
+      showApiError(err, 'Failed to delete card.');
     }
   };
 

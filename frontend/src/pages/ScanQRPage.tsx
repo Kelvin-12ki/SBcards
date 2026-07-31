@@ -7,6 +7,7 @@ import type { User } from '@/types/user';
 import QRScanner from '@/components/qrcode/QRScanner';
 import QuickConnectModal from '@/components/connections/QuickConnectModal';
 import Spinner from '@/components/ui/Spinner';
+import { showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 
 type ScanPhase = 'scanning' | 'loading_user' | 'connecting' | 'done';
@@ -38,13 +39,13 @@ const ScanQRPage: React.FC = () => {
       setModalOpen(true);
       setPhase('scanning');
     } catch (err: any) {
-      toast.error('Could not find user. Please try again.');
+      showApiError(err, 'Could not find user. Please try again.');
       setPhase('scanning');
     }
   };
 
   const handleScanError = (error: string) => {
-    toast.error(error);
+    showApiError(error, 'Could not start the camera. Please check your camera permissions and try again.');
   };
 
   const handleConnect = async (notes?: string) => {
@@ -60,7 +61,7 @@ const ScanQRPage: React.FC = () => {
       toast.success('Connection added!');
       navigate('/connections');
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to create connection.');
+      showApiError(err, 'Failed to create connection.');
       setPhase('scanning');
     }
   };

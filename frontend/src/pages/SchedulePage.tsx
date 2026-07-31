@@ -10,6 +10,7 @@ import SessionForm from '@/components/events/SessionForm';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
+import { showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 
 const SchedulePage: React.FC = () => {
@@ -36,7 +37,7 @@ const SchedulePage: React.FC = () => {
       setEvent(eventData);
       setSessions(sessionData);
     } catch (err: any) {
-      toast.error('Failed to load schedule.');
+      showApiError(err, 'Failed to load schedule.');
       navigate('/events');
     } finally {
       setLoading(false);
@@ -58,7 +59,7 @@ const SchedulePage: React.FC = () => {
       toast.success('Session created!');
       setShowForm(false);
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to create session.');
+      showApiError(err, 'Failed to create session.');
     } finally {
       setFormLoading(false);
     }
@@ -70,7 +71,7 @@ const SchedulePage: React.FC = () => {
       setSessions((prev) => prev.filter((s) => s.id !== sessionId));
       toast.success('Session deleted.');
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to delete session.');
+      showApiError(err, 'Failed to delete session.');
     }
   };
 
@@ -85,7 +86,7 @@ const SchedulePage: React.FC = () => {
       );
       toast.success('Checked in!');
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to check in.');
+      showApiError(err, 'Failed to check in.');
     }
   };
 

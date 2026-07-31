@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, UserPlus, User, Mail, Phone, Globe } from 'lucide-react';
 import { getPublicCard, type PublicCardEntry } from '@/api/cards';
+import { getFriendlyErrorMessage } from '@/utils/errorHandler';
 import CardPreview from '@/components/cards/CardPreview';
 import Avatar from '@/components/ui/Avatar';
 import Spinner from '@/components/ui/Spinner';
@@ -28,7 +29,7 @@ const PublicCardPage: React.FC = () => {
         if (!cancelled) setData(result);
       } catch (err: any) {
         if (!cancelled) {
-          setError(err?.response?.data?.message || err?.message || 'Failed to load card.');
+          setError(getFriendlyErrorMessage(err, 'Failed to load card.'));
         }
       } finally {
         if (!cancelled) setLoading(false);

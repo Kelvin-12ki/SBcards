@@ -13,6 +13,7 @@ import Input from '@/components/ui/Input';
 import Avatar from '@/components/ui/Avatar';
 import CardForm from '@/components/cards/CardForm';
 import { updateCard } from '@/api/cards';
+import { showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 import { useNavigate, Link } from 'react-router-dom';
 
@@ -92,7 +93,7 @@ const ProfilePage: React.FC = () => {
       setEditCardModalOpen(false);
       setEditingCard(null);
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to update card.');
+      showApiError(err, 'Failed to update card.');
     } finally {
       setSaving(false);
     }
@@ -128,7 +129,7 @@ const ProfilePage: React.FC = () => {
       toast.success('Photo uploaded! Save your profile to confirm.');
     } catch (err: any) {
       setAvatarUrl(user?.avatarUrl || ''); // revert on error
-      toast.error(err?.message || 'Failed to upload photo.');
+      showApiError(err, 'Failed to upload photo.');
     } finally {
       setPhotoUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -147,7 +148,7 @@ const ProfilePage: React.FC = () => {
       toast.success('Profile updated!');
       setEditProfileModalOpen(false);
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to update profile.');
+      showApiError(err, 'Failed to update profile.');
     } finally {
       setProfileSaving(false);
     }

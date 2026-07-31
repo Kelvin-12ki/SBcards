@@ -4,6 +4,7 @@ import { createCard, getCard, updateCard } from '@/api/cards';
 import type { Card } from '@/types/card';
 import CardForm from '@/components/cards/CardForm';
 import Spinner from '@/components/ui/Spinner';
+import { showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 
 const CreateCardPage: React.FC = () => {
@@ -22,7 +23,7 @@ const CreateCardPage: React.FC = () => {
           const card = await getCard(id);
           setInitialData(card);
         } catch (err) {
-          toast.error('Failed to load card.');
+          showApiError(err, 'Failed to load card.');
           navigate('/dashboard');
         } finally {
           setLoading(false);
@@ -48,7 +49,7 @@ const CreateCardPage: React.FC = () => {
         navigate('/my-cards');
       }
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to save card.');
+      showApiError(err, 'Failed to save card.');
     } finally {
       setSaving(false);
     }

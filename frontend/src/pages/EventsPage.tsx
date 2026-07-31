@@ -4,7 +4,7 @@ import { getEvents } from '@/api/events';
 import type { Event } from '@/types/event';
 import EventList from '@/components/events/EventList';
 import Spinner from '@/components/ui/Spinner';
-import toast from 'react-hot-toast';
+import { showApiError } from '@/utils/errorHandler';
 
 const EventsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -18,7 +18,7 @@ const EventsPage: React.FC = () => {
       const data = await getEvents();
       setEvents(data);
     } catch (err) {
-      toast.error('Failed to load events.');
+      showApiError(err, 'Failed to load events.');
     } finally {
       setLoading(false);
     }

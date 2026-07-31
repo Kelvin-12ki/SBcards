@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/auth/useAuth';
 import { qrConnect } from '@/api/connections';
 import { sendPasswordReset, getFirebaseAuthErrorMessage } from '@/api/auth';
+import { showApiError } from '@/utils/errorHandler';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import toast from 'react-hot-toast';
@@ -35,8 +36,8 @@ const LoginPage: React.FC = () => {
         await qrConnect(ref);
         toast.success('Connected!');
         navigate('/connections', { replace: true });
-      } catch {
-        toast.error('Logged in but could not auto-connect.');
+      } catch (err: any) {
+        showApiError(err, 'Logged in but could not auto-connect.');
         navigate('/dashboard', { replace: true });
       }
     } else {

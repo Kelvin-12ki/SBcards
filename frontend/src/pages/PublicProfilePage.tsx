@@ -32,6 +32,7 @@ import Spinner from '@/components/ui/Spinner';
 import Badge from '@/components/ui/Badge';
 import Avatar from '@/components/ui/Avatar';
 import { cn } from '@/utils/helpers';
+import { showApiError, getFriendlyErrorMessage } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 
 /* ── Helpers ── */
@@ -172,7 +173,7 @@ const PublicProfilePage: React.FC = () => {
         if (err?.response?.status === 404) {
           setError('User not found');
         } else {
-          setError(err?.response?.data?.message || err?.message || 'Failed to load profile');
+          setError(getFriendlyErrorMessage(err, 'Failed to load profile.'));
         }
       } finally {
         setLoading(false);
@@ -195,7 +196,7 @@ const PublicProfilePage: React.FC = () => {
       if (err?.response?.status === 409) {
         toast('Already connected or request pending', { icon: 'ℹ️' });
       } else {
-        toast.error('Failed to send request. Try again.');
+        showApiError(err, 'Failed to send request. Try again.');
       }
     } finally {
       setConnecting(false);
@@ -209,8 +210,8 @@ const PublicProfilePage: React.FC = () => {
       await acceptRequest(existingConnectionId);
       setConnectionStatus('accepted');
       toast.success('Connection accepted!');
-    } catch {
-      toast.error('Failed to accept request.');
+    } catch (err: any) {
+      showApiError(err, 'Failed to accept request.');
     } finally {
       setConnecting(false);
     }
@@ -224,8 +225,8 @@ const PublicProfilePage: React.FC = () => {
       setConnectionStatus('none');
       setExistingConnectionId(null);
       toast('Request declined', { icon: '👋' });
-    } catch {
-      toast.error('Failed to decline request.');
+    } catch (err: any) {
+      showApiError(err, 'Failed to decline request.');
     } finally {
       setConnecting(false);
     }
@@ -239,8 +240,8 @@ const PublicProfilePage: React.FC = () => {
       setConnectionStatus('none');
       setExistingConnectionId(null);
       toast('Request cancelled', { icon: '🗑️' });
-    } catch {
-      toast.error('Failed to cancel request.');
+    } catch (err: any) {
+      showApiError(err, 'Failed to cancel request.');
     } finally {
       setConnecting(false);
     }
@@ -253,8 +254,7 @@ const PublicProfilePage: React.FC = () => {
       const conversation = await findOrCreateConversation(profile.id);
       navigate(`/messages?conversation=${conversation.id}`);
     } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Failed to start conversation.';
-      toast.error(Array.isArray(msg) ? msg[0] : msg);
+      showApiError(err, 'Failed to start conversation.');
     } finally {
       setMessaging(false);
     }

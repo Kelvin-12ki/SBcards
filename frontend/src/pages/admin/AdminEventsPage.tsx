@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { getAllEvents, createEvent, updateEvent, deleteEvent, type PaginatedEvents } from '@/api/admin';
 import { formatDate } from '@/utils/helpers';
+import { showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 
 // ─── Status Badge ───────────────────────────────────────────────────────────
@@ -89,7 +90,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, initia
       await onSave(data);
       onClose();
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to save event');
+      showApiError(err, 'Failed to save event');
     } finally {
       setSaving(false);
     }
@@ -223,7 +224,7 @@ const AdminEventsPage: React.FC = () => {
       const data = await getAllEvents(page, 20);
       setEventsData(data);
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to load events');
+      showApiError(err, 'Failed to load events');
     } finally {
       setLoading(false);
     }
@@ -253,7 +254,7 @@ const AdminEventsPage: React.FC = () => {
       toast.success('Event deleted');
       fetchEvents();
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to delete event');
+      showApiError(err, 'Failed to delete event');
     }
   };
 

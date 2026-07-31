@@ -9,6 +9,7 @@ import EventDashboard from '@/components/events/EventDashboard';
 import ParticipantList from '@/components/events/ParticipantList';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
+import { showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 
 const EventActivePage: React.FC = () => {
@@ -66,7 +67,7 @@ const EventActivePage: React.FC = () => {
       }
       setTableLoading(false);
     } catch (err) {
-      toast.error('Failed to load event data.');
+      showApiError(err, 'Failed to load event data.');
       navigate('/events');
     } finally {
       setLoading(false);
@@ -85,7 +86,7 @@ const EventActivePage: React.FC = () => {
       setMatches(matchData);
       toast.success('Matching complete!');
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to run matching.');
+      showApiError(err, 'Failed to run matching.');
     } finally {
       setMatchingLoading(false);
     }
@@ -100,7 +101,7 @@ const EventActivePage: React.FC = () => {
       const tableData = await getMyTable(id);
       setTableAssignment(tableData);
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to assign tables.');
+      showApiError(err, 'Failed to assign tables.');
     } finally {
       setAssignTablesLoading(false);
     }

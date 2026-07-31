@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/auth/useAuth';
 import { qrConnect } from '@/api/connections';
+import { showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 
 const ScanLandingPage: React.FC = () => {
@@ -28,11 +29,7 @@ const ScanLandingPage: React.FC = () => {
           navigate('/connections', { replace: true });
         })
         .catch((err: any) => {
-          const message =
-            err?.response?.data?.message ||
-            err?.message ||
-            'Failed to connect. Please try again.';
-          toast.error(message);
+          showApiError(err, 'Failed to connect. Please try again.');
           navigate('/connections', { replace: true });
         });
     } else {

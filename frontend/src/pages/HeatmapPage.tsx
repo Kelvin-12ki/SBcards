@@ -11,6 +11,7 @@ import type { Event } from '@/types/event';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
 import EmptyState from '@/components/ui/EmptyState';
+import { showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 
 const HeatmapPage: React.FC = () => {
@@ -39,7 +40,7 @@ const HeatmapPage: React.FC = () => {
       setPeakTimes(peaks);
       setLocationDensity(locations);
     } catch (err: any) {
-      toast.error('Failed to load heatmap data.');
+      showApiError(err, 'Failed to load heatmap data.');
     } finally {
       setLoading(false);
     }
@@ -57,7 +58,7 @@ const HeatmapPage: React.FC = () => {
       toast.success('Heatmap data generated!');
       await fetchData();
     } catch (err: any) {
-      toast.error('Failed to generate heatmap.');
+      showApiError(err, 'Failed to generate heatmap.');
     } finally {
       setGenerating(false);
     }

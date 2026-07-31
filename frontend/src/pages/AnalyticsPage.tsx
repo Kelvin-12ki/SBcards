@@ -7,7 +7,7 @@ import type { EventAnalytics } from '@/types/analytics';
 import AnalyticsDashboard from '@/components/analytics/AnalyticsDashboard';
 import Spinner from '@/components/ui/Spinner';
 import EmptyState from '@/components/ui/EmptyState';
-import toast from 'react-hot-toast';
+import { showApiError } from '@/utils/errorHandler';
 
 const AnalyticsPage: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
@@ -29,7 +29,7 @@ const AnalyticsPage: React.FC = () => {
         setEvent(eventData);
         setAnalytics(analyticsData);
       } catch (err: any) {
-        toast.error('Failed to load analytics.');
+        showApiError(err, 'Failed to load analytics.');
         navigate('/events');
       } finally {
         setLoading(false);

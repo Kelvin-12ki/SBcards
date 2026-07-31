@@ -13,12 +13,24 @@ const App: React.FC = () => {
         <Toaster
           position="top-right"
           toastOptions={{
+            duration: 4000,
             style: {
               background: '#141416',
               color: '#F5F5F7',
               border: '1px solid #2A2A2E',
               borderRadius: '0.75rem',
               fontFamily: 'Urbanist, Inter, system-ui, sans-serif',
+            },
+            error: {
+              style: {
+                background: '#1C1C1F',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                color: '#FCA5A5',
+              },
+              iconTheme: {
+                primary: '#EF4444',
+                secondary: '#1C1C1F',
+              },
             },
           }}
         />

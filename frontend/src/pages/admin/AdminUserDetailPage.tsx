@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getUserDetail, banUser, suspendUser, restoreUser, type UserDetail } from '@/api/admin';
 import { formatDate } from '@/utils/helpers';
+import { showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 
 // ─── Info Row ───────────────────────────────────────────────────────────────
@@ -45,7 +46,7 @@ const AdminUserDetailPage: React.FC = () => {
         const data = await getUserDetail(userId);
         setUser(data);
       } catch (err: any) {
-        toast.error(err?.message || 'Failed to load user details');
+        showApiError(err, 'Failed to load user details');
         navigate('/admin/users');
       } finally {
         setLoading(false);
@@ -72,7 +73,7 @@ const AdminUserDetailPage: React.FC = () => {
       const data = await getUserDetail(userId);
       setUser(data);
     } catch (err: any) {
-      toast.error(err?.message || `Failed to ${action} user`);
+      showApiError(err, `Failed to ${action} user`);
     } finally {
       setActionLoading(false);
     }

@@ -8,6 +8,7 @@ import ConnectionFilters, { type ConnectionFiltersState } from '@/components/con
 import Spinner from '@/components/ui/Spinner';
 import EmptyState from '@/components/ui/EmptyState';
 import { cn } from '@/utils/helpers';
+import { showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 
 type ViewMode = 'all' | 'favorites' | 'recent' | 'requests' | 'sent';
@@ -36,7 +37,7 @@ const ConnectionsPage: React.FC = () => {
       setIncomingRequests(incoming);
       setOutgoingRequests(outgoing);
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to load connections.');
+      showApiError(err, 'Failed to load connections.');
     } finally {
       setLoading(false);
     }
@@ -52,8 +53,8 @@ const ConnectionsPage: React.FC = () => {
       await acceptRequest(connectionId);
       toast.success('Connection accepted!');
       fetchAll();
-    } catch {
-      toast.error('Failed to accept request.');
+    } catch (err: any) {
+      showApiError(err, 'Failed to accept request.');
     } finally {
       setActingOn(null);
     }
@@ -65,8 +66,8 @@ const ConnectionsPage: React.FC = () => {
       await declineRequest(connectionId);
       toast('Request declined', { icon: '👋' });
       fetchAll();
-    } catch {
-      toast.error('Failed to decline request.');
+    } catch (err: any) {
+      showApiError(err, 'Failed to decline request.');
     } finally {
       setActingOn(null);
     }
@@ -78,8 +79,8 @@ const ConnectionsPage: React.FC = () => {
       await cancelRequest(connectionId);
       toast('Request cancelled', { icon: '🗑️' });
       fetchAll();
-    } catch {
-      toast.error('Failed to cancel request.');
+    } catch (err: any) {
+      showApiError(err, 'Failed to cancel request.');
     } finally {
       setActingOn(null);
     }

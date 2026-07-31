@@ -5,6 +5,7 @@ import { updateProfile } from '@/api/users';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import toast from 'react-hot-toast';
+import { showApiError } from '@/utils/errorHandler';
 
 type WizardStep = 1 | 2 | 3;
 
@@ -164,7 +165,7 @@ const ProfileSetupPage: React.FC = () => {
       toast.success('Profile complete!');
       navigate('/dashboard');
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to save profile.');
+      showApiError(err, 'Failed to save profile.');
     } finally {
       setSaving(false);
     }

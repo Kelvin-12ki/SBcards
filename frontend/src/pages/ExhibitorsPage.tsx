@@ -12,6 +12,7 @@ import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
 import Input from '@/components/ui/Input';
 import EmptyState from '@/components/ui/EmptyState';
+import { showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 
 const ExhibitorsPage: React.FC = () => {
@@ -38,7 +39,7 @@ const ExhibitorsPage: React.FC = () => {
       setEvent(eventData);
       setExhibitors(exhibitorData);
     } catch (err: any) {
-      toast.error('Failed to load exhibitors.');
+      showApiError(err, 'Failed to load exhibitors.');
       navigate('/events');
     } finally {
       setLoading(false);
@@ -58,7 +59,7 @@ const ExhibitorsPage: React.FC = () => {
       toast.success('Exhibitor added!');
       setShowForm(false);
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to add exhibitor.');
+      showApiError(err, 'Failed to add exhibitor.');
     } finally {
       setFormLoading(false);
     }

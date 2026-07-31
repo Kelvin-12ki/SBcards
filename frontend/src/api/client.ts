@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getFriendlyErrorMessage } from '@/utils/errorHandler';
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3005',
@@ -34,6 +35,8 @@ apiClient.interceptors.response.use(
         }
       }
     }
+    // Attach friendly message to the error object for catch blocks to use
+    (error as any).friendlyMessage = getFriendlyErrorMessage(error);
     return Promise.reject(error);
   },
 );

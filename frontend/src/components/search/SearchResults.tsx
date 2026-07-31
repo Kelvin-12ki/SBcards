@@ -17,6 +17,7 @@ import type { SearchResponse, SearchResult } from '@/types/search';
 import { cn, formatScore } from '@/utils/helpers';
 import { findOrCreateConversation } from '@/api/messaging';
 import { createConnection } from '@/api/connections';
+import { showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 
 export interface SearchResultsProps {
@@ -121,7 +122,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({ results, onSelect, classN
       if (err?.response?.status === 409) {
         toast('Already connected', { icon: 'ℹ️' });
       } else {
-        toast.error('Failed to connect. Try again.');
+        showApiError(err, 'Failed to connect. Try again.');
       }
     } finally {
       setConnectingId(null);
@@ -136,8 +137,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({ results, onSelect, classN
       const conversation = await findOrCreateConversation(result.id);
       navigate(`/messages?conversation=${conversation.id}`);
     } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Failed to start conversation.';
-      toast.error(Array.isArray(msg) ? msg[0] : msg);
+      showApiError(err, 'Failed to start conversation.');
     } finally {
       setMessagingId(null);
     }

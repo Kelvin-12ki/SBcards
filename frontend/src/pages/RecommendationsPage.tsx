@@ -8,6 +8,7 @@ import type { Event } from '@/types/event';
 import EnhancedMatchCard from '@/components/matching/EnhancedMatchCard';
 import Spinner from '@/components/ui/Spinner';
 import EmptyState from '@/components/ui/EmptyState';
+import { showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 
 const RecommendationsPage: React.FC = () => {
@@ -31,8 +32,7 @@ const RecommendationsPage: React.FC = () => {
         setEvent(eventData);
         setRecommendations(recsData);
       } catch (err: any) {
-        const message = err?.response?.data?.message || err?.message || 'Failed to load recommendations.';
-        toast.error(message);
+        showApiError(err, 'Failed to load recommendations.');
         navigate(`/events/${eventId}`);
       } finally {
         setLoading(false);

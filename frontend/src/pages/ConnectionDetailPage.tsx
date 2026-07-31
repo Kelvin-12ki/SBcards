@@ -5,6 +5,7 @@ import { getConnection, deleteConnection, toggleFavorite } from '@/api/connectio
 import { findOrCreateConversation } from '@/api/messaging';
 import type { Connection } from '@/types/connection';
 import Spinner from '@/components/ui/Spinner';
+import { showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 
 const ConnectionDetailPage: React.FC = () => {
@@ -22,7 +23,7 @@ const ConnectionDetailPage: React.FC = () => {
         const data = await getConnection(id);
         setConnection(data);
       } catch (err: any) {
-        toast.error(err?.message || 'Failed to load connection.');
+        showApiError(err, 'Failed to load connection.');
         navigate('/connections');
       } finally {
         setLoading(false);
@@ -54,9 +55,8 @@ const ConnectionDetailPage: React.FC = () => {
       toast.success('Opening conversation...');
       navigate(`/messages?conversation=${conversation.id}`);
     } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Failed to start conversation.';
       console.error('[handleMessage] Failed to start conversation:', err);
-      toast.error(Array.isArray(msg) ? msg[0] : msg);
+      showApiError(err, 'Failed to start conversation.');
     } finally {
       setMessaging(false);
     }
@@ -68,8 +68,8 @@ const ConnectionDetailPage: React.FC = () => {
       const updated = await toggleFavorite(connection.id);
       setConnection(updated);
       toast.success(updated.isFavorite ? 'Added to favorites!' : 'Removed from favorites.');
-    } catch {
-      toast.error('Failed to update.');
+    } catch (err: any) {
+      showApiError(err, 'Failed to update.');
     }
   };
 
@@ -80,8 +80,8 @@ const ConnectionDetailPage: React.FC = () => {
       await deleteConnection(connection.id);
       toast.success('Connection removed.');
       navigate('/connections');
-    } catch {
-      toast.error('Failed to remove connection.');
+    } catch (err: any) {
+      showApiError(err, 'Failed to remove connection.');
     }
   };
 

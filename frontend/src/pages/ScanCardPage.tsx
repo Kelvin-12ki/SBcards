@@ -4,6 +4,7 @@ import CameraView from '@/components/scanner/CameraView';
 import ScanResults from '@/components/scanner/ScanResults';
 import { parseCardText, type ParsedCardData } from '@/utils/cardParser';
 import { createCard } from '@/api/cards';
+import { showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 
 type ScanPhase = 'camera' | 'review' | 'saving';
@@ -44,7 +45,7 @@ const ScanCardPage: React.FC = () => {
       toast.success('Card created from scan!');
       navigate('/dashboard');
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to save card.');
+      showApiError(err, 'Failed to save card.');
       setPhase('review');
     }
   };

@@ -12,6 +12,7 @@ import Badge from '@/components/ui/Badge';
 import EventJoin from '@/components/events/EventJoin';
 import ParticipantList from '@/components/events/ParticipantList';
 import { formatDate } from '@/utils/helpers';
+import { showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 
 const EventDetailPage: React.FC = () => {
@@ -72,7 +73,7 @@ const EventDetailPage: React.FC = () => {
           }
         }
       } catch (err: any) {
-        toast.error(err?.response?.data?.message || err?.message || 'Failed to load event.');
+        showApiError(err, 'Failed to load event.');
         navigate('/events');
       } finally {
         setLoading(false);
@@ -96,7 +97,7 @@ const EventDetailPage: React.FC = () => {
         toast.success('Already joined this event!');
         setHasJoined(true);
       } else {
-        toast.error(message);
+        showApiError(err, 'Failed to join event.');
       }
     } finally {
       setJoinLoading(false);

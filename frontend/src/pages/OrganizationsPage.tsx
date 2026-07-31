@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
 import Modal from '@/components/ui/Modal';
 import EmptyState from '@/components/ui/EmptyState';
+import { showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 
 const OrganizationsPage: React.FC = () => {
@@ -24,7 +25,7 @@ const OrganizationsPage: React.FC = () => {
         const data = await getMyOrganizations();
         setOrganizations(data);
       } catch (err: any) {
-        toast.error(err?.message || 'Failed to load organizations.');
+        showApiError(err, 'Failed to load organizations.');
       } finally {
         setLoading(false);
       }
@@ -40,7 +41,7 @@ const OrganizationsPage: React.FC = () => {
       toast.success('Organization created!');
       setCreateModalOpen(false);
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to create organization.');
+      showApiError(err, 'Failed to create organization.');
     } finally {
       setCreating(false);
     }

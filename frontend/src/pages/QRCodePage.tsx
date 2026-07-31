@@ -3,7 +3,7 @@ import { useAuth } from '@/auth/useAuth';
 import { getMyQrCode } from '@/api/qrcode';
 import MyQRCode from '@/components/qrcode/MyQRCode';
 import Spinner from '@/components/ui/Spinner';
-import toast from 'react-hot-toast';
+import { showApiError } from '@/utils/errorHandler';
 
 const QRCodePage: React.FC = () => {
   const { user } = useAuth();
@@ -16,7 +16,7 @@ const QRCodePage: React.FC = () => {
         const url = await getMyQrCode();
         setDataUrl(url);
       } catch (err: any) {
-        toast.error(err?.message || 'Failed to load QR code.');
+        showApiError(err, 'Failed to load QR code.');
       } finally {
         setLoading(false);
       }

@@ -9,7 +9,7 @@ import TableAssignmentComponent from '@/components/matching/TableAssignment';
 import Spinner from '@/components/ui/Spinner';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
-import toast from 'react-hot-toast';
+import { showApiError } from '@/utils/errorHandler';
 
 const MatchesPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -41,7 +41,7 @@ const MatchesPage: React.FC = () => {
           // No table assigned
         }
       } catch (err) {
-        toast.error('Failed to load matches.');
+        showApiError(err, 'Failed to load matches.');
         navigate('/events');
       } finally {
         setLoading(false);

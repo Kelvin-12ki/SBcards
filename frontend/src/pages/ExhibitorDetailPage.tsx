@@ -5,6 +5,7 @@ import type { Exhibitor } from '@/types/exhibitor';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
 import Badge from '@/components/ui/Badge';
+import { showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 
 const ExhibitorDetailPage: React.FC = () => {
@@ -22,8 +23,8 @@ const ExhibitorDetailPage: React.FC = () => {
       try {
         const data = await getExhibitor(id);
         setExhibitor(data);
-      } catch {
-        toast.error('Failed to load exhibitor details.');
+      } catch (err) {
+        showApiError(err, 'Failed to load exhibitor details.');
         navigate(`/events/${eventId}/exhibitors`);
       } finally {
         setLoading(false);
@@ -42,7 +43,7 @@ const ExhibitorDetailPage: React.FC = () => {
       );
       toast.success('Visit recorded!');
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to record visit.');
+      showApiError(err, 'Failed to record visit.');
     } finally {
       setVisitLoading(false);
     }
@@ -58,7 +59,7 @@ const ExhibitorDetailPage: React.FC = () => {
       );
       toast.success('Lead recorded!');
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to record lead.');
+      showApiError(err, 'Failed to record lead.');
     } finally {
       setLeadLoading(false);
     }

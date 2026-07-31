@@ -9,6 +9,7 @@ import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import CardPreview from './CardPreview';
 import TemplatePicker from './TemplatePicker';
+import { getFriendlyErrorMessage, showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 
 export interface CardFormProps {
@@ -126,9 +127,9 @@ const CardForm: React.FC<CardFormProps> = ({
         throw new Error('Upload returned no URL.');
       }
     } catch (err: any) {
-      const message = err?.message || 'Failed to upload photo. Please try again.';
+      const message = getFriendlyErrorMessage(err, 'Failed to upload photo. Please try again.');
       setPhotoError(message);
-      toast.error(message);
+      showApiError(err, message);
     } finally {
       setPhotoUploading(false);
       // Reset file input so the same file can be re-selected

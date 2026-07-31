@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { listUsers, banUser, suspendUser, restoreUser, type PaginatedUsers } from '@/api/admin';
 import { timeAgo } from '@/utils/helpers';
+import { showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 
 // ─── Status Badge ───────────────────────────────────────────────────────────
@@ -51,7 +52,7 @@ const AdminUsersPage: React.FC = () => {
       const data = await listUsers(search, page, 20);
       setUsersData(data);
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to load users');
+      showApiError(err, 'Failed to load users');
     } finally {
       setLoading(false);
     }
@@ -82,7 +83,7 @@ const AdminUsersPage: React.FC = () => {
       }
       fetchUsers();
     } catch (err: any) {
-      toast.error(err?.message || `Failed to ${action} user`);
+      showApiError(err, `Failed to ${action} user`);
     } finally {
       setActionLoading(null);
     }

@@ -7,6 +7,7 @@ import type { Insight } from '@/types/insight';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
 import EmptyState from '@/components/ui/EmptyState';
+import { showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 
 const InsightsPage: React.FC = () => {
@@ -21,7 +22,7 @@ const InsightsPage: React.FC = () => {
       const data = await getInsights(type);
       setInsights(data);
     } catch (err: any) {
-      toast.error('Failed to load insights.');
+      showApiError(err, 'Failed to load insights.');
       setInsights([]);
     } finally {
       setLoading(false);
@@ -39,7 +40,7 @@ const InsightsPage: React.FC = () => {
       setInsights(data);
       toast.success('New insights generated!');
     } catch (err: any) {
-      toast.error('Failed to generate insights.');
+      showApiError(err, 'Failed to generate insights.');
     } finally {
       setGenerating(false);
     }
@@ -50,8 +51,8 @@ const InsightsPage: React.FC = () => {
       await dismissInsight(id);
       setInsights((prev) => prev.filter((i) => i.id !== id));
       toast.success('Insight dismissed.');
-    } catch {
-      toast.error('Failed to dismiss insight.');
+    } catch (err) {
+      showApiError(err, 'Failed to dismiss insight.');
     }
   };
 
