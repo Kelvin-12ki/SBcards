@@ -7,6 +7,7 @@ import CardPreview from '@/components/cards/CardPreview';
 import Avatar from '@/components/ui/Avatar';
 import Spinner from '@/components/ui/Spinner';
 import Button from '@/components/ui/Button';
+import SaveContactButton from '@/components/ui/SaveContactButton';
 
 const PublicCardPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -151,6 +152,11 @@ const PublicCardPage: React.FC = () => {
           <UserPlus className="h-5 w-5" />
           Connect with {owner.displayName || card.fullName}
         </Button>
+
+        {/* Save Contact button */}
+        <div className="mt-3">
+          <SaveContactButton card={card} size="lg" className="w-full" />
+        </div>
       </div>
     </div>
   );

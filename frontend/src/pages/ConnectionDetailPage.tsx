@@ -4,7 +4,9 @@ import { ArrowLeft, MessageSquare, Trash2, Star, Briefcase } from 'lucide-react'
 import { getConnection, deleteConnection, toggleFavorite } from '@/api/connections';
 import { findOrCreateConversation } from '@/api/messaging';
 import type { Connection } from '@/types/connection';
+import type { Card } from '@/types/card';
 import Spinner from '@/components/ui/Spinner';
+import SaveContactButton from '@/components/ui/SaveContactButton';
 import { showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 
@@ -94,6 +96,26 @@ const ConnectionDetailPage: React.FC = () => {
   }
 
   if (!connection) return null;
+
+  // Build a minimal Card for vCard export (use connectedCard when available)
+  const cc = connection.connectedCard;
+  const vcardCard: Card = {
+    id: cc?.id || otherPerson?.id || connection.connectedUserId,
+    userId: connection.connectedUserId,
+    fullName: cc?.fullName || displayName,
+    headline: cc?.headline || otherPerson?.title,
+    company: cc?.company || otherPerson?.company,
+    role: cc?.role || otherPerson?.jobRole || otherPerson?.title,
+    email: cc?.email || otherPerson?.email || '',
+    phone: undefined,
+    website: undefined,
+    avatarUrl: cc?.avatarUrl || otherPerson?.avatarUrl,
+    isDefault: false,
+    skills: [],
+    interests: [],
+    createdAt: connection.createdAt,
+    updatedAt: connection.createdAt,
+  };
 
   return (
     <div className="min-h-screen bg-background p-6 max-w-2xl mx-auto space-y-6">
@@ -198,6 +220,8 @@ const ConnectionDetailPage: React.FC = () => {
         >
           View Full Profile
         </Link>
+
+        <SaveContactButton card={vcardCard} size="md" className="flex-1" />
 
         <button
           onClick={handleRemove}

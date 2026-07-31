@@ -4,6 +4,7 @@ import type { WalletCardEntry } from '@/api/cards';
 import CardPreview from '@/components/cards/CardPreview';
 import Avatar from '@/components/ui/Avatar';
 import Button from '@/components/ui/Button';
+import SaveContactButton from '@/components/ui/SaveContactButton';
 import { cn } from '@/utils/helpers';
 import { useNavigate } from 'react-router-dom';
 
@@ -166,6 +167,7 @@ const WalletCardModal: React.FC<WalletCardModalProps> = ({ walletCard, isOpen, o
             <Share2 className="h-4 w-4" />
             Share Card
           </Button>
+          <SaveContactButton card={card} size="md" className="w-full" />
           <div className="flex gap-3">
             <Button
               variant="secondary"

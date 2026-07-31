@@ -21,6 +21,7 @@ import {
   Hash,
   Award,
   Loader2,
+  Download,
 } from 'lucide-react';
 import { getPublicProfile, getUserCards } from '@/api/users';
 import { createConnection, getConnections, getIncomingRequests, getOutgoingRequests, acceptRequest, declineRequest, cancelRequest } from '@/api/connections';
@@ -32,6 +33,7 @@ import Spinner from '@/components/ui/Spinner';
 import Badge from '@/components/ui/Badge';
 import Avatar from '@/components/ui/Avatar';
 import { cn } from '@/utils/helpers';
+import { downloadVCard } from '@/utils/vcard';
 import { showApiError, getFriendlyErrorMessage } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 
@@ -666,6 +668,18 @@ const PublicProfilePage: React.FC = () => {
                     )}
                   </div>
                 )}
+
+                {/* Save Contact */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    downloadVCard(card);
+                  }}
+                  className="mt-3 w-full flex items-center justify-center gap-1.5 rounded-xl bg-gold/10 px-4 py-2 text-sm font-semibold text-gold border border-gold/20 transition-all hover:bg-gold/20"
+                >
+                  <Download className="h-4 w-4" />
+                  Save Contact
+                </button>
               </div>
             ))}
           </div>
