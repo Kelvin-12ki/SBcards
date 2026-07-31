@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import jsQR from 'jsqr';
 import { cn } from '@/utils/helpers';
 import Spinner from '@/components/ui/Spinner';
 import Button from '@/components/ui/Button';
@@ -14,82 +15,122 @@ type ScannerState = 'initializing' | 'active' | 'error';
 const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => {
   const [state, setState] = useState<ScannerState>('initializing');
   const [errorMessage, setErrorMessage] = useState('');
-  const [isScanning, setIsScanning] = useState(false);
-  const scannerRef = useRef<any>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const animFrameRef = useRef<number>(0);
+  const scanningRef = useRef(false);
 
+  const stopCamera = useCallback(() => {
+    scanningRef.current = false;
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+  }, []);
+
+  // Start camera and auto-scan
   useEffect(() => {
     let cancelled = false;
 
-    const initScanner = async () => {
+    const startCamera = async () => {
       try {
-        const { Html5Qrcode } = await import('html5-qrcode');
-        if (cancelled) return;
-        scannerRef.current = new Html5Qrcode('qr-scanner-element');
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+        });
+
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+
+        streamRef.current = stream;
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+        }
+
         if (!cancelled) {
           setState('active');
+          scanningRef.current = true;
+          scanFrame();
         }
       } catch (err: any) {
         if (cancelled) return;
-        const message = err?.message || 'Failed to initialize QR scanner.';
+        let message = 'Could not access camera.';
+        if (err.name === 'NotAllowedError') {
+          message = 'Camera access denied. Please allow camera permissions in your browser settings.';
+        } else if (err.name === 'NotFoundError') {
+          message = 'No camera found on this device.';
+        }
         setErrorMessage(message);
         setState('error');
         onError(message);
       }
     };
 
-    initScanner();
+    const scanFrame = () => {
+      if (!scanningRef.current) return;
+
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+
+      if (video && canvas && video.readyState === video.HAVE_ENOUGH_DATA) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: 'dontInvert',
+          });
+
+          if (code && code.data) {
+            // Extract userId from the QR data
+            let userId = code.data;
+            try {
+              const url = new URL(code.data);
+              const segments = url.pathname.split('/').filter(Boolean);
+              if (segments.length > 0) {
+                userId = segments[segments.length - 1];
+              }
+            } catch {
+              // Not a URL, use the decoded text as-is
+            }
+
+            scanningRef.current = false;
+            stopCamera();
+            onScan(userId);
+            return;
+          }
+        }
+      }
+
+      animFrameRef.current = requestAnimationFrame(scanFrame);
+    };
+
+    startCamera();
 
     return () => {
       cancelled = true;
-      if (scannerRef.current) {
-        scannerRef.current.stop().catch(() => {});
-        scannerRef.current = null;
-      }
+      stopCamera();
     };
-  }, [onError]);
-
-  const startScanning = async () => {
-    if (isScanning || !scannerRef.current) return;
-    setIsScanning(true);
-
-    try {
-      await scannerRef.current.start(
-        { facingMode: 'environment' },
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        (decodedText: string) => {
-          scannerRef.current?.stop().catch(() => {});
-          setIsScanning(false);
-
-          // Extract userId from the QR data
-          let userId = decodedText;
-          try {
-            const url = new URL(decodedText);
-            const segments = url.pathname.split('/').filter(Boolean);
-            if (segments.length > 0) {
-              userId = segments[segments.length - 1];
-            }
-          } catch {
-            // Not a URL, use the decoded text as-is
-          }
-
-          onScan(userId);
-        },
-        () => {
-          // Scan failure callback (not fatal)
-        },
-      );
-    } catch (err: any) {
-      const message = err?.message || 'Failed to start QR scanner.';
-      setErrorMessage(message);
-      setState('error');
-      onError(message);
-      setIsScanning(false);
-    }
-  };
+  }, [onScan, onError, stopCamera]);
 
   const handleRetry = () => {
     setErrorMessage('');
-    setIsScanning(false);
+    setState('initializing');
+    // Force re-mount by reloading
     window.location.reload();
   };
 
@@ -100,8 +141,18 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => 
         className,
       )}
     >
-      {/* Div for html5-qrcode to render into - must be visible for the library to work */}
-      <div id="qr-scanner-element" className="w-full" />
+      {/* Hidden canvas for QR decoding */}
+      <canvas ref={canvasRef} className="hidden" />
+
+      {/* Video element */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className="w-full"
+        style={{ display: state === 'active' ? 'block' : 'none' }}
+      />
 
       {state === 'initializing' && (
         <div className="flex aspect-[4/3] flex-col items-center justify-center gap-3">
@@ -112,39 +163,21 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => 
 
       {state === 'active' && (
         <div className="relative">
-          {/* Scanning overlay with neon-cyan border - CSS positioned on top */}
+          {/* Scanning overlay with neon-cyan border */}
           <div className="absolute inset-0 pointer-events-none z-10">
-            {/* Corner brackets */}
             <div className="absolute left-4 top-4 h-8 w-8 border-l-2 border-t-2 border-neon-cyan rounded-tl-lg" />
             <div className="absolute right-4 top-4 h-8 w-8 border-r-2 border-t-2 border-neon-cyan rounded-tr-lg" />
             <div className="absolute left-4 bottom-4 h-8 w-8 border-l-2 border-b-2 border-neon-cyan rounded-bl-lg" />
             <div className="absolute right-4 bottom-4 h-8 w-8 border-r-2 border-b-2 border-neon-cyan rounded-br-lg" />
-
-            {/* Scan line animation */}
             <div className="scan-line" />
           </div>
 
-          {/* Start scanning button overlay */}
-          <div className="absolute bottom-6 left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-2">
-            {!isScanning ? (
-              <Button
-                variant="primary"
-                size="md"
-                onClick={startScanning}
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
-                </svg>
-                Start Scanning
-              </Button>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Spinner size="sm" />
-                <span className="text-xs font-medium text-white drop-shadow-lg animate-pulse">
-                  Scanning...
-                </span>
-              </div>
-            )}
+          {/* Scanning indicator */}
+          <div className="absolute bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2">
+            <Spinner size="sm" />
+            <span className="text-xs font-medium text-white drop-shadow-lg animate-pulse">
+              Scanning...
+            </span>
           </div>
         </div>
       )}
