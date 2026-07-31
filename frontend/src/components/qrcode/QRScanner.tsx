@@ -20,6 +20,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => 
   const streamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef<number>(0);
   const scanningRef = useRef(false);
+  const refuseUntilRef = useRef(0);
 
   const stopCamera = useCallback(() => {
     scanningRef.current = false;
@@ -80,6 +81,12 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => 
     const scanFrame = () => {
       if (!scanningRef.current) return;
 
+      // Cooldown: ignore frames for 3s after a scan attempt to prevent rapid-fire rescans
+      if (Date.now() < refuseUntilRef.current) {
+        animFrameRef.current = requestAnimationFrame(scanFrame);
+        return;
+      }
+
       const video = videoRef.current;
       const canvas = canvasRef.current;
 
@@ -96,22 +103,39 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => 
           });
 
           if (code && code.data) {
-            // Extract userId from the QR data
-            let userId = code.data;
+            let userId: string | null = null;
+
+            // Try to extract userId from SBCards URL
             try {
               const url = new URL(code.data);
+              // Accept any hostname (vercel, render, localhost) for dev/prod flexibility
               const segments = url.pathname.split('/').filter(Boolean);
-              if (segments.length > 0) {
-                userId = segments[segments.length - 1];
+              // Check if URL path contains 'scan' and has a ref param or trailing ID
+              if (url.searchParams.has('ref')) {
+                userId = url.searchParams.get('ref');
+              } else if (segments.length > 0) {
+                const lastSegment = segments[segments.length - 1];
+                // Validate it looks like a MongoDB ObjectId
+                if (/^[a-f0-9]{24}$/i.test(lastSegment)) {
+                  userId = lastSegment;
+                }
               }
             } catch {
-              // Not a URL, use the decoded text as-is
+              // Not a URL — check if raw text is a valid ObjectId
+              if (/^[a-f0-9]{24}$/i.test(code.data.trim())) {
+                userId = code.data.trim();
+              }
             }
 
-            scanningRef.current = false;
-            stopCamera();
-            onScan(userId);
-            return;
+            // Only proceed if we found a valid userId
+            if (userId) {
+              scanningRef.current = false;
+              refuseUntilRef.current = Date.now() + 3000;
+              stopCamera();
+              onScan(userId);
+              return;
+            }
+            // If not valid, skip this frame and keep scanning
           }
         }
       }
