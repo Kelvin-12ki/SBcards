@@ -5,6 +5,7 @@ import ScanResults from '@/components/scanner/ScanResults';
 import { parseCardText, type ParsedCardData } from '@/utils/cardParser';
 import { createCard } from '@/api/cards';
 import { showApiError } from '@/utils/errorHandler';
+import { vibrateSuccess, vibrateError } from '@/utils/haptics';
 import toast from 'react-hot-toast';
 
 type ScanPhase = 'camera' | 'review' | 'saving';
@@ -30,6 +31,7 @@ const ScanCardPage: React.FC = () => {
       twitter: '',
       notes: '',
     });
+    vibrateSuccess();
     setPhase('review');
   };
 
@@ -42,10 +44,12 @@ const ScanCardPage: React.FC = () => {
 
     try {
       await createCard(data);
+      vibrateSuccess();
       toast.success('Card created from scan!');
       navigate('/dashboard');
     } catch (err: any) {
       showApiError(err, 'Failed to save card.');
+      vibrateError();
       setPhase('review');
     }
   };

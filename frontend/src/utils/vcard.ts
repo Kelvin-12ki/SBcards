@@ -1,4 +1,5 @@
 import type { Card } from '@/types/card';
+import { vibrateLight } from './haptics';
 
 function escapeVCardText(text: string): string {
   return text
@@ -75,4 +76,5 @@ export function downloadVCard(card: Card, filename?: string): void {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  vibrateLight();
 }

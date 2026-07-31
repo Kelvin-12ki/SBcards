@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/auth/useAuth';
 import { qrConnect } from '@/api/connections';
 import { showApiError } from '@/utils/errorHandler';
+import { vibrateSuccess, vibrateError } from '@/utils/haptics';
 import toast from 'react-hot-toast';
 
 const ScanLandingPage: React.FC = () => {
@@ -24,12 +25,14 @@ const ScanLandingPage: React.FC = () => {
       // Logged in — auto-connect
       qrConnect(ref)
         .then(() => {
+          vibrateSuccess();
           toast.success('Connected!');
           sessionStorage.removeItem('qr_ref');
           navigate('/connections', { replace: true });
         })
         .catch((err: any) => {
           showApiError(err, 'Failed to connect. Please try again.');
+          vibrateError();
           navigate('/connections', { replace: true });
         });
     } else {

@@ -35,6 +35,7 @@ import Avatar from '@/components/ui/Avatar';
 import { cn } from '@/utils/helpers';
 import { downloadVCard } from '@/utils/vcard';
 import { showApiError, getFriendlyErrorMessage } from '@/utils/errorHandler';
+import { vibrateSuccess, vibrateError } from '@/utils/haptics';
 import toast from 'react-hot-toast';
 
 /* ── Helpers ── */
@@ -192,6 +193,7 @@ const PublicProfilePage: React.FC = () => {
     setConnecting(true);
     try {
       await createConnection({ connectedUserId: profile.id, source: 'profile' });
+      vibrateSuccess();
       setConnectionStatus('pending_sent');
       toast.success(`Connection request sent to ${profile.displayName || 'User'}!`);
     } catch (err: any) {
@@ -200,6 +202,7 @@ const PublicProfilePage: React.FC = () => {
       } else {
         showApiError(err, 'Failed to send request. Try again.');
       }
+      vibrateError();
     } finally {
       setConnecting(false);
     }
@@ -210,10 +213,12 @@ const PublicProfilePage: React.FC = () => {
     setConnecting(true);
     try {
       await acceptRequest(existingConnectionId);
+      vibrateSuccess();
       setConnectionStatus('accepted');
       toast.success('Connection accepted!');
     } catch (err: any) {
       showApiError(err, 'Failed to accept request.');
+      vibrateError();
     } finally {
       setConnecting(false);
     }
@@ -229,6 +234,7 @@ const PublicProfilePage: React.FC = () => {
       toast('Request declined', { icon: '👋' });
     } catch (err: any) {
       showApiError(err, 'Failed to decline request.');
+      vibrateError();
     } finally {
       setConnecting(false);
     }
@@ -244,6 +250,7 @@ const PublicProfilePage: React.FC = () => {
       toast('Request cancelled', { icon: '🗑️' });
     } catch (err: any) {
       showApiError(err, 'Failed to cancel request.');
+      vibrateError();
     } finally {
       setConnecting(false);
     }
@@ -257,6 +264,7 @@ const PublicProfilePage: React.FC = () => {
       navigate(`/messages?conversation=${conversation.id}`);
     } catch (err: any) {
       showApiError(err, 'Failed to start conversation.');
+      vibrateError();
     } finally {
       setMessaging(false);
     }

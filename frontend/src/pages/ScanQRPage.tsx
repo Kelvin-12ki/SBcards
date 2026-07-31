@@ -8,6 +8,7 @@ import QRScanner from '@/components/qrcode/QRScanner';
 import QuickConnectModal from '@/components/connections/QuickConnectModal';
 import Spinner from '@/components/ui/Spinner';
 import { showApiError } from '@/utils/errorHandler';
+import { vibrateSuccess, vibrateError } from '@/utils/haptics';
 import toast from 'react-hot-toast';
 
 type ScanPhase = 'scanning' | 'loading_user' | 'connecting' | 'done';
@@ -36,10 +37,12 @@ const ScanQRPage: React.FC = () => {
         role: user.jobRole,
         avatarUrl: user.avatarUrl,
       });
+      vibrateSuccess();
       setModalOpen(true);
       setPhase('scanning');
     } catch (err: any) {
       showApiError(err, 'Could not find user. Please try again.');
+      vibrateError();
       setPhase('scanning');
     }
   };
@@ -58,10 +61,12 @@ const ScanQRPage: React.FC = () => {
         notes,
       });
       await reportQrScan(scannedUser.userId);
+      vibrateSuccess();
       toast.success('Connection added!');
       navigate('/connections');
     } catch (err: any) {
       showApiError(err, 'Failed to create connection.');
+      vibrateError();
       setPhase('scanning');
     }
   };

@@ -5,6 +5,7 @@ import type { Card } from '@/types/card';
 import CardForm from '@/components/cards/CardForm';
 import Spinner from '@/components/ui/Spinner';
 import { showApiError } from '@/utils/errorHandler';
+import { vibrateSuccess, vibrateError } from '@/utils/haptics';
 import toast from 'react-hot-toast';
 
 const CreateCardPage: React.FC = () => {
@@ -38,9 +39,11 @@ const CreateCardPage: React.FC = () => {
     try {
       if (isEditing && id) {
         await updateCard(id, data);
+        vibrateSuccess();
         toast.success('Card updated!');
       } else {
         await createCard(data);
+        vibrateSuccess();
         toast.success('Card created!');
       }
       if (isEditing && id) {
@@ -50,6 +53,7 @@ const CreateCardPage: React.FC = () => {
       }
     } catch (err: any) {
       showApiError(err, 'Failed to save card.');
+      vibrateError();
     } finally {
       setSaving(false);
     }
