@@ -12,23 +12,20 @@ class TableAssignmentDto {
 }
 
 class FactorScoresDto {
-  @ApiProperty({ description: 'Industry match score (0-1)', example: 1 })
-  industryScore!: number;
+  @ApiProperty({ description: 'Skill complementarity score (0-1)', example: 0.8 })
+  skillComplementarityScore!: number;
 
-  @ApiProperty({ description: 'Skills overlap score (0-1)', example: 0.5 })
-  skillsScore!: number;
+  @ApiProperty({ description: 'Industry relevance score (0-1)', example: 1 })
+  industryRelevanceScore!: number;
 
-  @ApiProperty({ description: 'Interests overlap score (0-1)', example: 0.3 })
-  interestsScore!: number;
+  @ApiProperty({ description: 'Interest overlap score (0-1)', example: 0.5 })
+  interestOverlapScore!: number;
 
-  @ApiProperty({ description: 'Complementarity score (0-1)', example: 0.8 })
-  complementarityScore!: number;
+  @ApiProperty({ description: 'Networking goal alignment score (0-1)', example: 0.7 })
+  networkingGoalScore!: number;
 
-  @ApiProperty({ description: 'Seniority compatibility score (0-1)', example: 1 })
-  seniorityScore!: number;
-
-  @ApiProperty({ description: 'Location proximity score (0-1)', example: 1 })
-  locationScore!: number;
+  @ApiProperty({ description: 'Connection status score (0-1)', example: 1 })
+  connectionStatusScore!: number;
 }
 
 class MatchedUserProfileDto {

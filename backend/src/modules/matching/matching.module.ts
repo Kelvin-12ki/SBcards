@@ -3,6 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { Match, MatchSchema } from './entities/match.entity';
 import { EventParticipation, EventParticipationSchema } from '../events/entities/event-participation.entity';
 import { Card, CardSchema } from '../cards/entities/card.entity';
+import { Connection, ConnectionSchema } from '../connections/entities/connection.entity';
 import { MatchingService } from './matching.service';
 import { MatchingController } from './matching.controller';
 import { UsersModule } from '../users/users.module';
@@ -14,6 +15,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
       { name: Match.name, schema: MatchSchema },
       { name: EventParticipation.name, schema: EventParticipationSchema },
       { name: Card.name, schema: CardSchema },
+      { name: Connection.name, schema: ConnectionSchema },
     ]),
     UsersModule,
     NotificationsModule,

@@ -13,30 +13,27 @@ export interface EnhancedMatchCardProps {
 }
 
 const FACTOR_COLORS: Record<string, string> = {
-  industry: 'bg-gold',
-  skills: 'bg-neon-cyan',
-  interests: 'bg-neon-pink',
-  complementarity: 'bg-neon-purple',
-  seniority: 'bg-neon-blue',
-  location: 'bg-success',
+  skillcomplementarity: 'bg-neon-cyan',
+  industryrelevance: 'bg-gold',
+  interestoverlap: 'bg-neon-pink',
+  networkinggoals: 'bg-neon-purple',
+  newconnection: 'bg-success',
 };
 
 const FACTOR_BG_COLORS: Record<string, string> = {
-  industry: 'bg-gold/20',
-  skills: 'bg-neon-cyan/20',
-  interests: 'bg-neon-pink/20',
-  complementarity: 'bg-neon-purple/20',
-  seniority: 'bg-neon-blue/20',
-  location: 'bg-success/20',
+  skillcomplementarity: 'bg-neon-cyan/20',
+  industryrelevance: 'bg-gold/20',
+  interestoverlap: 'bg-neon-pink/20',
+  networkinggoals: 'bg-neon-purple/20',
+  newconnection: 'bg-success/20',
 };
 
 const factorLabels: Record<string, string> = {
-  industry: 'Industry',
-  skills: 'Skills',
-  interests: 'Interests',
-  complementarity: 'Complementarity',
-  seniority: 'Seniority',
-  location: 'Location',
+  skillcomplementarity: 'Skills Match',
+  industryrelevance: 'Industry',
+  interestoverlap: 'Interests',
+  networkinggoals: 'Goals',
+  newconnection: 'New Connection',
 };
 
 const EnhancedMatchCard: React.FC<EnhancedMatchCardProps> = ({

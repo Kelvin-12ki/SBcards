@@ -10,13 +10,32 @@ import {
   EventParticipationDocument,
 } from '../events/entities/event-participation.entity';
 import { Card, CardDocument } from '../cards/entities/card.entity';
+import {
+  Connection,
+  ConnectionDocument,
+} from '../connections/entities/connection.entity';
 import { MatchResultDto } from './dto/match-result.dto';
 import { UsersService } from '../users/users.service';
 import { User, UserDocument } from '../users/entities/user.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 
-// Seniority level ordering for compatibility scoring
-const SENIORITY_LEVELS = ['entry', 'mid', 'senior', 'executive'];
+/** Complementary industry pairs — industries that naturally benefit from networking */
+const INDUSTRY_AFFINITY: Record<string, string[]> = {
+  fintech: ['blockchain', 'banking', 'finance', 'crypto', 'defi'],
+  blockchain: ['fintech', 'web3', 'crypto', 'defi'],
+  health: ['biotech', 'medtech', 'healthtech', 'pharmaceutical'],
+  biotech: ['health', 'healthtech', 'pharmaceutical', 'life sciences'],
+  saas: ['consulting', 'enterprise', 'b2b', 'software'],
+  consulting: ['saas', 'enterprise', 'management', 'strategy'],
+  education: ['edtech', 'training', 'learning', 'e-learning'],
+  edtech: ['education', 'e-learning', 'training'],
+  marketing: ['advertising', 'media', 'branding', 'pr'],
+  advertising: ['marketing', 'media', 'branding', 'pr'],
+  ai: ['machine learning', 'data science', 'analytics', 'tech'],
+  'data science': ['ai', 'machine learning', 'analytics', 'tech'],
+  ecommerce: ['retail', 'd2c', 'marketplace', 'logistics'],
+  'real estate': ['proptech', 'construction', 'architecture'],
+};
 
 @Injectable()
 export class MatchingService {
@@ -29,6 +48,8 @@ export class MatchingService {
     private readonly participationModel: Model<EventParticipationDocument>,
     @InjectModel(Card.name)
     private readonly cardModel: Model<CardDocument>,
+    @InjectModel(Connection.name)
+    private readonly connectionModel: Model<ConnectionDocument>,
     private readonly usersService: UsersService,
     private readonly notificationsService: NotificationsService,
   ) {}
@@ -71,22 +92,44 @@ export class MatchingService {
   }
 
   /**
-   * Compute comprehensive multi-factor match scores between two users and their cards.
-   * Returns individual factor scores, total weighted score, explanations, and conversation starters.
+   * Check if two industries are complementary using the affinity map.
+   */
+  private areIndustriesComplementary(a: string, b: string): boolean {
+    const aLower = a.toLowerCase().trim();
+    const bLower = b.toLowerCase().trim();
+
+    const aAffinities = INDUSTRY_AFFINITY[aLower] || [];
+    if (aAffinities.includes(bLower)) return true;
+
+    const bAffinities = INDUSTRY_AFFINITY[bLower] || [];
+    if (bAffinities.includes(aLower)) return true;
+
+    return false;
+  }
+
+  /**
+   * Compute comprehensive 5-factor match scores between two users.
+   *
+   * Factors:
+   * 1. Skill Complementarity (30%) — do they have skills the other needs?
+   * 2. Industry Relevance (25%) — same or complementary industries
+   * 3. Interest Overlap (20%) — shared interests
+   * 4. Networking Goal Alignment (15%) — lookingFor ↔ offering matches
+   * 5. Connection Status (10%) — boost new connections
    */
   computeMatchFactors(
     userA: UserDocument | User,
     userB: UserDocument | User,
     cardA: CardDocument,
     cardB: CardDocument,
+    connectionStatus: 'none' | 'pending' | 'accepted' = 'none',
   ): {
     factors: {
-      industryScore: number;
-      skillsScore: number;
-      interestsScore: number;
-      complementarityScore: number;
-      seniorityScore: number;
-      locationScore: number;
+      skillComplementarityScore: number;
+      industryRelevanceScore: number;
+      interestOverlapScore: number;
+      networkingGoalScore: number;
+      connectionStatusScore: number;
     };
     totalScore: number;
     explanation: string[];
@@ -94,29 +137,17 @@ export class MatchingService {
     sharedKeywords: string[];
   } {
     const factors = {
-      industryScore: 0,
-      skillsScore: 0,
-      interestsScore: 0,
-      complementarityScore: 0,
-      seniorityScore: 0,
-      locationScore: 0,
+      skillComplementarityScore: 0,
+      industryRelevanceScore: 0,
+      interestOverlapScore: 0,
+      networkingGoalScore: 0,
+      connectionStatusScore: 0,
     };
     const explanation: string[] = [];
     const conversationStarters: string[] = [];
 
-    // ── 1. Industry match (15%) ──────────────────────────────────
-    const industryA = userA.industry?.trim();
-    const industryB = userB.industry?.trim();
-    if (industryA && industryB) {
-      if (industryA.toLowerCase() === industryB.toLowerCase()) {
-        factors.industryScore = 1;
-        explanation.push(`You both work in ${industryA}`);
-        conversationStarters.push(`Discuss the latest trends in ${industryA}`);
-      }
-      // NOTE: Future enhancement — related industry scoring could go here
-    }
-
-    // ── 2. Skills overlap (20%) ──────────────────────────────────
+    // ── 1. SKILL COMPLEMENTARITY (30%) ──────────────────────────
+    // Does A have skills B needs, and vice versa?
     const userASkills = (userA.skills || []).map((s: string) => s.toLowerCase().trim());
     const userBSkills = (userB.skills || []).map((s: string) => s.toLowerCase().trim());
     const cardASkills = (cardA.skills || []).map((s) => s.name?.toLowerCase().trim() ?? '');
@@ -124,19 +155,59 @@ export class MatchingService {
 
     const allSkillsA = new Set([...userASkills, ...cardASkills].filter(Boolean));
     const allSkillsB = new Set([...userBSkills, ...cardBSkills].filter(Boolean));
-    factors.skillsScore = this.jaccardSimilarity(allSkillsA, allSkillsB);
+
+    // Base score: how many of A's skills B needs + vice versa
+    const lookingForA = (userA.lookingFor || []).map((s: string) => s.toLowerCase().trim());
+    const lookingForB = (userB.lookingFor || []).map((s: string) => s.toLowerCase().trim());
+
+    let skillMatches = 0;
+    for (const skill of allSkillsA) {
+      if (lookingForB.some((need) => skill.includes(need) || need.includes(skill))) {
+        skillMatches++;
+      }
+    }
+    for (const skill of allSkillsB) {
+      if (lookingForA.some((need) => skill.includes(need) || need.includes(skill))) {
+        skillMatches++;
+      }
+    }
+    const baseSkillScore = Math.min(0.5, skillMatches / 4);
+
+    // Diversity bonus: different skill sets complement each other
+    const diversity = 1 - this.jaccardSimilarity(allSkillsA, allSkillsB);
+    const diversityBonus = diversity * 0.3;
+
+    factors.skillComplementarityScore = Math.min(1, baseSkillScore + diversityBonus);
 
     const sharedSkills = [...allSkillsA].filter((s) => allSkillsB.has(s));
     if (sharedSkills.length > 0) {
-      const skillList = sharedSkills.slice(0, 3).join(', ');
-      explanation.push(`Both skilled in ${skillList}`);
+      explanation.push(`Both skilled in ${sharedSkills.slice(0, 3).join(', ')}`);
       conversationStarters.push(`Discuss your approach to ${sharedSkills[0]}`);
-      if (sharedSkills.length > 1) {
-        conversationStarters.push(`Share tips on mastering ${sharedSkills[1]}`);
+    }
+    if (skillMatches > 0) {
+      explanation.push(`You have complementary expertise — ${skillMatches} skill${skillMatches > 1 ? 's' : ''} the other is looking for`);
+      conversationStarters.push(`Explore how your skills can complement each other`);
+    }
+
+    // ── 2. INDUSTRY RELEVANCE (25%) ─────────────────────────────
+    const industryA = userA.industry?.trim();
+    const industryB = userB.industry?.trim();
+
+    if (industryA && industryB) {
+      if (industryA.toLowerCase() === industryB.toLowerCase()) {
+        factors.industryRelevanceScore = 1.0;
+        explanation.push(`You both work in ${industryA}`);
+        conversationStarters.push(`Discuss the latest trends in ${industryA}`);
+      } else if (this.areIndustriesComplementary(industryA, industryB)) {
+        factors.industryRelevanceScore = 0.7;
+        explanation.push(`${industryA} and ${industryB} are complementary industries`);
+        conversationStarters.push(`Explore cross-industry opportunities between ${industryA} and ${industryB}`);
+      } else {
+        factors.industryRelevanceScore = 0.1;
       }
     }
 
-    // ── 3. Interests overlap (10%) ──────────────────────────────
+    // ── 3. INTEREST OVERLAP (20%) ───────────────────────────────
     const userAInterests = (userA.interests || []).map((s: string) => s.toLowerCase().trim());
     const userBInterests = (userB.interests || []).map((s: string) => s.toLowerCase().trim());
     const cardAInterests = (cardA.interests || []).map((i) => i.name?.toLowerCase().trim() ?? '');
@@ -144,108 +215,70 @@ export class MatchingService {
 
     const allInterestsA = new Set([...userAInterests, ...cardAInterests].filter(Boolean));
     const allInterestsB = new Set([...userBInterests, ...cardBInterests].filter(Boolean));
-    factors.interestsScore = this.jaccardSimilarity(allInterestsA, allInterestsB);
+
+    if (allInterestsA.size === 0 && allInterestsB.size === 0) {
+      factors.interestOverlapScore = 0.5; // neutral
+    } else {
+      factors.interestOverlapScore = this.jaccardSimilarity(allInterestsA, allInterestsB);
+    }
 
     const sharedInterests = [...allInterestsA].filter((s) => allInterestsB.has(s));
     if (sharedInterests.length > 0) {
-      const interestList = sharedInterests.slice(0, 3).join(', ');
-      explanation.push(`Both interested in ${interestList}`);
+      explanation.push(`Both interested in ${sharedInterests.slice(0, 3).join(', ')}`);
       conversationStarters.push(`Share your thoughts on ${sharedInterests[0]}`);
       if (sharedInterests.length > 1) {
         conversationStarters.push(`Exchange recommendations about ${sharedInterests[1]}`);
       }
     }
 
-    // ── 4. Complementarity: lookingFor ↔ offering (25%) ─────────
-    const lookingForA = (userA.lookingFor || []).map((s: string) => s.toLowerCase().trim());
-    const offeringB = (userB.offering || []).map((s: string) => s.toLowerCase().trim());
-    const lookingForB = (userB.lookingFor || []).map((s: string) => s.toLowerCase().trim());
+    // ── 4. NETWORKING GOAL ALIGNMENT (15%) ──────────────────────
     const offeringA = (userA.offering || []).map((s: string) => s.toLowerCase().trim());
+    const offeringB = (userB.offering || []).map((s: string) => s.toLowerCase().trim());
 
-    const complementExplanations: string[] = [];
-    const complementStarters: string[] = [];
+    let goalMatches = 0;
 
     // A looks for X, B offers X
     for (const need of lookingForA) {
-      if (offeringB.includes(need)) {
-        complementExplanations.push(`You're looking for ${need} and they offer it`);
-        complementStarters.push(`You could explore ${need} together based on their expertise`);
+      if (offeringB.some((o) => o.includes(need) || need.includes(o))) {
+        goalMatches += 0.5;
+        explanation.push(`You're looking for ${need} and they offer it`);
+        conversationStarters.push(`You could explore ${need} together based on their expertise`);
       }
     }
     // B looks for X, A offers X
     for (const need of lookingForB) {
-      if (offeringA.includes(need)) {
-        complementExplanations.push(`They're looking for ${need} and you offer it`);
-        complementStarters.push(`They might benefit from your experience in ${need}`);
+      if (offeringA.some((o) => o.includes(need) || need.includes(o))) {
+        goalMatches += 0.5;
+        explanation.push(`They're looking for ${need} and you offer it`);
+        conversationStarters.push(`They might benefit from your experience in ${need}`);
       }
     }
-
-    if (complementExplanations.length > 0) {
-      factors.complementarityScore = Math.min(1, complementExplanations.length / 3);
-      explanation.push(...complementExplanations);
-      conversationStarters.push(...complementStarters);
+    // Both have same lookingFor → partial credit
+    const sharedGoals = lookingForA.filter((g) => lookingForB.includes(g));
+    if (sharedGoals.length > 0) {
+      goalMatches += 0.3;
+      explanation.push(`You both share goals: ${sharedGoals.slice(0, 2).join(', ')}`);
     }
 
-    // ── 5. Seniority compatibility (10%) ─────────────────────────
-    const seniorityA = userA.seniority?.toLowerCase().trim();
-    const seniorityB = userB.seniority?.toLowerCase().trim();
-    if (seniorityA && seniorityB) {
-      const idxA = SENIORITY_LEVELS.indexOf(seniorityA);
-      const idxB = SENIORITY_LEVELS.indexOf(seniorityB);
-      if (idxA !== -1 && idxB !== -1) {
-        const diff = Math.abs(idxA - idxB);
-        if (diff === 0) {
-          factors.seniorityScore = 1;
-          explanation.push(`Both at the ${seniorityA} level`);
-          conversationStarters.push(`Compare notes on navigating ${seniorityA} roles`);
-        } else if (diff === 1) {
-          factors.seniorityScore = 0.7;
-          const higher = idxA > idxB ? seniorityA : seniorityB;
-          const lower = idxA > idxB ? seniorityB : seniorityA;
-          explanation.push(`You have complementary seniority levels (${lower} ↔ ${higher})`);
-          conversationStarters.push(`Discuss career growth from ${lower} to ${higher} levels`);
-        }
-        // diff >= 2: score stays 0
-      }
+    factors.networkingGoalScore = Math.min(1, goalMatches / 2);
+
+    // ── 5. CONNECTION STATUS (10%) ──────────────────────────────
+    if (connectionStatus === 'accepted') {
+      factors.connectionStatusScore = 0; // already connected, no boost
+    } else if (connectionStatus === 'pending') {
+      factors.connectionStatusScore = 0.3;
+    } else {
+      factors.connectionStatusScore = 1.0; // new connection — maximum boost
+      explanation.push(`Great opportunity to make a new connection`);
     }
 
-    // ── 6. Location proximity (10%) ──────────────────────────────
-    const locationA = userA.location?.trim();
-    const locationB = userB.location?.trim();
-    if (locationA && locationB) {
-      if (locationA.toLowerCase() === locationB.toLowerCase()) {
-        factors.locationScore = 1;
-        explanation.push(`Both based in ${locationA}`);
-        conversationStarters.push(`Meet up locally in ${locationA}`);
-      } else {
-        // Simple country-level check (assumes "City, Country" format)
-        const countryA = locationA.split(',').pop()?.trim().toLowerCase();
-        const countryB = locationB.split(',').pop()?.trim().toLowerCase();
-        if (countryA && countryB && countryA === countryB) {
-          factors.locationScore = 0.5;
-          explanation.push(`Both in ${countryA}`);
-          conversationStarters.push(`Explore events happening in ${countryA}`);
-        }
-      }
-    }
-
-    // ── Weighted total score ────────────────────────────────────
-    const weights = {
-      industryScore: 0.15,
-      skillsScore: 0.20,
-      interestsScore: 0.10,
-      complementarityScore: 0.25,
-      seniorityScore: 0.10,
-      locationScore: 0.10,
-    };
-
+    // ── WEIGHTED TOTAL ──────────────────────────────────────────
     const totalScore =
-      factors.industryScore * weights.industryScore +
-      factors.skillsScore * weights.skillsScore +
-      factors.interestsScore * weights.interestsScore +
-      factors.complementarityScore * weights.complementarityScore +
-      factors.seniorityScore * weights.seniorityScore +
-      factors.locationScore * weights.locationScore;
+      factors.skillComplementarityScore * 0.30 +
+      factors.industryRelevanceScore * 0.25 +
+      factors.interestOverlapScore * 0.20 +
+      factors.networkingGoalScore * 0.15 +
+      factors.connectionStatusScore * 0.10;
 
     // ── Shared keywords for backward compatibility ──────────────
     const sharedKeywords = [
@@ -282,6 +315,28 @@ export class MatchingService {
     // Delete existing matches for this event
     await this.matchesModel.deleteMany({ eventId }).exec();
 
+    // Batch-fetch all connections for participants (single query for performance)
+    const participantIds = validParticipations.map((p) => p.userId);
+    const allConnections = await this.connectionModel
+      .find({
+        $or: [
+          { userId: { $in: participantIds }, connectedUserId: { $in: participantIds } },
+        ],
+        status: { $in: ['accepted', 'pending'] },
+      })
+      .select('userId connectedUserId status')
+      .lean()
+      .exec();
+
+    // Build a lookup map: "userId:connectedUserId" → status
+    const connectionMap = new Map<string, string>();
+    for (const conn of allConnections) {
+      const key1 = `${conn.userId}:${conn.connectedUserId}`;
+      const key2 = `${conn.connectedUserId}:${conn.userId}`;
+      connectionMap.set(key1, conn.status);
+      connectionMap.set(key2, conn.status);
+    }
+
     const matchData: any[] = [];
 
     for (let i = 0; i < validParticipations.length; i++) {
@@ -301,6 +356,10 @@ export class MatchingService {
           continue;
         }
 
+        // Look up connection status between these two users
+        const connKey = `${partA.userId}:${partB.userId}`;
+        const connStatus = connectionMap.get(connKey) || 'none';
+
         // Compute multi-factor match
         const {
           factors,
@@ -308,7 +367,7 @@ export class MatchingService {
           explanation,
           conversationStarters,
           sharedKeywords,
-        } = this.computeMatchFactors(userA, userB, cardA, cardB);
+        } = this.computeMatchFactors(userA, userB, cardA, cardB, connStatus as 'none' | 'pending' | 'accepted');
 
         // Order user IDs for consistency
         const [userAId, userBId] =

@@ -40,21 +40,19 @@ export class Match {
   @Prop({
     type: Object,
     default: {
-      industryScore: 0,
-      skillsScore: 0,
-      interestsScore: 0,
-      complementarityScore: 0,
-      seniorityScore: 0,
-      locationScore: 0,
+      skillComplementarityScore: 0,
+      industryRelevanceScore: 0,
+      interestOverlapScore: 0,
+      networkingGoalScore: 0,
+      connectionStatusScore: 0,
     },
   })
   factors!: {
-    industryScore: number;
-    skillsScore: number;
-    interestsScore: number;
-    complementarityScore: number;
-    seniorityScore: number;
-    locationScore: number;
+    skillComplementarityScore: number;
+    industryRelevanceScore: number;
+    interestOverlapScore: number;
+    networkingGoalScore: number;
+    connectionStatusScore: number;
   };
 
   @Prop({ type: [String], default: [] })
