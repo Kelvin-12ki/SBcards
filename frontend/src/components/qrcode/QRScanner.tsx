@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import jsQR from 'jsqr';
+import { Flashlight, Upload } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { cn } from '@/utils/helpers';
 import Spinner from '@/components/ui/Spinner';
 import Button from '@/components/ui/Button';
@@ -12,6 +14,22 @@ export interface QRScannerProps {
 
 type ScannerState = 'initializing' | 'active' | 'error';
 
+function extractUserId(raw: string): string | null {
+  try {
+    const url = new URL(raw);
+    const segments = url.pathname.split('/').filter(Boolean);
+    if (url.searchParams.has('ref')) {
+      return url.searchParams.get('ref');
+    } else if (segments.length > 0) {
+      const last = segments[segments.length - 1];
+      if (/^[a-f0-9]{24}$/i.test(last)) return last;
+    }
+  } catch {
+    if (/^[a-f0-9]{24}$/i.test(raw.trim())) return raw.trim();
+  }
+  return null;
+}
+
 const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => {
   const [state, setState] = useState<ScannerState>('initializing');
   const [errorMessage, setErrorMessage] = useState('');
@@ -22,16 +40,88 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => 
   const scanningRef = useRef(false);
   const refuseUntilRef = useRef(0);
 
+  // Torch
+  const [torchSupported, setTorchSupported] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
+  const videoTrackRef = useRef<MediaStreamTrack | null>(null);
+
+  // File upload
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const stopCamera = useCallback(() => {
     scanningRef.current = false;
     if (animFrameRef.current) {
       cancelAnimationFrame(animFrameRef.current);
     }
     if (streamRef.current) {
+      // Turn off torch before stopping
+      if (videoTrackRef.current) {
+        try {
+          videoTrackRef.current.applyConstraints({ advanced: [{ torch: false } as any] });
+        } catch { /* ignore */ }
+      }
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
+      videoTrackRef.current = null;
     }
   }, []);
+
+  const handleTorchToggle = useCallback(async () => {
+    const track = videoTrackRef.current;
+    if (!track) return;
+    const next = !torchOn;
+    try {
+      await track.applyConstraints({ advanced: [{ torch: next } as any] });
+      setTorchOn(next);
+    } catch {
+      toast.error('Could not toggle flashlight');
+    }
+  }, [torchOn]);
+
+  const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, img.width, img.height);
+      const code = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: 'dontInvert',
+      });
+
+      URL.revokeObjectURL(url);
+
+      if (!code || !code.data) {
+        toast.error('No QR code found in the image. Please try again.');
+        return;
+      }
+
+      const userId = extractUserId(code.data);
+      if (userId) {
+        stopCamera();
+        onScan(userId);
+      } else {
+        toast.error('No QR code found in the image. Please try again.');
+      }
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      toast.error('Could not read the selected image.');
+    };
+
+    img.src = url;
+    e.target.value = '';
+  }, [onScan, stopCamera]);
 
   // Start camera and auto-scan
   useEffect(() => {
@@ -53,6 +143,16 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => 
         }
 
         streamRef.current = stream;
+
+        // Detect torch support
+        const track = stream.getVideoTracks()[0];
+        videoTrackRef.current = track;
+        try {
+          const capabilities = track.getCapabilities() as any;
+          setTorchSupported(capabilities.torch === true);
+        } catch {
+          setTorchSupported(false);
+        }
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -103,31 +203,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => 
           });
 
           if (code && code.data) {
-            let userId: string | null = null;
-
-            // Try to extract userId from SBCards URL
-            try {
-              const url = new URL(code.data);
-              // Accept any hostname (vercel, render, localhost) for dev/prod flexibility
-              const segments = url.pathname.split('/').filter(Boolean);
-              // Check if URL path contains 'scan' and has a ref param or trailing ID
-              if (url.searchParams.has('ref')) {
-                userId = url.searchParams.get('ref');
-              } else if (segments.length > 0) {
-                const lastSegment = segments[segments.length - 1];
-                // Validate it looks like a MongoDB ObjectId
-                if (/^[a-f0-9]{24}$/i.test(lastSegment)) {
-                  userId = lastSegment;
-                }
-              }
-            } catch {
-              // Not a URL — check if raw text is a valid ObjectId
-              if (/^[a-f0-9]{24}$/i.test(code.data.trim())) {
-                userId = code.data.trim();
-              }
-            }
-
-            // Only proceed if we found a valid userId
+            const userId = extractUserId(code.data);
             if (userId) {
               scanningRef.current = false;
               refuseUntilRef.current = Date.now() + 3000;
@@ -189,8 +265,24 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => 
         <div className="relative">
           {/* Scanning overlay with neon-cyan border */}
           <div className="absolute inset-0 pointer-events-none z-10">
+            {/* Torch toggle */}
+            {torchSupported && (
+              <button
+                type="button"
+                onClick={handleTorchToggle}
+                className={`absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-full pointer-events-auto transition-all duration-200 ${
+                  torchOn
+                    ? 'bg-neon-cyan text-background shadow-lg shadow-neon-cyan/50'
+                    : 'bg-black/50 text-white/70 hover:bg-black/70 hover:text-white backdrop-blur-sm'
+                }`}
+                aria-label={torchOn ? 'Turn off flashlight' : 'Turn on flashlight'}
+              >
+                <Flashlight className="h-5 w-5" />
+              </button>
+            )}
+
             <div className="absolute left-4 top-4 h-8 w-8 border-l-2 border-t-2 border-neon-cyan rounded-tl-lg" />
-            <div className="absolute right-4 top-4 h-8 w-8 border-r-2 border-t-2 border-neon-cyan rounded-tr-lg" />
+            <div className="absolute right-4 top-16 h-8 w-8 border-r-2 border-t-2 border-neon-cyan rounded-tr-lg" />
             <div className="absolute left-4 bottom-4 h-8 w-8 border-l-2 border-b-2 border-neon-cyan rounded-bl-lg" />
             <div className="absolute right-4 bottom-4 h-8 w-8 border-r-2 border-b-2 border-neon-cyan rounded-br-lg" />
             <div className="scan-line" />
@@ -219,6 +311,25 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => 
           </Button>
         </div>
       )}
+
+      {/* Image upload fallback */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleImageUpload}
+        className="hidden"
+      />
+      <div className="flex justify-center px-4 py-4">
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold bg-surface-2 text-text-secondary border border-border-subtle hover:bg-surface-3 hover:text-neon-cyan transition-all duration-200"
+        >
+          <Upload className="h-4 w-4" />
+          Upload QR Code
+        </button>
+      </div>
     </div>
   );
 };
