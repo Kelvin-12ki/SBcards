@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Send, MessageSquare, ArrowLeft, Loader2 } from 'lucide-react';
 import { cn } from '@/utils/helpers';
 import Avatar from '@/components/ui/Avatar';
@@ -23,6 +23,80 @@ export interface ChatWindowProps {
   onBack?: () => void;
 }
 
+/** Format a date to a human-readable label for date separators */
+function formatDateLabel(iso: string): string {
+  const date = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) {
+    return date.toLocaleDateString(undefined, { weekday: 'long' });
+  }
+  return date.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+  });
+}
+
+/** Check if two dates are on the same day */
+function isSameDay(isoA: string, isoB: string): boolean {
+  const a = new Date(isoA);
+  const b = new Date(isoB);
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+/** Group messages by consecutive sender (runs) */
+interface MessageGroup {
+  senderId: string;
+  messages: Message[];
+  dateLabel: string;
+  groupDate: string; // ISO date key
+}
+
+function groupMessages(messages: Message[]): Array<MessageGroup | { type: 'date-separator'; label: string }> {
+  const result: Array<MessageGroup | { type: 'date-separator'; label: string }> = [];
+  let lastDate = '';
+  let currentGroup: MessageGroup | null = null;
+
+  for (const msg of messages) {
+    const msgDate = formatDateLabel(msg.createdAt);
+
+    // Date separator
+    if (msgDate !== lastDate) {
+      if (currentGroup) {
+        result.push(currentGroup);
+        currentGroup = null;
+      }
+      result.push({ type: 'date-separator', label: msgDate });
+      lastDate = msgDate;
+    }
+
+    // Same sender grouping
+    if (!currentGroup || currentGroup.senderId !== msg.senderId || !isSameDay(currentGroup.groupDate, msg.createdAt)) {
+      if (currentGroup) result.push(currentGroup);
+      currentGroup = {
+        senderId: msg.senderId,
+        messages: [msg],
+        dateLabel: msgDate,
+        groupDate: msg.createdAt,
+      };
+    } else {
+      currentGroup.messages.push(msg);
+    }
+  }
+
+  if (currentGroup) result.push(currentGroup);
+  return result;
+}
+
 const ChatWindow: React.FC<ChatWindowProps> = ({
   messages,
   onSend,
@@ -35,27 +109,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 }) => {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // Auto-scroll to bottom on new messages or typing indicator
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isOtherUserTyping]);
-
-  const handleSend = () => {
-    const trimmed = input.trim();
-    if (!trimmed) return;
-    onSend(trimmed);
-    setInput('');
-    inputRef.current?.focus();
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const displayName = otherUser?.displayName
     || (otherUser ? [otherUser.firstName, otherUser.lastName].filter(Boolean).join(' ') : '')
@@ -66,10 +120,47 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     ? displayName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
     : '?';
 
+  // Group messages by date and sender
+  const groupedMessages = useMemo(() => groupMessages(messages), [messages]);
+
+  // Auto-scroll to bottom on new messages or typing indicator
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isOtherUserTyping]);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (ta) {
+      ta.style.height = 'auto';
+      ta.style.height = `${Math.min(ta.scrollHeight, 120)}px`;
+    }
+  }, [input]);
+
+  const handleSend = useCallback(() => {
+    const trimmed = input.trim();
+    if (!trimmed) return;
+    onSend(trimmed);
+    setInput('');
+    textareaRef.current?.focus();
+  }, [input, onSend]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const handleInputChange = useCallback((value: string) => {
+    setInput(value);
+    onInputChange?.(value);
+  }, [onInputChange]);
+
   return (
     <div className="flex h-full flex-col">
-      {/* Header */}
-      <div className="flex items-center gap-3 border-b border-border-subtle px-4 py-3">
+      {/* Header — glass-morphism */}
+      <div className="glass flex items-center gap-3 px-4 py-3 border-b border-border-subtle z-10">
         {onBack && (
           <button
             onClick={onBack}
@@ -84,89 +175,113 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             src={otherUser?.avatarUrl}
             alt={displayName}
             size="md"
-            className="border border-border-subtle"
+            className="border border-border-subtle ring-2 ring-gold/20"
             fallbackInitials={initials}
           />
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-text-primary truncate">{displayName}</p>
+            <p className="text-sm font-bold text-text-primary truncate">{displayName}</p>
+            {otherUser?.email && otherUser.email !== displayName && (
+              <p className="text-[11px] text-text-tertiary truncate">{otherUser.email}</p>
+            )}
           </div>
         </div>
       </div>
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto px-3 py-3 sm:px-4 sm:py-4">
+      <div className="flex-1 overflow-y-auto px-3 py-4 sm:px-5 sm:py-5">
         {loading ? (
           <div className="flex items-center justify-center h-full">
-            <Loader2 className="h-6 w-6 animate-spin text-neon-cyan" />
+            <Loader2 className="h-7 w-7 animate-spin text-neon-cyan" />
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="mb-4 rounded-2xl gradient-magical p-4 text-white animate-glow-pulse">
-              <MessageSquare className="h-8 w-8" />
+            <div className="mb-5 rounded-3xl gradient-magical p-6 text-white animate-glow-pulse">
+              <MessageSquare className="h-10 w-10" />
             </div>
-            <h3 className="font-display text-lg font-bold text-gradient-magical">No messages yet</h3>
-            <p className="mt-2 text-sm text-text-secondary max-w-xs">
-              Send a message to start the conversation!
+            <h3 className="font-display text-xl font-bold text-gradient-gold">Start a conversation</h3>
+            <p className="mt-2.5 text-sm text-text-secondary max-w-xs leading-relaxed">
+              Say hello to {displayName !== 'Chat' ? displayName : 'your new connection'}!
             </p>
             {isOtherUserTyping && (
               <div className="mt-4">
-                <TypingIndicator name={displayName !== 'Chat' ? displayName : undefined} />
+                <TypingIndicator
+                  name={displayName !== 'Chat' ? displayName : undefined}
+                  avatarUrl={otherUser?.avatarUrl}
+                />
               </div>
             )}
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
-            {messages.map((msg) => (
-              <MessageBubble
-                key={msg.id}
-                message={msg}
-                isOwn={msg.senderId === currentUserId}
-                senderName={
-                  msg.senderId !== currentUserId && displayName !== 'Chat'
-                    ? displayName
-                    : undefined
-                }
+          <div className="flex flex-col gap-0 max-w-3xl mx-auto">
+            {groupedMessages.map((item, idx) => {
+              if ('type' in item && item.type === 'date-separator') {
+                return (
+                  <div key={`date-${idx}`} className="date-separator my-4">
+                    <span className="text-[11px] font-medium text-text-tertiary whitespace-nowrap">
+                      {item.label}
+                    </span>
+                  </div>
+                );
+              }
+
+              const group = item as MessageGroup;
+              return (
+                <div key={`group-${idx}`} className="flex flex-col">
+                  {group.messages.map((msg, msgIdx) => (
+                    <MessageBubble
+                      key={msg.id}
+                      message={msg}
+                      isOwn={msg.senderId === currentUserId}
+                      senderName={
+                        msg.senderId !== currentUserId && displayName !== 'Chat'
+                          ? displayName
+                          : undefined
+                      }
+                      isFirstInGroup={msgIdx === 0}
+                      isLastInGroup={msgIdx === group.messages.length - 1}
+                    />
+                  ))}
+                </div>
+              );
+            })}
+            {isOtherUserTyping && (
+              <TypingIndicator
+                name={displayName !== 'Chat' ? displayName : undefined}
+                avatarUrl={otherUser?.avatarUrl}
               />
-            ))}
-            {isOtherUserTyping && <TypingIndicator name={displayName !== 'Chat' ? displayName : undefined} />}
+            )}
             <div ref={messagesEndRef} />
           </div>
         )}
       </div>
 
-      {/* Input area */}
-      <div className="border-t border-border-subtle p-3 sm:p-4">
-        <div className="flex items-center gap-3">
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => {
-              setInput(e.target.value);
-              onInputChange?.(e.target.value);
-            }}
-            onKeyDown={handleKeyDown}
-            placeholder="Type a message..."
-            className={cn(
-              'flex-1 rounded-2xl border border-border-subtle bg-surface-2 px-4 py-2.5 text-sm text-text-primary',
-              'placeholder:text-text-tertiary',
-              'focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold',
-              'transition-all duration-200',
-            )}
-            disabled={loading}
-          />
+      {/* Input area — refined glass input */}
+      <div className="glass border-t border-border-subtle px-4 py-3 sm:px-5 sm:py-4">
+        <div className="flex items-end gap-3 max-w-3xl mx-auto">
+          <div className="flex-1 flex items-end rounded-2xl bg-surface-2 border border-border-subtle px-4 py-2 focus-within:border-gold/50 focus-within:ring-1 focus-within:ring-gold/20 transition-all duration-200">
+            <textarea
+              ref={textareaRef}
+              rows={1}
+              value={input}
+              onChange={(e) => handleInputChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Type a message..."
+              className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-tertiary outline-none resize-none leading-relaxed max-h-[120px]"
+              disabled={loading}
+            />
+          </div>
           <button
             onClick={handleSend}
             disabled={!input.trim() || loading}
             className={cn(
-              'flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full transition-all duration-200',
+              'flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full transition-all duration-200',
               input.trim()
-                ? 'bg-gradient-to-r from-gold to-gold-strong text-gold-ink shadow-lg shadow-gold/20 hover-glow-gold'
+                ? 'bg-gradient-to-r from-gold to-gold-strong text-gold-ink shadow-lg shadow-gold/25 hover-glow-gold active:scale-95'
                 : 'bg-surface-2 text-text-tertiary cursor-not-allowed',
             )}
             aria-label="Send message"
           >
-            <Send className="h-4 w-4" />
+            <Send className="h-4.5 w-4.5" />
           </button>
         </div>
       </div>

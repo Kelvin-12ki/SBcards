@@ -246,16 +246,113 @@ select:-webkit-autofill:focus {
 /* ── Typing indicator dots ── */
 .typing-dot {
   display: inline-block;
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: #636366;
+  background: linear-gradient(135deg, #D4A853, #00F5FF);
   animation: typingBounce 1.4s ease-in-out infinite;
+  box-shadow: 0 0 6px rgba(212, 168, 83, 0.4);
 }
 
 @keyframes typingBounce {
-  0%, 60%, 100% { transform: translateY(0); }
-  30% { transform: translateY(-4px); }
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.6; }
+  30% { transform: translateY(-6px); opacity: 1; }
+}
+
+/* ── Unread badge pulse ── */
+@keyframes unreadPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 168, 83, 0.5); }
+  50%      { box-shadow: 0 0 0 6px rgba(212, 168, 83, 0); }
+}
+.unread-pulse {
+  animation: unreadPulse 2s ease-in-out infinite;
+}
+
+/* ── Read receipt animation ── */
+@keyframes readCheck {
+  0%   { transform: scale(0.5); opacity: 0; }
+  60%  { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-read-check {
+  animation: readCheck 0.35s ease-out forwards;
+}
+
+/* ── Glass-morphism ── */
+.glass {
+  background: rgba(20, 20, 22, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.glass-subtle {
+  background: rgba(28, 28, 31, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* ── Text gradient fade truncation ── */
+.fade-truncate {
+  position: relative;
+  overflow: hidden;
+}
+.fade-truncate::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 2.5rem;
+  background: linear-gradient(90deg, transparent, #141416);
+  pointer-events: none;
+}
+
+/* ── Date separator ── */
+.date-separator {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+}
+.date-separator::before,
+.date-separator::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #2A2A2E, transparent);
+}
+
+/* ── Message entrance animation ── */
+@keyframes messageSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-message-in {
+  animation: messageSlideIn 0.25s ease-out forwards;
+}
+
+/* ── Mobile slide transitions ── */
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+.animate-slide-in-right {
+  animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.animate-slide-in-left {
+  animation: slideInLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ── Search input focus ── */
+.search-glow:focus-within {
+  box-shadow: 0 0 0 2px rgba(212, 168, 83, 0.2);
+  border-color: rgba(212, 168, 83, 0.4);
 }
 
 /* ── Template Utilities ── */

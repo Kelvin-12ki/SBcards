@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { MessageSquare } from 'lucide-react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/auth/useAuth';
 import { cn } from '@/utils/helpers';
 import { getConversations, getMessages, sendMessage, markAsRead, setTypingStatus, getTypingStatus } from '@/api/messaging';
@@ -8,11 +8,9 @@ import type { Conversation, Message } from '@/types/messaging';
 import ConversationList from '@/components/messaging/ConversationList';
 import ChatWindow from '@/components/messaging/ChatWindow';
 import Spinner from '@/components/ui/Spinner';
-import EmptyState from '@/components/ui/EmptyState';
 
 const MessagesPage: React.FC = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | undefined>();
@@ -285,7 +283,6 @@ const MessagesPage: React.FC = () => {
         <h1 className="font-display text-xl sm:text-2xl font-extrabold tracking-tight text-gradient-gold">
           Messages
         </h1>
-        {/* Mobile toggle */}
         {showChatOnMobile && (
           <button
             onClick={() => setShowMobileList(true)}
@@ -298,11 +295,11 @@ const MessagesPage: React.FC = () => {
       </div>
 
       {/* Two-panel layout */}
-      <div className="flex flex-1 gap-0 overflow-hidden rounded-xl sm:rounded-2xl border border-border-subtle bg-surface-1">
+      <div className="flex flex-1 gap-0 overflow-hidden rounded-2xl border border-border-subtle bg-surface-1">
         {/* Left panel - Conversation List */}
         <div
           className={cn(
-            'w-full lg:w-1/3 lg:block border-r border-border-subtle overflow-y-auto',
+            'w-full lg:w-[340px] lg:block border-r border-border-subtle overflow-y-auto',
             showChatOnMobile ? 'hidden' : 'block',
           )}
         >
@@ -317,7 +314,7 @@ const MessagesPage: React.FC = () => {
         {/* Right panel - Chat Window */}
         <div
           className={cn(
-            'flex-1 lg:flex',
+            'flex-1 lg:flex min-w-0',
             showChatOnMobile || (!activeConvId && conversations.length > 0)
               ? 'flex'
               : activeConvId
@@ -338,11 +335,15 @@ const MessagesPage: React.FC = () => {
             />
           ) : (
             <div className="flex items-center justify-center flex-1">
-              <EmptyState
-                icon={<MessageSquare className="h-10 w-10" />}
-                title="Select a conversation"
-                description="Choose a conversation from the left to start chatting."
-              />
+              <div className="flex flex-col items-center text-center">
+                <div className="mb-5 rounded-3xl gradient-magical p-6 text-white animate-glow-pulse">
+                  <MessageSquare className="h-10 w-10" />
+                </div>
+                <h3 className="font-display text-xl font-bold text-gradient-gold">Your Messages</h3>
+                <p className="mt-2.5 text-sm text-text-secondary max-w-xs leading-relaxed">
+                  Select a conversation to start networking.
+                </p>
+              </div>
             </div>
           )}
         </div>

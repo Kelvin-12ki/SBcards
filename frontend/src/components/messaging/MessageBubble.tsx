@@ -7,39 +7,67 @@ export interface MessageBubbleProps {
   message: Message;
   isOwn: boolean;
   senderName?: string;
+  isFirstInGroup?: boolean;
+  isLastInGroup?: boolean;
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn, senderName }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = ({
+  message,
+  isOwn,
+  senderName,
+  isFirstInGroup = true,
+  isLastInGroup = true,
+}) => {
   return (
-    <div className={cn('flex flex-col gap-1', isOwn ? 'items-end' : 'items-start')}>
-      {/* Sender name for other users */}
-      {!isOwn && senderName && (
-        <span className="text-xs text-text-tertiary px-1">{senderName}</span>
+    <div
+      className={cn(
+        'flex flex-col animate-message-in',
+        isOwn ? 'items-end' : 'items-start',
+        isFirstInGroup ? 'mt-2' : 'mt-0.5',
+      )}
+    >
+      {/* Sender name for other users — only show for first in group */}
+      {!isOwn && senderName && isFirstInGroup && (
+        <span className="text-[11px] font-medium text-gold/70 px-1 mb-0.5">{senderName}</span>
       )}
 
       {/* Bubble */}
       <div
         className={cn(
-          'relative max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-md',
+          'relative max-w-[80%] px-4 py-2.5 text-sm leading-relaxed',
           isOwn
-            ? 'bg-gradient-to-r from-gold to-gold-strong text-gold-ink rounded-br-md'
-            : 'bg-surface-2 text-text-primary border border-border-subtle rounded-bl-md',
+            ? cn(
+                'bg-gradient-to-r from-gold to-gold-strong text-gold-ink',
+                isFirstInGroup && isLastInGroup && 'rounded-2xl rounded-br-md',
+                isFirstInGroup && !isLastInGroup && 'rounded-2xl rounded-br-lg',
+                !isFirstInGroup && isLastInGroup && 'rounded-2xl rounded-tr-lg rounded-br-md',
+                !isFirstInGroup && !isLastInGroup && 'rounded-2xl rounded-r-lg',
+              )
+            : cn(
+                'bg-surface-2 text-text-primary border border-border-subtle',
+                isFirstInGroup && isLastInGroup && 'rounded-2xl rounded-bl-md',
+                isFirstInGroup && !isLastInGroup && 'rounded-2xl rounded-bl-lg',
+                !isFirstInGroup && isLastInGroup && 'rounded-2xl rounded-tl-lg rounded-bl-md',
+                !isFirstInGroup && !isLastInGroup && 'rounded-2xl rounded-l-lg',
+              ),
         )}
       >
         <p className="whitespace-pre-wrap break-words">{message.content}</p>
       </div>
 
-      {/* Time + read indicator */}
-      <div className={cn('flex items-center gap-1 px-1', isOwn ? 'flex-row' : 'flex-row-reverse')}>
-        <span className="text-[10px] text-text-tertiary">{timeAgo(message.createdAt)}</span>
-        {isOwn && (
-          message.read ? (
-            <CheckCheck className="h-3 w-3 text-neon-cyan" />
-          ) : (
-            <Check className="h-3 w-3 text-text-tertiary" />
-          )
-        )}
-      </div>
+      {/* Time + read indicator — only show for last in group */}
+      {isLastInGroup && (
+        <div className={cn('flex items-center gap-1 px-1 mt-1', isOwn ? 'flex-row' : 'flex-row-reverse')}>
+          <span className="text-[10px] text-text-tertiary">{timeAgo(message.createdAt)}</span>
+          {isOwn && (
+            message.read ? (
+              <CheckCheck className="h-3.5 w-3.5 text-neon-cyan animate-read-check" />
+            ) : (
+              <Check className="h-3.5 w-3.5 text-text-tertiary" />
+            )
+          )}
+        </div>
+      )}
     </div>
   );
 };
