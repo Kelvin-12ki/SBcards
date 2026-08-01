@@ -34,7 +34,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       {/* Bubble */}
       <div
         className={cn(
-          'relative max-w-[80%] px-4 py-2.5 text-sm leading-relaxed',
+          'relative w-fit max-w-[80%] px-4 py-2.5 text-sm leading-relaxed',
           isOwn
             ? cn(
                 'bg-gradient-to-r from-gold to-gold-strong text-gold-ink',

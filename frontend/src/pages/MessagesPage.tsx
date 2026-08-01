@@ -295,12 +295,14 @@ const MessagesPage: React.FC = () => {
       </div>
 
       {/* Two-panel layout */}
-      <div className="flex flex-1 gap-0 overflow-hidden rounded-2xl border border-border-subtle bg-surface-1">
+      <div className="flex flex-1 min-h-0 gap-0 overflow-hidden rounded-2xl border border-border-subtle bg-surface-1">
         {/* Left panel - Conversation List */}
         <div
           className={cn(
-            'w-full lg:w-[340px] lg:block border-r border-border-subtle overflow-y-auto',
+            'border-r border-border-subtle overflow-y-auto',
+            // Mobile: hide when chat is open. Desktop: always show at fixed width
             showChatOnMobile ? 'hidden' : 'block',
+            'w-full lg:w-[340px] lg:block',
           )}
         >
           <ConversationList
@@ -314,12 +316,9 @@ const MessagesPage: React.FC = () => {
         {/* Right panel - Chat Window */}
         <div
           className={cn(
-            'flex-1 lg:flex min-w-0',
-            showChatOnMobile || (!activeConvId && conversations.length > 0)
-              ? 'flex'
-              : activeConvId
-                ? 'flex'
-                : 'hidden lg:flex',
+            'flex-1 min-w-0',
+            // Mobile: only show if a conversation is selected
+            showChatOnMobile ? 'flex' : 'hidden lg:flex',
           )}
         >
           {activeConvId ? (
