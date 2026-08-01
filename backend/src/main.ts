@@ -32,8 +32,8 @@ async function bootstrap() {
     logger.warn('Could not check/drop stale index (may not exist): ' + (err as Error).message);
   }
 
-  const frontendUrl = configService.get<string>('FRONTEND_URL', 'http://localhost:5174');
-  const port = configService.get<number>('PORT', 3005);
+  const frontendUrl = configService.get<string>('FRONTEND_URL', 'http://localhost:3007');
+  const port = configService.get<number>('PORT', 5177);
   const nodeEnv = configService.get<string>('NODE_ENV', 'development');
 
   // CORS — allow the configured frontend URL in production;
