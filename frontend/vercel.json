@@ -1,4 +1,8 @@
 {
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "installCommand": "npm install",
   "rewrites": [
     { "source": "/api/og/:id", "destination": "/api/og/[id]" },
     { "source": "/((?!assets/|api/).*)", "destination": "/index.html" }
