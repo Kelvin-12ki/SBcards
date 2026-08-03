@@ -1,6 +1,26 @@
 import apiClient from './client';
 import type { Event, EventParticipation, EventParticipant } from '@/types/event';
 
+export interface ExternalEvent {
+  title: string;
+  imageUrl: string;
+  venue: string;
+  dateString: string;
+  parsedDate: string | null;
+  description: string;
+  eventUrl: string;
+  source: string;
+}
+
+export async function getExternalEvents(): Promise<ExternalEvent[]> {
+  try {
+    const { data } = await apiClient.get<ExternalEvent[]>('/events/external/nairobi-guide');
+    return data;
+  } catch {
+    return [];
+  }
+}
+
 export interface EventQueryParams {
   page?: number;
   limit?: number;

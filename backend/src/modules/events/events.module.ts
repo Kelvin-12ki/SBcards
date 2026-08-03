@@ -4,6 +4,8 @@ import { Event, EventSchema } from './entities/event.entity';
 import { EventParticipation, EventParticipationSchema } from './entities/event-participation.entity';
 import { EventsService } from './events.service';
 import { EventsController } from './events.controller';
+import { ExternalEventsController } from './external-events.controller';
+import { NairobiEventsScraperService } from './nairobi-events-scraper.service';
 import { UsersModule } from '../users/users.module';
 import { CardsModule } from '../cards/cards.module';
 import { User, UserSchema } from '../users/entities/user.entity';
@@ -20,8 +22,8 @@ import { Card, CardSchema } from '../cards/entities/card.entity';
     UsersModule,
     CardsModule,
   ],
-  providers: [EventsService],
-  controllers: [EventsController],
-  exports: [EventsService],
+  providers: [EventsService, NairobiEventsScraperService],
+  controllers: [EventsController, ExternalEventsController],
+  exports: [EventsService, NairobiEventsScraperService],
 })
 export class EventsModule {}
