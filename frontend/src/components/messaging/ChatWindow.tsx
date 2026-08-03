@@ -212,7 +212,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             )}
           </div>
         ) : (
-          <div className="flex flex-col gap-0 max-w-3xl mx-auto">
+          <div className="flex flex-col gap-0 px-2 sm:px-0">
             {groupedMessages.map((item, idx) => {
               if ('type' in item && item.type === 'date-separator') {
                 return (
@@ -257,7 +257,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       {/* Input area — refined glass input */}
       <div className="glass border-t border-border-subtle px-4 py-3 sm:px-5 sm:py-4">
-        <div className="flex items-end gap-3 max-w-3xl mx-auto">
+        <div className="flex items-end gap-3">
           <div className="flex-1 flex items-end rounded-2xl bg-surface-2 border border-border-subtle px-4 py-2 focus-within:border-gold/50 focus-within:ring-1 focus-within:ring-gold/20 transition-all duration-200">
             <textarea
               ref={textareaRef}
