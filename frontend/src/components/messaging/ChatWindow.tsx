@@ -164,7 +164,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         {onBack && (
           <button
             onClick={onBack}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full text-text-tertiary hover:bg-surface-2 hover:text-text-primary transition-colors"
+            className="lg:hidden min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full text-text-tertiary hover:bg-surface-2 hover:text-text-primary transition-colors"
             aria-label="Back to conversations"
           >
             <ArrowLeft className="h-5 w-5" />

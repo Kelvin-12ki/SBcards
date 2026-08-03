@@ -257,11 +257,16 @@ const MessagesPage: React.FC = () => {
     [activeConvId, currentUserId],
   );
 
-  const handleSelectConversation = (id: string) => {
+  const handleBack = useCallback(() => {
+    setShowMobileList(true);
+    setSearchParams({}, { replace: true });
+  }, [setSearchParams]);
+
+  const handleSelectConversation = useCallback((id: string) => {
     setActiveConvId(id);
     setShowMobileList(false);
     setSearchParams({ conversation: id }, { replace: true });
-  };
+  }, [setSearchParams]);
 
   const activeConversation = conversations.find((c) => c.id === activeConvId);
 
@@ -297,12 +302,11 @@ const MessagesPage: React.FC = () => {
       {/* Two-panel layout */}
       <div className="flex flex-1 min-h-0 gap-0 overflow-hidden rounded-2xl border border-border-subtle bg-surface-1">
         {/* Left panel - Conversation List */}
+        {/* Desktop: always visible at 340px. Mobile: show/hide based on showMobileList */}
         <div
           className={cn(
-            'border-r border-border-subtle overflow-y-auto',
-            // Mobile: hide when chat is open. Desktop: always show at fixed width
+            'w-full lg:w-[340px] lg:block border-r border-border-subtle overflow-y-auto flex-shrink-0',
             showChatOnMobile ? 'hidden' : 'block',
-            'w-full lg:w-[340px] lg:block',
           )}
         >
           <ConversationList
@@ -314,10 +318,10 @@ const MessagesPage: React.FC = () => {
         </div>
 
         {/* Right panel - Chat Window */}
+        {/* Desktop: always visible. Mobile: only visible when chat is open */}
         <div
           className={cn(
             'flex-1 min-w-0',
-            // Mobile: only show if a conversation is selected
             showChatOnMobile ? 'flex' : 'hidden lg:flex',
           )}
         >
@@ -330,10 +334,10 @@ const MessagesPage: React.FC = () => {
               isOtherUserTyping={isOtherTyping}
               onInputChange={handleInputChange}
               otherUser={activeConversation?.otherUser}
-              onBack={conversations.length > 0 ? () => setShowMobileList(true) : undefined}
+              onBack={handleBack}
             />
           ) : (
-            <div className="flex items-center justify-center flex-1">
+            <div className="hidden lg:flex items-center justify-center flex-1">
               <div className="flex flex-col items-center text-center">
                 <div className="mb-5 rounded-3xl gradient-magical p-6 text-white animate-glow-pulse">
                   <MessageSquare className="h-10 w-10" />
