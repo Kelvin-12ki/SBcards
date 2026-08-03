@@ -158,7 +158,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   }, [onInputChange]);
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full w-full flex-col">
       {/* Header — glass-morphism */}
       <div className="glass flex items-center gap-3 px-4 py-3 border-b border-border-subtle z-10">
         {onBack && (
