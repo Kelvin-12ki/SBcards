@@ -47,70 +47,51 @@ export class NairobiEventsScraperService {
       const $ = cheerio.load(html);
       const events: NairobiEvent[] = [];
 
-      // EventPrime plugin renders event cards in various selectors
-      // Try multiple selectors for resilience
-      const selectors = [
-        '.ep-card',
-        '.ep-card-list',
-        '.eventprime-event-card',
-        '.ep-event-card',
-        '[class*="ep-card"]',
-        '.event-card',
-        'article',
-      ];
-
-      let cards = $(selectors[0]);
-      for (const selector of selectors) {
-        cards = $(selector);
-        if (cards.length > 0) {
-          this.logger.log(`Found ${cards.length} cards with selector: ${selector}`);
-          break;
-        }
-      }
+      // EventPrime plugin uses .ep-event-card for each event card
+      const cards = $('.ep-event-card');
+      this.logger.log(`Found ${cards.length} event cards`);
 
       if (cards.length === 0) {
-        // Fallback: try to find event links in the page
-        this.logger.warn('No event cards found with standard selectors, trying fallback parsing');
+        this.logger.warn('No event cards found, trying fallback parsing');
         return this.fallbackParse($);
       }
 
       cards.each((_, card) => {
         const $card = $(card);
 
-        // Extract title
-        const title =
-          $card.find('h3, h4, .ep-card-title, [class*="title"] a').first().text().trim() ||
-          $card.find('a').first().text().trim();
+        // Title — .ep-box-card-title
+        const title = $card.find('.ep-box-card-title').text().trim();
+        if (!title) return;
 
-        if (!title) return; // skip empty cards
-
-        // Extract event URL
-        const linkEl = $card.find('a[href*="/event/"]').first();
-        const relativeUrl = linkEl.attr('href') || $card.find('a').first().attr('href') || '';
+        // Event URL — .ep-img-link
+        const relativeUrl = $card.find('.ep-img-link').attr('href') || '';
         const eventUrl = relativeUrl.startsWith('http')
           ? relativeUrl
           : `${this.BASE_URL}${relativeUrl}`;
 
-        // Extract image
-        const imageUrl =
-          $card.find('img').first().attr('src') ||
-          $card.find('img').first().attr('data-src') ||
-          '';
+        // Image — try <source> srcset first (webp), then <img> src
+        let imageUrl = '';
+        const sourceEl = $card.find('.ep-img-link picture source').first();
+        if (sourceEl.length) {
+          const srcset = sourceEl.attr('srcset') || '';
+          // Get the largest image from srcset
+          const parts = srcset.split(',').map((s) => s.trim());
+          const lastPart = parts[parts.length - 1] || '';
+          imageUrl = lastPart.split(' ')[0] || '';
+        }
+        if (!imageUrl) {
+          imageUrl = $card.find('.ep-img-link img').first().attr('src') || '';
+        }
 
-        // Extract venue/location
-        const venue =
-          $card.find('[class*="venue"], [class*="location"], [class*="location_on"]')
-            .first()
-            .text()
-            .trim() || '';
+        // Venue — .ep-box-card-venue
+        const venue = $card.find('.ep-box-card-venue').text().trim();
 
-        // Extract date
-        const dateEl = $card.find('[class*="date"], [class*="time"], time').first();
-        const dateString = dateEl.text().trim() || '';
+        // Date — .ep-card-event-date-start
+        const dateString =
+          $card.find('.ep-card-event-date-start').text().trim() || 'Date TBA';
 
-        // Extract description
-        const description =
-          $card.find('p, [class*="desc"], [class*="excerpt"]').first().text().trim() || '';
+        // Description — .ep-box-card-desc
+        const description = $card.find('.ep-box-card-desc').text().trim();
 
         // Parse date to ISO
         const parsedDate = this.parseDate(dateString);
@@ -119,7 +100,7 @@ export class NairobiEventsScraperService {
           title,
           imageUrl,
           venue,
-          dateString: dateString || 'Date TBA',
+          dateString,
           parsedDate,
           description: description.slice(0, 300),
           eventUrl,
@@ -135,7 +116,6 @@ export class NairobiEventsScraperService {
       this.logger.error(
         `Failed to scrape nairobieventsguide.com: ${(error as Error).message}`,
       );
-      // Return stale cache if available
       if (this.cache) {
         this.logger.log('Returning stale cache due to scrape failure');
         return this.cache;
@@ -147,7 +127,6 @@ export class NairobiEventsScraperService {
   private fallbackParse($: cheerio.CheerioAPI): NairobiEvent[] {
     const events: NairobiEvent[] = [];
 
-    // Find all links to /event/ pages
     $('a[href*="/event/"]').each((_, el) => {
       const $a = $(el);
       const title = $a.text().trim();
@@ -158,14 +137,11 @@ export class NairobiEventsScraperService {
         ? relativeUrl
         : `${this.BASE_URL}${relativeUrl}`;
 
-      // Avoid duplicates
       if (events.some((e) => e.eventUrl === eventUrl)) return;
 
-      // Try to find date near this element
       const parent = $a.closest('div, li, article');
       const dateString =
         parent.find('[class*="date"], time').first().text().trim() || 'Date TBA';
-
       const imageUrl = parent.find('img').first().attr('src') || '';
       const venue = parent.find('[class*="venue"], [class*="location"]').first().text().trim() || '';
 
@@ -190,10 +166,9 @@ export class NairobiEventsScraperService {
   private parseDate(dateStr: string): string | null {
     if (!dateStr || dateStr === 'Date TBA') return null;
     try {
-      // Handle formats like "Fri, August 7, 2026 06:00 PM" or "Sat, August 1, 2026"
       const cleaned = dateStr
-        .replace(/^Mon|Tue|Wed|Thu|Fri|Sat|Sun,?\s*/i, '')
-        .replace(/\s*–\s*.*$/, ''); // remove end date
+        .replace(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun),?\s*/i, '')
+        .replace(/\s*–\s*.*$/, '');
       const parsed = new Date(cleaned);
       if (!isNaN(parsed.getTime())) {
         return parsed.toISOString();
