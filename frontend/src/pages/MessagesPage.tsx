@@ -282,9 +282,9 @@ const MessagesPage: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-10rem)] md:h-[calc(100vh-12rem)]">
+    <div className="flex flex-col h-[calc(100vh-10rem)] md:h-[calc(100vh-12rem)] -mx-4 -my-4 md:-mx-6 md:-my-6 lg:-mx-8 lg:-my-8">
       {/* Heading */}
-      <div className="mb-5 flex items-center justify-between">
+      <div className="mb-5 flex items-center justify-between px-4 md:px-6 lg:px-8">
         <h1 className="font-display text-xl sm:text-2xl font-extrabold tracking-tight text-gradient-gold">
           Messages
         </h1>
