@@ -22,8 +22,6 @@ const MessagesPage: React.FC = () => {
   const [isOtherTyping, setIsOtherTyping] = useState(false);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTypingSentRef = useRef<number>(0);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
   const currentUserId = user?.id || '';
 
   // Cleanup typing timeout on unmount
@@ -32,11 +30,6 @@ const MessagesPage: React.FC = () => {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     };
   }, []);
-
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
 
   // Fetch conversations
   useEffect(() => {

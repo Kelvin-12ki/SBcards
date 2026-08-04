@@ -123,10 +123,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   // Group messages by date and sender
   const groupedMessages = useMemo(() => groupMessages(messages), [messages]);
 
-  // Auto-scroll to bottom on new messages or typing indicator
+  // Only scroll to bottom when NEW messages are appended (not on initial load)
+  const prevMessagesLenRef = useRef(messages.length);
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isOtherUserTyping]);
+    if (messages.length > prevMessagesLenRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+    prevMessagesLenRef.current = messages.length;
+  }, [messages]);
 
   // Auto-resize textarea
   useEffect(() => {

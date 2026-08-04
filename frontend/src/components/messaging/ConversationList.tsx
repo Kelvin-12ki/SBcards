@@ -74,7 +74,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
             || (otherUser ? [otherUser.firstName, otherUser.lastName].filter(Boolean).join(' ') : '')
             || otherUser?.email
             || 'Unknown User';
-          const hasUnread = conv.unreadCount && conv.unreadCount > 0;
+          const hasUnread = (conv.unreadCount ?? 0) > 0;
 
           return (
             <button
