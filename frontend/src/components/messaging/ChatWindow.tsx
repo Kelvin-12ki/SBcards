@@ -21,6 +21,7 @@ export interface ChatWindowProps {
     email?: string;
   };
   onBack?: () => void;
+  onDelete?: (messageId: string) => void;
 }
 
 /** Format a date to a human-readable label for date separators */
@@ -106,6 +107,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   onInputChange,
   otherUser,
   onBack,
+  onDelete,
 }) => {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -243,6 +245,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                       }
                       isFirstInGroup={msgIdx === 0}
                       isLastInGroup={msgIdx === group.messages.length - 1}
+                      onDelete={onDelete}
                     />
                   ))}
                 </div>

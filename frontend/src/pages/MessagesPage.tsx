@@ -3,7 +3,7 @@ import { MessageSquare } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/auth/useAuth';
 import { cn } from '@/utils/helpers';
-import { getConversations, getMessages, sendMessage, markAsRead, setTypingStatus, getTypingStatus } from '@/api/messaging';
+import { getConversations, getMessages, sendMessage, markAsRead, setTypingStatus, getTypingStatus, deleteMessage } from '@/api/messaging';
 import type { Conversation, Message } from '@/types/messaging';
 import ConversationList from '@/components/messaging/ConversationList';
 import ChatWindow from '@/components/messaging/ChatWindow';
@@ -255,6 +255,23 @@ const MessagesPage: React.FC = () => {
     setSearchParams({}, { replace: true });
   }, [setSearchParams]);
 
+  const handleDeleteMessage = useCallback(
+    async (messageId: string) => {
+      if (!activeConvId) return;
+      // Optimistic: remove message immediately
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      try {
+        await deleteMessage(activeConvId, messageId);
+      } catch (err) {
+        console.error('Failed to delete message:', err);
+        // Re-fetch messages on failure to restore state
+        const data = await getMessages(activeConvId);
+        setMessages(data);
+      }
+    },
+    [activeConvId],
+  );
+
   const handleSelectConversation = useCallback((id: string) => {
     setActiveConvId(id);
     setShowMobileList(false);
@@ -328,6 +345,7 @@ const MessagesPage: React.FC = () => {
               onInputChange={handleInputChange}
               otherUser={activeConversation?.otherUser}
               onBack={handleBack}
+              onDelete={handleDeleteMessage}
             />
           ) : (
             <div className="hidden lg:flex items-center justify-center flex-1">

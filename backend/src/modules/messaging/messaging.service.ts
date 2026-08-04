@@ -388,6 +388,73 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * Delete a message. Only the sender can delete their own message.
+   * If the deleted message was the last one, updates the conversation preview.
+   */
+  async deleteMessage(
+    conversationId: string,
+    messageId: string,
+    userId: string,
+  ): Promise<void> {
+    const conversation = await this.conversationModel
+      .findById(conversationId)
+      .exec();
+
+    if (!conversation) {
+      throw new NotFoundException('Conversation not found');
+    }
+
+    if (!conversation.participantIds.some((id) => id.toString() === userId)) {
+      throw new ForbiddenException('You are not a participant in this conversation');
+    }
+
+    const message = await this.messageModel.findById(messageId).exec();
+
+    if (!message) {
+      throw new NotFoundException('Message not found');
+    }
+
+    if (message.senderId !== userId) {
+      throw new ForbiddenException('You can only delete your own messages');
+    }
+
+    await this.messageModel.findByIdAndDelete(messageId).exec();
+
+    // If this was the last message, update conversation preview
+    if (
+      conversation.lastMessageAt &&
+      message.createdAt &&
+      new Date(message.createdAt).getTime() >= new Date(conversation.lastMessageAt).getTime() - 1000
+    ) {
+      const previousMessage = await this.messageModel
+        .findOne({ conversationId })
+        .sort({ createdAt: -1 })
+        .exec();
+
+      if (previousMessage) {
+        const preview =
+          previousMessage.content.length > 100
+            ? previousMessage.content.substring(0, 97) + '...'
+            : previousMessage.content;
+        await this.conversationModel.findByIdAndUpdate(conversationId, {
+          $set: {
+            lastMessageAt: previousMessage.createdAt,
+            lastMessagePreview: preview,
+          },
+        });
+      } else {
+        await this.conversationModel.findByIdAndUpdate(conversationId, {
+          $set: { lastMessageAt: null, lastMessagePreview: '' },
+        });
+      }
+    }
+
+    this.logger.log(
+      `Message ${messageId} deleted by user ${userId} in conversation ${conversationId}`,
+    );
+  }
+
+  /**
    * Get total unread message count across all conversations for a user.
    */
   async getUnreadCount(userId: string): Promise<number> {

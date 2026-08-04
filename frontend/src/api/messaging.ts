@@ -47,3 +47,7 @@ export async function getTypingStatus(conversationId: string): Promise<{ typing:
   const { data } = await apiClient.get(`/conversations/${conversationId}/typing`);
   return data;
 }
+
+export async function deleteMessage(conversationId: string, messageId: string): Promise<void> {
+  await apiClient.delete(`/conversations/${conversationId}/messages/${messageId}`);
+}

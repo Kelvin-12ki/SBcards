@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
@@ -128,6 +129,19 @@ export class MessagingController {
       userId,
       dto.content,
     );
+  }
+
+  @Delete(':id/messages/:messageId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete a message (sender only)' })
+  async deleteMessage(
+    @Param('id') conversationId: string,
+    @Param('messageId') messageId: string,
+    @CurrentUser() jwtUser: JwtUser,
+  ) {
+    const userId = this.resolveUserId(jwtUser);
+    await this.messagingService.deleteMessage(conversationId, messageId, userId);
+    return { success: true };
   }
 
   @Patch(':id/read')

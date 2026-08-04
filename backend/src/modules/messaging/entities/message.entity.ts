@@ -30,6 +30,9 @@ export class Message {
 
   @Prop()
   readAt?: Date;
+
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export const MessageSchema = SchemaFactory.createForClass(Message);
