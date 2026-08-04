@@ -67,8 +67,11 @@ export async function registerPushToken(): Promise<void> {
       }
     }
 
+    const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY
+      || 'BGm7NPuuufrsBE2KclSxyaZ8M8-3CHwSYaU6c5MrHo8vFIhFeDDIGfuUVUIggjS1Lz3tzTwLBEo3EV2jZzuNRYw';
+
     const token = await getToken(msg, {
-      vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY || undefined,
+      vapidKey,
       serviceWorkerRegistration: swRegistration,
     });
 
