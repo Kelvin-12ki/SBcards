@@ -19,25 +19,6 @@ function getMessagingInstance() {
   return messaging;
 }
 
-/** Send Firebase config to the service worker so it can handle background messages */
-async function sendConfigToSW(): Promise<void> {
-  if (!('serviceWorker' in navigator)) return;
-  try {
-    const registration = await navigator.serviceWorker.ready;
-    registration.active?.postMessage({
-      type: 'FIREBASE_CONFIG',
-      config: {
-        apiKey: firebaseConfig.apiKey,
-        authDomain: firebaseConfig.authDomain,
-        projectId: firebaseConfig.projectId,
-        storageBucket: firebaseConfig.storageBucket,
-        messagingSenderId: firebaseConfig.messagingSenderId,
-        appId: firebaseConfig.appId,
-      },
-    });
-  } catch {}
-}
-
 /**
  * Request notification permission and register FCM token with backend.
  * Call this after user logs in.
@@ -46,24 +27,54 @@ export async function registerPushToken(): Promise<void> {
   const msg = getMessagingInstance();
   if (!msg) return;
 
-  // Skip if notifications not supported or already denied
+  // Skip if notifications not supported
   if (!('Notification' in window)) return;
-  if (Notification.permission === 'denied') return;
 
   try {
-    const permission = await Notification.requestPermission();
+    // Check current permission first
+    let permission = Notification.permission;
+    if (permission === 'denied') {
+      console.warn('Notifications blocked by user');
+      return;
+    }
+
+    // Request permission if not yet decided
+    if (permission === 'default') {
+      permission = await Notification.requestPermission();
+    }
+
     if (permission !== 'granted') return;
 
-    // Send config to service worker
-    await sendConfigToSW();
+    // Register our dedicated Firebase messaging service worker
+    let swRegistration: ServiceWorkerRegistration | undefined;
+    if ('serviceWorker' in navigator) {
+      try {
+        swRegistration = await navigator.serviceWorker.register(
+          '/firebase-messaging-sw.js',
+          { scope: '/' },
+        );
+        // Wait for it to be active
+        if (swRegistration.installing) {
+          await new Promise<void>((resolve) => {
+            swRegistration!.installing!.addEventListener('statechange', (e) => {
+              if ((e.target as ServiceWorker).state === 'activated') resolve();
+            });
+          });
+        }
+        console.log('Firebase messaging SW registered');
+      } catch (e) {
+        console.warn('Firebase messaging SW registration failed:', e);
+      }
+    }
 
     const token = await getToken(msg, {
       vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY || undefined,
+      serviceWorkerRegistration: swRegistration,
     });
 
     if (token) {
       await apiClient.post('/users/me/fcm-token', { token });
-      console.log('FCM token registered');
+      console.log('FCM token registered successfully');
     }
   } catch (e) {
     console.warn('Push registration failed:', e);

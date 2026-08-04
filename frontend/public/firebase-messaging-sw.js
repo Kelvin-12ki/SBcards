@@ -1,23 +1,7 @@
 // Firebase Cloud Messaging service worker
-// This runs in the background and shows notifications when the app is not in focus
+// Handles background push notifications — no Firebase SDK needed here
 
-importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
-
-// Firebase config is injected by the app via postMessage after registration
-let firebaseConfig = {};
-
-self.addEventListener('message', (event) => {
-  if (event.data?.type === 'FIREBASE_CONFIG') {
-    firebaseConfig = event.data.config;
-    if (!firebaseConfig._initialized) {
-      firebase.initializeApp(firebaseConfig);
-      firebaseConfig._initialized = true;
-    }
-  }
-});
-
-// Handle background messages
+// Handle background push events
 self.addEventListener('push', (event) => {
   if (!event.data) return;
 
@@ -28,8 +12,8 @@ self.addEventListener('push', (event) => {
     payload = { notification: { title: 'SBCards', body: event.data.text() } };
   }
 
-  const title = payload.notification?.title || 'SBCards';
-  const body = payload.notification?.body || '';
+  const title = payload.notification?.title || payload.data?.title || 'SBCards';
+  const body = payload.notification?.body || payload.data?.body || '';
   const link = payload.data?.link || '/messages';
 
   event.waitUntil(
@@ -43,7 +27,7 @@ self.addEventListener('push', (event) => {
   );
 });
 
-// Handle notification click
+// Handle notification click — open or focus the app
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const link = event.notification.data?.link || '/messages';
