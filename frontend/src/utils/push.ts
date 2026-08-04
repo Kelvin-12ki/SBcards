@@ -1,51 +1,69 @@
 // @ts-nocheck — firebase/messaging types not available in this build
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
-import app, { firebaseConfig } from '@/utils/firebase';
+import app from '@/utils/firebase';
 import apiClient from '@/api/client';
 
 let messaging: ReturnType<typeof getMessaging> | null = null;
 
-/** Initialize Firebase Cloud Messaging */
+const VAPID_KEY = 'BGm7NPuuufrsBE2KclSxyaZ8M8-3CHwSYaU6c5MrHo8vFIhFeDDIGfuUVUIggjS1Lz3tzTwLBEo3EV2jZzuNRYw';
+
 function getMessagingInstance() {
-  if (!app) return null;
+  if (!app) {
+    console.warn('[Push] Firebase app not initialized');
+    return null;
+  }
   if (!messaging) {
     try {
       messaging = getMessaging(app);
+      console.log('[Push] Firebase messaging initialized');
     } catch (e) {
-      console.warn('FCM init failed:', e);
+      console.warn('[Push] FCM init failed:', e);
       return null;
     }
   }
   return messaging;
 }
 
+/** Get current notification permission status */
+export function getNotificationStatus(): 'granted' | 'denied' | 'default' | 'unsupported' {
+  if (!('Notification' in window)) return 'unsupported';
+  return Notification.permission as 'granted' | 'denied' | 'default';
+}
+
 /**
  * Request notification permission and register FCM token with backend.
- * Call this after user logs in.
  */
-export async function registerPushToken(): Promise<void> {
+export async function registerPushToken(): Promise<boolean> {
   const msg = getMessagingInstance();
-  if (!msg) return;
+  if (!msg) {
+    console.warn('[Push] No messaging instance');
+    return false;
+  }
 
-  // Skip if notifications not supported
-  if (!('Notification' in window)) return;
+  if (!('Notification' in window)) {
+    console.warn('[Push] Notifications not supported');
+    return false;
+  }
+
+  console.log('[Push] Current permission:', Notification.permission);
 
   try {
-    // Check current permission first
+    // Always try to request — even if denied, this handles the edge case
+    // where the user reset it externally
     let permission = Notification.permission;
-    if (permission === 'denied') {
-      console.warn('Notifications blocked by user');
-      return;
-    }
 
-    // Request permission if not yet decided
     if (permission === 'default') {
+      console.log('[Push] Requesting permission...');
       permission = await Notification.requestPermission();
+      console.log('[Push] Permission result:', permission);
     }
 
-    if (permission !== 'granted') return;
+    if (permission !== 'granted') {
+      console.warn('[Push] Permission not granted:', permission);
+      return false;
+    }
 
-    // Register our dedicated Firebase messaging service worker
+    // Register Firebase messaging service worker
     let swRegistration: ServiceWorkerRegistration | undefined;
     if ('serviceWorker' in navigator) {
       try {
@@ -53,6 +71,8 @@ export async function registerPushToken(): Promise<void> {
           '/firebase-messaging-sw.js',
           { scope: '/' },
         );
+        console.log('[Push] Service worker registered');
+
         // Wait for it to be active
         if (swRegistration.installing) {
           await new Promise<void>((resolve) => {
@@ -61,32 +81,34 @@ export async function registerPushToken(): Promise<void> {
             });
           });
         }
-        console.log('Firebase messaging SW registered');
       } catch (e) {
-        console.warn('Firebase messaging SW registration failed:', e);
+        console.warn('[Push] SW registration failed:', e);
       }
     }
 
-    const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY
-      || 'BGm7NPuuufrsBE2KclSxyaZ8M8-3CHwSYaU6c5MrHo8vFIhFeDDIGfuUVUIggjS1Lz3tzTwLBEo3EV2jZzuNRYw';
-
+    console.log('[Push] Getting FCM token...');
     const token = await getToken(msg, {
-      vapidKey,
+      vapidKey: VAPID_KEY,
       serviceWorkerRegistration: swRegistration,
     });
 
     if (token) {
+      console.log('[Push] Got token, saving to backend...');
       await apiClient.post('/users/me/fcm-token', { token });
-      console.log('FCM token registered successfully');
+      console.log('[Push] Token registered successfully!');
+      return true;
+    } else {
+      console.warn('[Push] No token received');
+      return false;
     }
   } catch (e) {
-    console.warn('Push registration failed:', e);
+    console.error('[Push] Registration failed:', e);
+    return false;
   }
 }
 
 /**
- * Listen for foreground messages and show a toast/notification.
- * Call this once when the app loads (after auth is ready).
+ * Listen for foreground messages and show a toast.
  */
 export function onForegroundMessage(
   callback: (payload: { title?: string; body?: string; link?: string }) => void,
@@ -95,6 +117,7 @@ export function onForegroundMessage(
   if (!msg) return () => {};
 
   return onMessage(msg, (payload: any) => {
+    console.log('[Push] Foreground message:', payload);
     callback({
       title: payload.notification?.title,
       body: payload.notification?.body,

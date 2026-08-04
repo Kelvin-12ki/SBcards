@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, Bell, BellOff } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/auth/useAuth';
 import { cn } from '@/utils/helpers';
@@ -8,6 +8,8 @@ import type { Conversation, Message } from '@/types/messaging';
 import ConversationList from '@/components/messaging/ConversationList';
 import ChatWindow from '@/components/messaging/ChatWindow';
 import Spinner from '@/components/ui/Spinner';
+import { registerPushToken, getNotificationStatus } from '@/utils/push';
+import toast from 'react-hot-toast';
 
 const MessagesPage: React.FC = () => {
   const { user } = useAuth();
@@ -280,6 +282,29 @@ const MessagesPage: React.FC = () => {
 
   const activeConversation = conversations.find((c) => c.id === activeConvId);
 
+  // Notification permission state
+  const [notifStatus, setNotifStatus] = useState<'granted' | 'denied' | 'default' | 'unsupported'>(() => getNotificationStatus());
+  const [notifRegistering, setNotifRegistering] = useState(false);
+
+  const handleEnableNotifications = useCallback(async () => {
+    setNotifRegistering(true);
+    try {
+      const result = await registerPushToken();
+      setNotifStatus(getNotificationStatus());
+      if (result) {
+        toast.success('Notifications enabled!');
+      } else if (getNotificationStatus() === 'denied') {
+        toast.error('Notifications blocked. Enable them in browser settings (click the lock icon in the address bar).');
+      } else {
+        toast.error('Could not enable notifications. Try again.');
+      }
+    } catch {
+      toast.error('Failed to enable notifications');
+    } finally {
+      setNotifRegistering(false);
+    }
+  }, []);
+
   // Mobile: show list or chat
   const showChatOnMobile = !showMobileList && activeConvId;
 
@@ -308,6 +333,34 @@ const MessagesPage: React.FC = () => {
           </button>
         )}
       </div>
+
+      {/* Notification permission banner */}
+      {notifStatus !== 'granted' && notifStatus !== 'unsupported' && (
+        <div className="mx-4 md:mx-6 lg:mx-8 mb-4">
+          <div className={cn(
+            'flex items-center gap-3 rounded-xl px-4 py-3 text-sm border',
+            notifStatus === 'denied'
+              ? 'bg-red-500/10 border-red-500/20 text-red-400'
+              : 'bg-gold/10 border-gold/20 text-gold',
+          )}>
+            {notifStatus === 'denied' ? <BellOff className="h-4 w-4 flex-shrink-0" /> : <Bell className="h-4 w-4 flex-shrink-0" />}
+            <span className="flex-1">
+              {notifStatus === 'denied'
+                ? 'Notifications are blocked. Click the lock icon in your address bar → Notifications → Allow, then refresh.'
+                : 'Enable notifications to get alerted when someone messages you.'}
+            </span>
+            {notifStatus === 'default' && (
+              <button
+                onClick={handleEnableNotifications}
+                disabled={notifRegistering}
+                className="flex-shrink-0 rounded-lg bg-gold px-3 py-1.5 text-xs font-bold text-gold-ink hover:bg-gold-strong transition-colors disabled:opacity-50"
+              >
+                {notifRegistering ? 'Enabling...' : 'Enable'}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Two-panel layout */}
       <div className="flex flex-1 min-h-0 gap-0 overflow-hidden rounded-2xl border border-border-subtle bg-surface-1">
