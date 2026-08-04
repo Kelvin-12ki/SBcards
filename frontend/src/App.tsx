@@ -29,6 +29,24 @@ const App: React.FC = () => {
     );
   }, [showRefreshPrompt, updateServiceWorker]);
 
+  // Listen for foreground push notifications
+  React.useEffect(() => {
+    import('@/utils/push').then(({ onForegroundMessage }) => {
+      const unsub = onForegroundMessage((payload) => {
+        toast(
+          () => (
+            <div className="flex flex-col gap-1">
+              <p className="font-bold text-sm">{payload.title || 'SBCards'}</p>
+              <p className="text-xs text-text-secondary">{payload.body}</p>
+            </div>
+          ),
+          { duration: 6000 },
+        );
+      });
+      return unsub;
+    }).catch(() => {});
+  }, []);
+
   return (
     <BrowserRouter>
       <AuthProvider>

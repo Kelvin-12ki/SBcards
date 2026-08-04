@@ -15,6 +15,7 @@ import {
 import { Message, MessageDocument } from './entities/message.entity';
 import { UsersService } from '../users/users.service';
 import { ConnectionsService } from '../connections/connections.service';
+import { PushService } from '../notifications/push.service';
 
 @Injectable()
 export class MessagingService implements OnModuleInit, OnModuleDestroy {
@@ -30,6 +31,7 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
     private readonly messageModel: Model<MessageDocument>,
     private readonly usersService: UsersService,
     private readonly connectionsService: ConnectionsService,
+    private readonly pushService: PushService,
   ) {}
 
   onModuleInit() {
@@ -275,6 +277,25 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
 
     // Clear typing status for this user after sending
     this.clearTyping(conversationId, senderId);
+
+    // Send push notification to recipient
+    try {
+      const recipientId = otherParticipantId;
+      if (recipientId) {
+        const sender = await this.usersService.findById(senderId);
+        const senderName = sender?.displayName || sender?.email || 'Someone';
+        const body = content.length > 100 ? content.substring(0, 97) + '...' : content;
+
+        this.pushService.sendPush(
+          recipientId,
+          senderName,
+          body,
+          { link: `/messages?conversation=${conversationId}` },
+        ).catch(() => {}); // fire-and-forget
+      }
+    } catch {
+      // Don't fail the message send if push fails
+    }
 
     return message;
   }

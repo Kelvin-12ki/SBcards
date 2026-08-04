@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   Patch,
   Body,
   Query,
@@ -74,5 +75,20 @@ export class UsersController {
   @ApiOperation({ summary: 'Get a user public profile by ID' })
   async getPublicProfile(@Param('userId') userId: string): Promise<User> {
     return this.usersService.findById(userId);
+  }
+
+  @Post('me/fcm-token')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Save FCM push token for notifications' })
+  async saveFcmToken(
+    @CurrentUser() jwtUser: JwtUser,
+    @Body('token') token: string,
+  ) {
+    const user = await this.usersService.findByFirebaseUid(jwtUser.uid);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    await this.usersService.update(user.id, { fcmToken: token });
+    return { success: true };
   }
 }

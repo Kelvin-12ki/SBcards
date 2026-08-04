@@ -30,5 +30,5 @@ if (hasFirebaseConfig) {
   console.info('Firebase not configured — running in demo mode.');
 }
 
-export { auth, storage };
+export { auth, storage, firebaseConfig };
 export default app;

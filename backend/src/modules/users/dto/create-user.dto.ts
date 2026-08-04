@@ -190,4 +190,11 @@ export class CreateUserDto {
   @IsOptional()
   @IsBoolean()
   profileComplete?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'FCM push token for notifications',
+  })
+  @IsOptional()
+  @IsString()
+  fcmToken?: string;
 }

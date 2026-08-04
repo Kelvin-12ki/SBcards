@@ -9,6 +9,7 @@ import { MessagingService } from './messaging.service';
 import { MessagingController } from './messaging.controller';
 import { UsersModule } from '../users/users.module';
 import { ConnectionsModule } from '../connections/connections.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ConnectionsModule } from '../connections/connections.module';
     ]),
     UsersModule,
     ConnectionsModule,
+    NotificationsModule,
   ],
   providers: [MessagingService],
   controllers: [MessagingController],

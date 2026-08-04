@@ -89,6 +89,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(r.user));
     setUser(r.user);
     setToken(r.accessToken);
+    // Register push token after login
+    import('@/utils/push').then(({ registerPushToken }) => registerPushToken()).catch(() => {});
   }, []);
 
   const loginWithGoogle = useCallback(async () => {
@@ -97,6 +99,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(r.user));
     setUser(r.user);
     setToken(r.accessToken);
+    // Register push token after login
+    import('@/utils/push').then(({ registerPushToken }) => registerPushToken()).catch(() => {});
   }, []);
 
   const register = useCallback(async (email: string, password: string, displayName?: string) => {
@@ -105,6 +109,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(r.user));
     setUser(r.user);
     setToken(r.accessToken);
+    // Register push token after register
+    import('@/utils/push').then(({ registerPushToken }) => registerPushToken()).catch(() => {});
   }, []);
 
   const logout = useCallback(async () => {

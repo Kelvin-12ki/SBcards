@@ -81,6 +81,9 @@ export class User {
 
   @Prop({ enum: ['active', 'suspended', 'banned'], default: 'active' })
   status!: string;
+
+  @Prop()
+  fcmToken?: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

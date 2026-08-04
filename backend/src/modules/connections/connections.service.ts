@@ -17,6 +17,7 @@ import { UsersService } from '../users/users.service';
 import { CardsService } from '../cards/cards.service';
 import { TimelineService } from '../timeline/timeline.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EmailService } from '../notifications/email.service';
 
 @Injectable()
 export class ConnectionsService {
@@ -29,6 +30,7 @@ export class ConnectionsService {
     private readonly cardsService: CardsService,
     private readonly timelineService: TimelineService,
     private readonly notificationsService: NotificationsService,
+    private readonly emailService: EmailService,
   ) {}
 
   /**
@@ -114,6 +116,18 @@ export class ConnectionsService {
         targetUserName: sender?.displayName || sender?.email || 'Unknown',
         targetUserAvatar: sender?.avatarUrl || '',
       });
+
+      // Send email notification to recipient
+      const recipient = await this.usersService.findById(data.connectedUserId);
+      if (recipient?.email) {
+        this.emailService.sendConnectionRequestEmail(
+          recipient.email,
+          sender?.displayName || sender?.email || 'Someone',
+          sender?.email || '',
+        ).catch((err) => {
+          this.logger.error(`Failed to send connection email: ${(err as Error).message}`);
+        });
+      }
     } catch (hookError) {
       this.logger.error(
         `Failed to send notification for connection request: ${(hookError as Error).message}`,
