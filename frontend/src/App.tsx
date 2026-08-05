@@ -14,11 +14,16 @@ const App: React.FC = () => {
     if (!showRefreshPrompt) return;
 
     toast(
-      () => (
+      (t) => (
         <div className="flex items-center gap-3">
           <span>New version available</span>
           <button
-            onClick={() => updateServiceWorker(true)}
+            onClick={() => {
+              toast.dismiss(t.id);
+              updateServiceWorker(true).then(() => {
+                window.location.reload();
+              });
+            }}
             className="rounded-lg bg-gold px-3 py-1 text-sm font-bold text-gold-ink"
           >
             Refresh
