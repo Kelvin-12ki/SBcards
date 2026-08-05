@@ -43,6 +43,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         } catch { /* token may be expired, use cached user */ }
         if (!cancelled) setLoading(false);
+        // Re-register push token on every session restore (handles token rotation & first-time registration)
+        import('@/utils/push').then(({ registerPushToken }) => registerPushToken()).catch((e: any) => console.warn('[Auth] Push registration failed:', e));
         return;
       }
 
@@ -90,7 +92,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(r.user);
     setToken(r.accessToken);
     // Register push token after login
-    import('@/utils/push').then(({ registerPushToken }) => registerPushToken()).catch(() => {});
+    import('@/utils/push').then(({ registerPushToken }) => registerPushToken()).catch((e: any) => console.warn('[Auth] Push registration failed:', e));
   }, []);
 
   const loginWithGoogle = useCallback(async () => {
@@ -100,7 +102,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(r.user);
     setToken(r.accessToken);
     // Register push token after login
-    import('@/utils/push').then(({ registerPushToken }) => registerPushToken()).catch(() => {});
+    import('@/utils/push').then(({ registerPushToken }) => registerPushToken()).catch((e: any) => console.warn('[Auth] Push registration failed:', e));
   }, []);
 
   const register = useCallback(async (email: string, password: string, displayName?: string) => {
@@ -110,7 +112,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(r.user);
     setToken(r.accessToken);
     // Register push token after register
-    import('@/utils/push').then(({ registerPushToken }) => registerPushToken()).catch(() => {});
+    import('@/utils/push').then(({ registerPushToken }) => registerPushToken()).catch((e: any) => console.warn('[Auth] Push registration failed:', e));
   }, []);
 
   const logout = useCallback(async () => {

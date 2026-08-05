@@ -26,17 +26,18 @@ export class PushService {
     try {
       // Check if Firebase Admin is initialized
       if (!admin.apps.length) {
-        this.logger.warn('Firebase Admin not initialized — skipping push');
+        this.logger.error('Firebase Admin NOT initialized — push skipped. Check FIREBASE env vars on Render.');
         return;
       }
 
       const user = await this.userModel.findById(userId).exec();
       if (!user || !user.fcmToken) {
-        this.logger.debug(`No FCM token for user ${userId} — skipping push`);
+        this.logger.debug(`No FCM token for user ${userId} — push skipped`);
         return;
       }
 
-      await admin.messaging().send({
+      this.logger.log(`Sending push to user ${userId} (token: ${user.fcmToken.substring(0, 20)}...)`);
+      const result = await admin.messaging().send({
         token: user.fcmToken,
         notification: { title, body },
         data: data || {},
@@ -51,7 +52,7 @@ export class PushService {
         },
       });
 
-      this.logger.log(`Push notification sent to user ${userId}`);
+      this.logger.log(`Push notification sent to user ${userId}, messageId: ${result}`);
     } catch (error: any) {
       // Handle stale/invalid tokens
       if (
