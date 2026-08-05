@@ -4,6 +4,10 @@ import {
   Connection,
   ConnectionSchema,
 } from './entities/connection.entity';
+import {
+  LeadQualification,
+  LeadQualificationSchema,
+} from './entities/lead-qualification.entity';
 import { ConnectionsService } from './connections.service';
 import { ConnectionsController } from './connections.controller';
 import { UsersModule } from '../users/users.module';
@@ -15,6 +19,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
   imports: [
     MongooseModule.forFeature([
       { name: Connection.name, schema: ConnectionSchema },
+      { name: LeadQualification.name, schema: LeadQualificationSchema },
     ]),
     forwardRef(() => UsersModule),
     forwardRef(() => CardsModule),

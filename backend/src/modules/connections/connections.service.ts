@@ -11,8 +11,13 @@ import {
   Connection,
   ConnectionDocument,
 } from './entities/connection.entity';
+import {
+  LeadQualification,
+  LeadQualificationDocument,
+} from './entities/lead-qualification.entity';
 import { CreateConnectionDto } from './dto/create-connection.dto';
 import { UpdateConnectionDto } from './dto/update-connection.dto';
+import { UpdateLeadQualificationDto } from './dto/update-lead-qualification.dto';
 import { UsersService } from '../users/users.service';
 import { CardsService } from '../cards/cards.service';
 import { TimelineService } from '../timeline/timeline.service';
@@ -26,6 +31,8 @@ export class ConnectionsService {
   constructor(
     @InjectModel(Connection.name)
     private readonly connectionModel: Model<ConnectionDocument>,
+    @InjectModel(LeadQualification.name)
+    private readonly leadQualModel: Model<LeadQualificationDocument>,
     private readonly usersService: UsersService,
     private readonly cardsService: CardsService,
     private readonly timelineService: TimelineService,
@@ -376,6 +383,7 @@ export class ConnectionsService {
       tag?: string;
       status?: string;
       search?: string;
+      leadScore?: string;
     },
   ): Promise<ConnectionDocument[]> {
     // Check both directions: user sent the request OR received it
@@ -399,6 +407,16 @@ export class ConnectionsService {
           { tags: { $regex: filters.search, $options: 'i' } },
         ],
       });
+    }
+
+    // If filtering by lead score, first find matching connection IDs
+    if (filters?.leadScore) {
+      const matchingQuals = await this.leadQualModel
+        .find({ userId, leadScore: filters.leadScore })
+        .select('connectionId')
+        .exec();
+      const matchingConnectionIds = matchingQuals.map((q) => q.connectionId);
+      query._id = { $in: matchingConnectionIds };
     }
 
     return this.connectionModel
@@ -765,7 +783,7 @@ export class ConnectionsService {
       otherUser = connectedUserData;
     }
 
-    return {
+    const result = {
       ...plain,
       connectedUser: connectedUserData,
       senderUser: senderUserData,
@@ -780,5 +798,175 @@ export class ConnectionsService {
           }
         : null,
     };
+
+    // Enrich with lead qualification data if current user is known
+    if (currentUserId) {
+      return this.enrichWithLeadQualification(result, currentUserId);
+    }
+
+    return result;
+  }
+
+  // ────────── LEAD QUALIFICATION ──────────
+
+  /**
+   * Get or create a lead qualification record for a user + connection pair.
+   */
+  async getOrCreateLeadQualification(
+    userId: string,
+    connectionId: string,
+  ): Promise<LeadQualificationDocument> {
+    let qual = await this.leadQualModel.findOne({ userId, connectionId }).exec();
+    if (!qual) {
+      qual = await this.leadQualModel.create({ userId, connectionId });
+    }
+    return qual;
+  }
+
+  /**
+   * Update lead qualification (score, follow-up status, tags) for a connection.
+   */
+  async updateLeadQualification(
+    connectionId: string,
+    userId: string,
+    dto: UpdateLeadQualificationDto,
+  ): Promise<Record<string, any>> {
+    // Verify user has access to this connection
+    await this.findById(connectionId, userId);
+
+    const qual = await this.getOrCreateLeadQualification(userId, connectionId);
+
+    const updateData: Record<string, any> = {};
+    if (dto.leadScore !== undefined) updateData.leadScore = dto.leadScore;
+    if (dto.followUpStatus !== undefined) updateData.followUpStatus = dto.followUpStatus;
+    if (dto.tags !== undefined) updateData.tags = dto.tags;
+
+    const updated = await this.leadQualModel
+      .findByIdAndUpdate(qual._id, { $set: updateData }, { new: true })
+      .exec();
+
+    return this.getEnrichedConnection(
+      await this.findById(connectionId, userId),
+      userId,
+    );
+  }
+
+  /**
+   * Add a private note to a connection's lead qualification.
+   */
+  async addNote(
+    connectionId: string,
+    userId: string,
+    text: string,
+  ): Promise<Record<string, any>> {
+    await this.findById(connectionId, userId);
+    const qual = await this.getOrCreateLeadQualification(userId, connectionId);
+
+    const note = {
+      text,
+      createdBy: userId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    await this.leadQualModel
+      .findByIdAndUpdate(qual._id, { $push: { privateNotes: note } }, { new: true })
+      .exec();
+
+    return this.getEnrichedConnection(
+      await this.findById(connectionId, userId),
+      userId,
+    );
+  }
+
+  /**
+   * Update a private note.
+   */
+  async updateNote(
+    connectionId: string,
+    userId: string,
+    noteId: string,
+    text: string,
+  ): Promise<Record<string, any>> {
+    await this.findById(connectionId, userId);
+    const qual = await this.getOrCreateLeadQualification(userId, connectionId);
+
+    const note = (qual.privateNotes as any).id(noteId);
+    if (!note) {
+      throw new NotFoundException('Note not found');
+    }
+
+    if (note.createdBy !== userId) {
+      throw new ForbiddenException('You can only edit your own notes');
+    }
+
+    note.text = text;
+    note.updatedAt = new Date();
+    await qual.save();
+
+    return this.getEnrichedConnection(
+      await this.findById(connectionId, userId),
+      userId,
+    );
+  }
+
+  /**
+   * Delete a private note.
+   */
+  async deleteNote(
+    connectionId: string,
+    userId: string,
+    noteId: string,
+  ): Promise<void> {
+    await this.findById(connectionId, userId);
+    const qual = await this.getOrCreateLeadQualification(userId, connectionId);
+
+    const note = (qual.privateNotes as any).id(noteId);
+    if (!note) {
+      throw new NotFoundException('Note not found');
+    }
+
+    if (note.createdBy !== userId) {
+      throw new ForbiddenException('You can only delete your own notes');
+    }
+
+    await this.leadQualModel
+      .findByIdAndUpdate(qual._id, { $pull: { privateNotes: { _id: noteId } } })
+      .exec();
+  }
+
+  /**
+   * Enrich a connection with the current user's lead qualification data.
+   */
+  private async enrichWithLeadQualification(
+    enriched: Record<string, any>,
+    userId: string,
+  ): Promise<Record<string, any>> {
+    try {
+      const qual = await this.leadQualModel
+        .findOne({ userId, connectionId: enriched.id })
+        .exec();
+
+      if (qual) {
+        enriched.leadQualification = {
+          id: qual._id?.toString(),
+          leadScore: qual.leadScore,
+          followUpStatus: qual.followUpStatus,
+          tags: qual.tags,
+          privateNotes: qual.privateNotes.map((n) => ({
+            id: n._id?.toString(),
+            text: n.text,
+            createdBy: n.createdBy,
+            createdAt: n.createdAt?.toISOString(),
+            updatedAt: n.updatedAt?.toISOString(),
+          })),
+        };
+      } else {
+        enriched.leadQualification = null;
+      }
+    } catch {
+      enriched.leadQualification = null;
+    }
+    return enriched;
   }
 }

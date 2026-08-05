@@ -20,6 +20,9 @@ import { JwtUser } from '../../common/strategies/jwt.strategy';
 import { ConnectionsService } from './connections.service';
 import { CreateConnectionDto } from './dto/create-connection.dto';
 import { UpdateConnectionDto } from './dto/update-connection.dto';
+import { UpdateLeadQualificationDto } from './dto/update-lead-qualification.dto';
+import { CreateConnectionNoteDto } from './dto/create-connection-note.dto';
+import { UpdateConnectionNoteDto } from './dto/update-connection-note.dto';
 import { AddTagDto } from './dto/add-tag.dto';
 import { QrConnectDto } from './dto/qr-connect.dto';
 
@@ -129,17 +132,20 @@ export class ConnectionsController {
   @ApiQuery({ name: 'tag', required: false, description: 'Filter by tag' })
   @ApiQuery({ name: 'status', required: false, description: 'Filter by status' })
   @ApiQuery({ name: 'search', required: false, description: 'Search in notes and tags' })
+  @ApiQuery({ name: 'leadScore', required: false, description: 'Filter by lead score' })
   async findAll(
     @CurrentUser() jwtUser: JwtUser,
     @Query('tag') tag?: string,
     @Query('status') status?: string,
     @Query('search') search?: string,
+    @Query('leadScore') leadScore?: string,
   ): Promise<Record<string, any>[]> {
     const userId = await this.resolveUserId(jwtUser);
     const connections = await this.connectionsService.findAllForUser(userId, {
       tag,
       status,
       search,
+      leadScore,
     });
     return Promise.all(
       connections.map((conn) => this.connectionsService.getEnrichedConnection(conn, userId)),
@@ -234,5 +240,56 @@ export class ConnectionsController {
       body.tag,
     );
     return { modifiedCount };
+  }
+
+  // ────────── LEAD QUALIFICATION ──────────
+
+  @Patch(':id/qualification')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Update lead qualification (score, follow-up status, tags)' })
+  async updateLeadQualification(
+    @Param('id') id: string,
+    @CurrentUser() jwtUser: JwtUser,
+    @Body() dto: UpdateLeadQualificationDto,
+  ): Promise<Record<string, any>> {
+    const userId = await this.resolveUserId(jwtUser);
+    return this.connectionsService.updateLeadQualification(id, userId, dto);
+  }
+
+  @Post(':id/notes')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Add a private note to a connection' })
+  async addNote(
+    @Param('id') id: string,
+    @CurrentUser() jwtUser: JwtUser,
+    @Body() dto: CreateConnectionNoteDto,
+  ): Promise<Record<string, any>> {
+    const userId = await this.resolveUserId(jwtUser);
+    return this.connectionsService.addNote(id, userId, dto.text);
+  }
+
+  @Patch(':id/notes/:noteId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Update a private note' })
+  async updateNote(
+    @Param('id') id: string,
+    @Param('noteId') noteId: string,
+    @CurrentUser() jwtUser: JwtUser,
+    @Body() dto: UpdateConnectionNoteDto,
+  ): Promise<Record<string, any>> {
+    const userId = await this.resolveUserId(jwtUser);
+    return this.connectionsService.updateNote(id, userId, noteId, dto.text);
+  }
+
+  @Delete(':id/notes/:noteId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete a private note' })
+  async deleteNote(
+    @Param('id') id: string,
+    @Param('noteId') noteId: string,
+    @CurrentUser() jwtUser: JwtUser,
+  ): Promise<void> {
+    const userId = await this.resolveUserId(jwtUser);
+    await this.connectionsService.deleteNote(id, userId, noteId);
   }
 }

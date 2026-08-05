@@ -28,7 +28,7 @@ const ConnectionsPage: React.FC = () => {
     setLoading(true);
     try {
       const [conns, incoming, outgoing] = await Promise.all([
-        getConnections({ search: filters.search, status: filters.status, tag: filters.tag }),
+        getConnections({ search: filters.search, status: filters.status, tag: filters.tag, leadScore: filters.leadScore }),
         getIncomingRequests(),
         getOutgoingRequests(),
       ]);

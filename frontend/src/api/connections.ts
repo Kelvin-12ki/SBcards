@@ -35,11 +35,12 @@ export async function cancelRequest(connectionId: string): Promise<void> {
 
 // ────────── CONNECTIONS ──────────
 
-export async function getConnections(filters?: { tag?: string; status?: string; search?: string }): Promise<Connection[]> {
+export async function getConnections(filters?: { tag?: string; status?: string; search?: string; leadScore?: string }): Promise<Connection[]> {
   const params = new URLSearchParams();
   if (filters?.tag) params.append('tag', filters.tag);
   if (filters?.status) params.append('status', filters.status);
   if (filters?.search) params.append('search', filters.search);
+  if (filters?.leadScore) params.append('leadScore', filters.leadScore);
   try {
     const { data } = await apiClient.get<Connection[]>(`/connections?${params.toString()}`);
     // Only cache the unfiltered list so a filtered view never replaces the full list
@@ -94,4 +95,28 @@ export async function bulkTagConnections(connectionIds: string[], tag: string): 
 export async function qrConnect(scannedUserId: string): Promise<any> {
   const { data } = await apiClient.post('/connections/qr-connect', { scannedUserId });
   return data;
+}
+
+// ────────── LEAD QUALIFICATION ──────────
+
+export async function updateLeadQualification(
+  connectionId: string,
+  data: { leadScore?: string; followUpStatus?: string; tags?: string[] },
+): Promise<Connection> {
+  const { data: result } = await apiClient.patch<Connection>(`/connections/${connectionId}/qualification`, data);
+  return result;
+}
+
+export async function addConnectionNote(connectionId: string, text: string): Promise<Connection> {
+  const { data: result } = await apiClient.post<Connection>(`/connections/${connectionId}/notes`, { text });
+  return result;
+}
+
+export async function updateConnectionNote(connectionId: string, noteId: string, text: string): Promise<Connection> {
+  const { data: result } = await apiClient.patch<Connection>(`/connections/${connectionId}/notes/${noteId}`, { text });
+  return result;
+}
+
+export async function deleteConnectionNote(connectionId: string, noteId: string): Promise<void> {
+  await apiClient.delete(`/connections/${connectionId}/notes/${noteId}`);
 }

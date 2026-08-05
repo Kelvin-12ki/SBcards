@@ -3,11 +3,13 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, MessageSquare, Trash2, Star, Briefcase } from 'lucide-react';
 import { getConnection, deleteConnection, toggleFavorite } from '@/api/connections';
 import { findOrCreateConversation } from '@/api/messaging';
-import type { Connection } from '@/types/connection';
+import type { Connection, ConnectionNote, LeadQualification } from '@/types/connection';
 import type { Card } from '@/types/card';
 import Spinner from '@/components/ui/Spinner';
 import SaveContactButton from '@/components/ui/SaveContactButton';
 import { showApiError } from '@/utils/errorHandler';
+import LeadQualificationPanel from '@/components/connections/LeadQualificationPanel';
+import PrivateNotesPanel from '@/components/connections/PrivateNotesPanel';
 import toast from 'react-hot-toast';
 
 const ConnectionDetailPage: React.FC = () => {
@@ -85,6 +87,22 @@ const ConnectionDetailPage: React.FC = () => {
     } catch (err: any) {
       showApiError(err, 'Failed to remove connection.');
     }
+  };
+
+  const handleQualificationUpdate = (qualification: LeadQualification) => {
+    setConnection((prev) => prev ? { ...prev, leadQualification: qualification } : prev);
+  };
+
+  const handleNotesUpdate = (notes: ConnectionNote[]) => {
+    setConnection((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        leadQualification: prev.leadQualification
+          ? { ...prev.leadQualification, privateNotes: notes }
+          : { id: '', leadScore: 'none', followUpStatus: 'not_started', tags: [], privateNotes: notes },
+      };
+    });
   };
 
   if (loading) {
@@ -231,6 +249,20 @@ const ConnectionDetailPage: React.FC = () => {
           Remove
         </button>
       </div>
+
+      {/* Lead Qualification & Notes (only for accepted connections) */}
+      {connection.status === 'accepted' && (
+        <div className="space-y-6">
+          <LeadQualificationPanel
+            connection={connection}
+            onUpdate={handleQualificationUpdate}
+          />
+          <PrivateNotesPanel
+            connection={connection}
+            onUpdate={handleNotesUpdate}
+          />
+        </div>
+      )}
     </div>
   );
 };

@@ -5,6 +5,7 @@ export interface ConnectionFiltersState {
   tag?: string;
   status?: string;
   search?: string;
+  leadScore?: string;
 }
 
 export interface ConnectionFiltersProps {
@@ -33,11 +34,15 @@ const ConnectionFilters: React.FC<ConnectionFiltersProps> = ({ filters, onChange
     onChange({ ...filters, tag: e.target.value || undefined });
   };
 
+  const handleLeadScoreChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    onChange({ ...filters, leadScore: e.target.value || undefined });
+  };
+
   const clearFilters = () => {
     onChange({});
   };
 
-  const hasActiveFilters = filters.search || filters.status || filters.tag;
+  const hasActiveFilters = filters.search || filters.status || filters.tag || filters.leadScore;
 
   return (
     <div className={cn('space-y-3', className)}>
@@ -96,6 +101,23 @@ const ConnectionFilters: React.FC<ConnectionFiltersProps> = ({ filters, onChange
             onChange={handleTagChange}
             className="w-32 rounded-lg border border-border-subtle bg-surface-2 px-3 py-1.5 text-xs text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-gold/50"
           />
+        </div>
+
+        {/* Lead Score filter */}
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-text-secondary whitespace-nowrap">
+            Lead Score:
+          </label>
+          <select
+            value={filters.leadScore || ''}
+            onChange={handleLeadScoreChange}
+            className="rounded-lg border border-border-subtle bg-surface-2 px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-gold/50"
+          >
+            <option value="">All</option>
+            <option value="hot">🔥 Hot</option>
+            <option value="warm">🌤️ Warm</option>
+            <option value="cold">❄️ Cold</option>
+          </select>
         </div>
 
         {/* Clear filters */}
