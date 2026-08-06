@@ -2,38 +2,10 @@ import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { Toaster, toast } from 'react-hot-toast';
 import { SpeedInsights } from '@vercel/speed-insights/react';
-import { useRegisterSW } from 'virtual:pwa-register/react';
 import { AuthProvider } from '@/auth/AuthProvider';
 import RoutesTree from '@/routes';
 
 const App: React.FC = () => {
-  const { needRefresh, updateServiceWorker } = useRegisterSW();
-  const [showRefreshPrompt] = needRefresh;
-
-  React.useEffect(() => {
-    if (!showRefreshPrompt) return;
-
-    toast(
-      (t) => (
-        <div className="flex items-center gap-3">
-          <span>New version available</span>
-          <button
-            onClick={() => {
-              toast.dismiss(t.id);
-              updateServiceWorker(true).then(() => {
-                window.location.reload();
-              });
-            }}
-            className="rounded-lg bg-gold px-3 py-1 text-sm font-bold text-gold-ink"
-          >
-            Refresh
-          </button>
-        </div>
-      ),
-      { duration: Infinity },
-    );
-  }, [showRefreshPrompt, updateServiceWorker]);
-
   // Listen for foreground push notifications
   React.useEffect(() => {
     import('@/utils/push').then(({ onForegroundMessage }) => {
