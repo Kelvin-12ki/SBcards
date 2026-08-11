@@ -26,6 +26,7 @@ export interface ChatWindowProps {
   loadingOlder?: boolean;
   hasMoreOlder?: boolean;
   scrollContainerRef?: React.RefObject<HTMLDivElement>;
+  conversationId?: string;
 }
 
 /** Format a date to a human-readable label for date separators */
@@ -116,6 +117,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   loadingOlder = false,
   hasMoreOlder = false,
   scrollContainerRef,
+  conversationId,
 }) => {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -133,11 +135,35 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   // Group messages by date and sender
   const groupedMessages = useMemo(() => groupMessages(messages), [messages]);
 
-  // Only scroll to bottom when NEW messages are appended (not on initial load)
+  // Scroll to bottom on initial load (conversation switch)
+  const hasScrolledInitialRef = useRef(false);
+  useEffect(() => {
+    if (!loading && messages.length > 0 && !hasScrolledInitialRef.current) {
+      // Instant scroll to bottom on first load — no animation
+      messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+      hasScrolledInitialRef.current = true;
+    }
+  }, [loading, messages]);
+
+  // Reset initial scroll flag when conversation changes
+  useEffect(() => {
+    hasScrolledInitialRef.current = false;
+  }, [conversationId]);
+
+  // Only auto-scroll on new messages if user is near the bottom
   const prevMessagesLenRef = useRef(messages.length);
   useEffect(() => {
     if (messages.length > prevMessagesLenRef.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      const container = scrollContainerRef?.current;
+      if (container) {
+        const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+        // Only auto-scroll if user is within 150px of the bottom
+        if (distanceFromBottom < 150) {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }
+      } else {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }
     }
     prevMessagesLenRef.current = messages.length;
   }, [messages]);

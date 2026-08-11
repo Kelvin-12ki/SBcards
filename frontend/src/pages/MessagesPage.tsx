@@ -467,6 +467,7 @@ const MessagesPage: React.FC = () => {
               loadingOlder={loadingOlder}
               hasMoreOlder={hasMoreOlder}
               scrollContainerRef={chatContainerRef}
+              conversationId={activeConvId}
             />
           ) : (
             <div className="hidden lg:flex items-center justify-center flex-1">
