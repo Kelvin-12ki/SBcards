@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { Send, MessageSquare, ArrowLeft, Loader2 } from 'lucide-react';
+import { Send, MessageSquare, ArrowLeft, Loader2, ArrowDown } from 'lucide-react';
 import { cn } from '@/utils/helpers';
 import Avatar from '@/components/ui/Avatar';
 import MessageBubble from './MessageBubble';
@@ -148,25 +148,47 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   // Reset initial scroll flag when conversation changes
   useEffect(() => {
     hasScrolledInitialRef.current = false;
+    setNewMessageCount(0);
   }, [conversationId]);
 
-  // Only auto-scroll on new messages if user is near the bottom
+  // Track new incoming messages and show pill when scrolled up
+  const [newMessageCount, setNewMessageCount] = useState(0);
   const prevMessagesLenRef = useRef(messages.length);
+  const isNearBottomRef = useRef(true);
+
+  // Detect when user scrolls near/far from bottom
+  useEffect(() => {
+    const container = scrollContainerRef?.current;
+    if (!container) return;
+    const handleScroll = () => {
+      const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+      isNearBottomRef.current = distanceFromBottom < 150;
+      // If user scrolls back to bottom, clear the count
+      if (isNearBottomRef.current) {
+        setNewMessageCount(0);
+      }
+    };
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [scrollContainerRef]);
+
+  // When new messages arrive: auto-scroll if near bottom, otherwise show pill
   useEffect(() => {
     if (messages.length > prevMessagesLenRef.current) {
-      const container = scrollContainerRef?.current;
-      if (container) {
-        const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-        // Only auto-scroll if user is within 150px of the bottom
-        if (distanceFromBottom < 150) {
-          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }
-      } else {
+      const addedCount = messages.length - prevMessagesLenRef.current;
+      if (isNearBottomRef.current) {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        setNewMessageCount((c) => c + addedCount);
       }
     }
     prevMessagesLenRef.current = messages.length;
   }, [messages]);
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setNewMessageCount(0);
+  }, []);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -228,8 +250,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       </div>
 
       {/* Messages area */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-3 py-4 sm:px-5 sm:py-5">
-        {loading ? (
+      <div className="relative flex-1 overflow-hidden">
+        <div ref={scrollContainerRef} className="absolute inset-0 overflow-y-auto px-3 py-4 sm:px-5 sm:py-5">
+          {loading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="h-7 w-7 animate-spin text-neon-cyan" />
           </div>
@@ -312,6 +335,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             )}
             <div ref={messagesEndRef} />
           </div>
+        )}
+        </div>
+
+        {/* New messages pill — shows when scrolled up and new messages arrive */}
+        {newMessageCount > 0 && (
+          <button
+            onClick={scrollToBottom}
+            className="absolute bottom-4 right-4 z-10 flex items-center gap-1.5 rounded-full bg-gradient-to-r from-gold to-gold-strong px-3.5 py-2 text-xs font-bold text-gold-ink shadow-lg shadow-gold/30 transition-all duration-200 hover:scale-105 hover:shadow-xl hover:shadow-gold/40 active:scale-95 animate-bounce"
+          >
+            <ArrowDown className="h-3.5 w-3.5" />
+            {newMessageCount === 1 ? 'New message' : `${newMessageCount} new messages`}
+          </button>
         )}
       </div>
 
