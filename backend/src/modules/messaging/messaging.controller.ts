@@ -98,11 +98,13 @@ export class MessagingController {
   @ApiOperation({ summary: 'Get paginated messages for a conversation' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'after', required: false, type: String })
   async getMessages(
     @Param('id') conversationId: string,
     @CurrentUser() jwtUser: JwtUser,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('after') after?: string,
   ) {
     const userId = this.resolveUserId(jwtUser);
     const pageNum = page ? parseInt(page, 10) : 1;
@@ -112,6 +114,7 @@ export class MessagingController {
       userId,
       pageNum,
       limitNum,
+      after,
     );
   }
 

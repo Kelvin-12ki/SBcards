@@ -20,7 +20,14 @@ interface PaginatedMessages {
 
 export async function getMessages(conversationId: string, page?: number, limit?: number): Promise<Message[]> {
   const { data } = await apiClient.get<PaginatedMessages>(`/conversations/${conversationId}/messages`, {
-    params: { page, limit },
+    params: { page: page || 1, limit: limit || 500 },
+  });
+  return data.messages || [];
+}
+
+export async function getNewMessages(conversationId: string, afterMessageId: string, limit?: number): Promise<Message[]> {
+  const { data } = await apiClient.get<PaginatedMessages>(`/conversations/${conversationId}/messages`, {
+    params: { after: afterMessageId, limit: limit || 100 },
   });
   return data.messages || [];
 }

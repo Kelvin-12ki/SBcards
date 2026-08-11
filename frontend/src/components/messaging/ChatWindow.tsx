@@ -22,6 +22,10 @@ export interface ChatWindowProps {
   };
   onBack?: () => void;
   onDelete?: (messageId: string) => void;
+  onLoadOlder?: () => void;
+  loadingOlder?: boolean;
+  hasMoreOlder?: boolean;
+  scrollContainerRef?: React.RefObject<HTMLDivElement>;
 }
 
 /** Format a date to a human-readable label for date separators */
@@ -108,6 +112,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   otherUser,
   onBack,
   onDelete,
+  onLoadOlder,
+  loadingOlder = false,
+  hasMoreOlder = false,
+  scrollContainerRef,
 }) => {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -194,7 +202,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       </div>
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto px-3 py-4 sm:px-5 sm:py-5">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-3 py-4 sm:px-5 sm:py-5">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="h-7 w-7 animate-spin text-neon-cyan" />
@@ -219,6 +227,25 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         ) : (
           <div className="flex flex-col gap-0 px-2 sm:px-0">
+            {/* Load older messages button */}
+            {hasMoreOlder && (
+              <div className="flex justify-center py-3">
+                <button
+                  onClick={onLoadOlder}
+                  disabled={loadingOlder}
+                  className="text-xs font-medium text-text-tertiary hover:text-text-secondary transition-colors disabled:opacity-50"
+                >
+                  {loadingOlder ? (
+                    <span className="flex items-center gap-1.5">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Loading...
+                    </span>
+                  ) : (
+                    'Load older messages'
+                  )}
+                </button>
+              </div>
+            )}
             {groupedMessages.map((item, idx) => {
               if ('type' in item && item.type === 'date-separator') {
                 return (

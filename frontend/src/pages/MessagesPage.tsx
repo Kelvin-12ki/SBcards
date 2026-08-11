@@ -3,7 +3,7 @@ import { MessageSquare, Bell, BellOff } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/auth/useAuth';
 import { cn } from '@/utils/helpers';
-import { getConversations, getMessages, sendMessage, markAsRead, setTypingStatus, getTypingStatus, deleteMessage } from '@/api/messaging';
+import { getConversations, getMessages, getNewMessages, sendMessage, markAsRead, setTypingStatus, getTypingStatus, deleteMessage } from '@/api/messaging';
 import type { Conversation, Message } from '@/types/messaging';
 import ConversationList from '@/components/messaging/ConversationList';
 import ChatWindow from '@/components/messaging/ChatWindow';
@@ -25,6 +25,16 @@ const MessagesPage: React.FC = () => {
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTypingSentRef = useRef<number>(0);
   const currentUserId = user?.id || '';
+
+  // Cursor-based polling: track the last message ID for efficient incremental fetches
+  const lastMessageIdRef = useRef<string | null>(null);
+
+  // "Load Older" pagination state
+  const [olderPage, setOlderPage] = useState(2); // next page to fetch (page 1 already loaded)
+  const [hasMoreOlder, setHasMoreOlder] = useState(true);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const chatContainerRef = useRef<HTMLDivElement | null>(null);
+  const prevScrollHeightRef = useRef<number>(0);
 
   // Cleanup typing timeout on unmount
   useEffect(() => {
@@ -83,6 +93,9 @@ const MessagesPage: React.FC = () => {
   useEffect(() => {
     if (!activeConvId) {
       setMessages([]);
+      lastMessageIdRef.current = null;
+      setOlderPage(2);
+      setHasMoreOlder(true);
       return;
     }
     let cancelled = false;
@@ -90,7 +103,14 @@ const MessagesPage: React.FC = () => {
       setMessagesLoading(true);
       try {
         const data = await getMessages(activeConvId);
-        if (!cancelled) setMessages(data);
+        if (!cancelled) {
+          setMessages(data);
+          // Set cursor to the last message's ID for polling
+          lastMessageIdRef.current = data.length > 0 ? data[data.length - 1].id : null;
+          // Reset pagination for "Load Older"
+          setOlderPage(2);
+          setHasMoreOlder(data.length >= 50);
+        }
         // Mark as read
         await markAsRead(activeConvId);
         // Update unread count locally
@@ -109,16 +129,28 @@ const MessagesPage: React.FC = () => {
     return () => { cancelled = true; };
   }, [activeConvId]);
 
-  // Poll for new messages every 2 seconds for real-time feel
+  // Poll for new messages every 2 seconds using cursor-based fetching
+  // Only fetches messages after the last known message, then appends them
   useEffect(() => {
     if (!activeConvId) return;
 
     let cancelled = false;
     const pollMessages = async () => {
+      const cursorId = lastMessageIdRef.current;
+      if (!cursorId) return; // No messages loaded yet, skip poll
+
       try {
-        const data = await getMessages(activeConvId);
-        if (!cancelled) {
-          setMessages(data);
+        const newMsgs = await getNewMessages(activeConvId, cursorId);
+        if (!cancelled && newMsgs.length > 0) {
+          setMessages((prev) => {
+            // Deduplicate: only add messages not already in state
+            const existingIds = new Set(prev.map((m) => m.id));
+            const unique = newMsgs.filter((m) => !existingIds.has(m.id));
+            if (unique.length === 0) return prev;
+            return [...prev, ...unique];
+          });
+          // Update cursor to the latest message
+          lastMessageIdRef.current = newMsgs[newMsgs.length - 1].id;
           // Mark as read
           markAsRead(activeConvId).catch(() => {});
           // Update unread count
@@ -269,10 +301,42 @@ const MessagesPage: React.FC = () => {
         // Re-fetch messages on failure to restore state
         const data = await getMessages(activeConvId);
         setMessages(data);
+        lastMessageIdRef.current = data.length > 0 ? data[data.length - 1].id : null;
       }
     },
     [activeConvId],
   );
+
+  const handleLoadOlder = useCallback(async () => {
+    if (!activeConvId || loadingOlder) return;
+    setLoadingOlder(true);
+    try {
+      // Save scroll height so we can restore position after prepending
+      if (chatContainerRef.current) {
+        prevScrollHeightRef.current = chatContainerRef.current.scrollHeight;
+      }
+      const data = await getMessages(activeConvId, olderPage, 50);
+      if (data.length === 0) {
+        setHasMoreOlder(false);
+      } else {
+        setMessages((prev) => [...data, ...prev]);
+        setOlderPage((p) => p + 1);
+        if (data.length < 50) setHasMoreOlder(false);
+        // Restore scroll position after DOM update
+        requestAnimationFrame(() => {
+          if (chatContainerRef.current) {
+            const newScrollHeight = chatContainerRef.current.scrollHeight;
+            chatContainerRef.current.scrollTop =
+              newScrollHeight - prevScrollHeightRef.current;
+          }
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load older messages:', err);
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [activeConvId, olderPage, loadingOlder]);
 
   const handleSelectConversation = useCallback((id: string) => {
     setActiveConvId(id);
@@ -399,6 +463,10 @@ const MessagesPage: React.FC = () => {
               otherUser={activeConversation?.otherUser}
               onBack={handleBack}
               onDelete={handleDeleteMessage}
+              onLoadOlder={handleLoadOlder}
+              loadingOlder={loadingOlder}
+              hasMoreOlder={hasMoreOlder}
+              scrollContainerRef={chatContainerRef}
             />
           ) : (
             <div className="hidden lg:flex items-center justify-center flex-1">

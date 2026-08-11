@@ -192,12 +192,17 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
   /**
    * Get paginated messages for a conversation.
    * Verifies the user is a participant.
+   *
+   * When `afterMessageId` is provided, returns only messages created after
+   * that message's timestamp. This enables efficient cursor-based polling
+   * so the frontend only receives new messages instead of re-fetching all.
    */
   async getMessages(
     conversationId: string,
     userId: string,
     page = 1,
     limit = 50,
+    afterMessageId?: string,
   ): Promise<{ messages: MessageDocument[]; total: number; page: number; limit: number }> {
     const conversation = await this.conversationModel
       .findById(conversationId)
@@ -209,6 +214,25 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
 
     if (!conversation.participantIds.some((id) => id.toString() === userId)) {
       throw new ForbiddenException('You are not a participant in this conversation');
+    }
+
+    // Cursor-based filtering: only fetch messages after a given message
+    if (afterMessageId) {
+      const afterMessage = await this.messageModel.findById(afterMessageId).exec();
+      if (!afterMessage) {
+        throw new NotFoundException('Cursor message not found');
+      }
+
+      const messages = await this.messageModel
+        .find({
+          conversationId,
+          createdAt: { $gt: afterMessage.createdAt },
+        })
+        .sort({ createdAt: 1 })
+        .limit(limit)
+        .exec();
+
+      return { messages, total: messages.length, page: 1, limit };
     }
 
     const skip = (page - 1) * limit;
