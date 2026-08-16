@@ -128,53 +128,53 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => 
     let cancelled = false;
 
     const startCamera = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: 'environment',
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          },
-        });
+      // Try high resolution first, then fall back to lower
+      const constraints = [
+        { video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } },
+        { video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } },
+        { video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } } },
+        { video: { facingMode: 'environment' } },
+      ];
 
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-
-        streamRef.current = stream;
-
-        // Detect torch support
-        const track = stream.getVideoTracks()[0];
-        videoTrackRef.current = track;
+      for (const constraint of constraints) {
         try {
-          const capabilities = track.getCapabilities() as any;
-          setTorchSupported(capabilities.torch === true);
+          const stream = await navigator.mediaDevices.getUserMedia(constraint);
+
+          if (cancelled) {
+            stream.getTracks().forEach((t) => t.stop());
+            return;
+          }
+
+          streamRef.current = stream;
+
+          // Detect torch support
+          const track = stream.getVideoTracks()[0];
+          videoTrackRef.current = track;
+          try {
+            const capabilities = track.getCapabilities() as any;
+            setTorchSupported(capabilities.torch === true);
+          } catch {
+            setTorchSupported(false);
+          }
+
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            await videoRef.current.play();
+          }
+
+          if (!cancelled) {
+            setState('active');
+            scanningRef.current = true;
+            scanFrame();
+          }
+          return; // success
         } catch {
-          setTorchSupported(false);
+          continue; // try next constraint
         }
+      }
 
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-        }
-
-        if (!cancelled) {
-          setState('active');
-          scanningRef.current = true;
-          scanFrame();
-        }
-      } catch (err: any) {
-        if (cancelled) return;
-        let message = 'Could not access camera.';
-        if (err.name === 'NotAllowedError') {
-          message = 'Camera access denied. Please allow camera permissions in your browser settings.';
-        } else if (err.name === 'NotFoundError') {
-          message = 'No camera found on this device.';
-        }
-        setErrorMessage(message);
-        setState('error');
-        onError(message);
+      if (!cancelled) {
+        onError('Could not access camera. Please allow camera permissions.');
       }
     };
 

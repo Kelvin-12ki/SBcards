@@ -23,36 +23,36 @@ const CameraView: React.FC<CameraViewProps> = ({ onCapture, onError }) => {
     let cancelled = false;
 
     const startCamera = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: 'environment',
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          },
-        });
+      // Try high resolution first, then fall back to lower
+      const constraints = [
+        { video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } },
+        { video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } },
+        { video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } } },
+        { video: { facingMode: 'environment' } },
+      ];
 
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
+      for (const constraint of constraints) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia(constraint);
+
+          if (cancelled) {
+            stream.getTracks().forEach((t) => t.stop());
+            return;
+          }
+
+          streamRef.current = stream;
+
+          if (!cancelled) {
+            setState('active');
+          }
+          return; // success
+        } catch {
+          continue; // try next constraint
         }
+      }
 
-        streamRef.current = stream;
-
-        if (!cancelled) {
-          setState('active');
-        }
-      } catch (err: any) {
-        if (cancelled) return;
-
-        let message = 'Could not access camera.';
-        if (err.name === 'NotAllowedError') {
-          message = 'Camera access denied. Please allow camera permissions in your browser settings.';
-        } else if (err.name === 'NotFoundError') {
-          message = 'No camera found on this device.';
-        }
-
-        onError(message);
+      if (!cancelled) {
+        onError('Could not access camera. Please allow camera permissions.');
       }
     };
 
@@ -86,10 +86,10 @@ const CameraView: React.FC<CameraViewProps> = ({ onCapture, onError }) => {
       return;
     }
 
-    // Resolution check — reject if too low
-    if (video.videoWidth < 800) {
+    // Resolution check — reject if truly unusable (below 320px)
+    if (video.videoWidth < 320) {
       setIsCapturing(false);
-      onError('Camera resolution too low. Please use a device with at least 800px width.');
+      onError('Camera resolution too low. Please try again or use a different device.');
       return;
     }
 
