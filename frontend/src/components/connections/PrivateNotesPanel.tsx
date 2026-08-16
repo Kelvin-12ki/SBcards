@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { cn } from '@/utils/helpers';
 import type { Connection, ConnectionNote } from '@/types/connection';
 import { addConnectionNote, updateConnectionNote, deleteConnectionNote } from '@/api/connections';
+import { showApiError } from '@/utils/errorHandler';
 import { Lock, Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -41,9 +42,9 @@ const PrivateNotesPanel: React.FC<PrivateNotesPanelProps> = ({ connection, onUpd
         onUpdate(updated.leadQualification.privateNotes);
       }
       setNewNote('');
-      toast.success('Note added');
+      toast.success('Note added!');
     } catch (err: any) {
-      toast.error('Failed to add note');
+      showApiError(err, 'Failed to add note.');
     } finally {
       setSaving(false);
     }
@@ -59,9 +60,9 @@ const PrivateNotesPanel: React.FC<PrivateNotesPanelProps> = ({ connection, onUpd
       }
       setEditingId(null);
       setEditText('');
-      toast.success('Note updated');
+      toast.success('Note updated!');
     } catch (err: any) {
-      toast.error('Failed to update note');
+      showApiError(err, 'Failed to update note.');
     } finally {
       setSaving(false);
     }
@@ -73,9 +74,9 @@ const PrivateNotesPanel: React.FC<PrivateNotesPanelProps> = ({ connection, onUpd
     try {
       await deleteConnectionNote(connection.id, noteId);
       onUpdate(notes.filter((n) => n.id !== noteId));
-      toast.success('Note deleted');
+      toast.success('Note deleted!');
     } catch (err: any) {
-      toast.error('Failed to delete note');
+      showApiError(err, 'Failed to delete note.');
     } finally {
       setSaving(false);
     }

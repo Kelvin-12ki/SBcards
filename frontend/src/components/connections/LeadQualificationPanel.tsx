@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { cn } from '@/utils/helpers';
 import type { Connection, LeadQualification } from '@/types/connection';
 import { updateLeadQualification } from '@/api/connections';
-import toast from 'react-hot-toast';
+import { showApiError } from '@/utils/errorHandler';
 import { Flame, Cloud, Snowflake, Circle, Loader2 } from 'lucide-react';
 
 interface LeadQualificationPanelProps {
@@ -55,7 +55,7 @@ const LeadQualificationPanel: React.FC<LeadQualificationPanelProps> = ({ connect
         onUpdate(updated.leadQualification);
       }
     } catch (err: any) {
-      toast.error('Failed to update qualification');
+      showApiError(err, 'Failed to update qualification.');
     } finally {
       setSaving(false);
     }

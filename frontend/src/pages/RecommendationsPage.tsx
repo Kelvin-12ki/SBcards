@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getRecommendations } from '@/api/matching';
+import { createConnection } from '@/api/connections';
 import { getEvent } from '@/api/events';
 import { useAuth } from '@/auth/useAuth';
 import type { Recommendation } from '@/types/recommendation';
@@ -51,8 +52,17 @@ const RecommendationsPage: React.FC = () => {
     navigate(`/events/${eventId}/recommendations/why/${targetUserId}`);
   };
 
-  const handleConnect = (_targetUserId: string) => {
-    toast.success('Connection request sent!');
+  const handleConnect = async (targetUserId: string) => {
+    try {
+      await createConnection({ connectedUserId: targetUserId, source: 'event_recommendation' });
+      toast.success('Connection request sent!');
+    } catch (err: any) {
+      if (err?.response?.status === 409) {
+        toast('Already connected or request pending', { icon: 'ℹ️' });
+      } else {
+        showApiError(err, 'Failed to send request.');
+      }
+    }
   };
 
   if (loading) {

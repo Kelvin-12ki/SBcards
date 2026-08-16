@@ -139,7 +139,7 @@ const SchedulePage: React.FC = () => {
         isOrganizer={isOrganizer}
         onDelete={handleDeleteSession}
         onEdit={() => {
-          toast('Edit functionality coming soon');
+          toast('Edit functionality coming soon', { icon: '🚧' });
         }}
       />
 

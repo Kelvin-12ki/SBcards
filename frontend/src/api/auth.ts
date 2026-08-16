@@ -75,7 +75,6 @@ export function getFirebaseAuthErrorMessage(err: any): string {
 
   return (
     messages[code] ||
-    err?.message ||
     'Something went wrong. Please try again.'
   );
 }

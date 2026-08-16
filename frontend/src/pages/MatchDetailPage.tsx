@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getWhyRecommendation } from '@/api/matching';
+import { createConnection } from '@/api/connections';
 import type { WhyRecommendation } from '@/types/recommendation';
 import MatchExplanation from '@/components/matching/MatchExplanation';
 import ConversationStarters from '@/components/matching/ConversationStarters';
@@ -302,8 +303,18 @@ const MatchDetailPage: React.FC = () => {
         <Button
           variant="primary"
           size="lg"
-          onClick={() => {
-            toast.success('Connection request sent!');
+          onClick={async () => {
+            if (!targetUserId) return;
+            try {
+              await createConnection({ connectedUserId: targetUserId, source: 'event_match' });
+              toast.success('Connection request sent!');
+            } catch (err: any) {
+              if (err?.response?.status === 409) {
+                toast('Already connected or request pending', { icon: 'ℹ️' });
+              } else {
+                showApiError(err, 'Failed to send request.');
+              }
+            }
           }}
         >
           Connect
