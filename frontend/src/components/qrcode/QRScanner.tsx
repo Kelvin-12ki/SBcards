@@ -14,13 +14,17 @@ export interface QRScannerProps {
 
 type ScannerState = 'initializing' | 'active' | 'error';
 
+const SCAN_INTERVAL_MS = 100; // ~10fps — enough for QR, much less CPU
+
 function extractUserId(raw: string): string | null {
   try {
     const url = new URL(raw);
-    const segments = url.pathname.split('/').filter(Boolean);
     if (url.searchParams.has('ref')) {
-      return url.searchParams.get('ref');
-    } else if (segments.length > 0) {
+      const ref = url.searchParams.get('ref');
+      if (ref && /^[a-f0-9]{24}$/i.test(ref)) return ref;
+    }
+    const segments = url.pathname.split('/').filter(Boolean);
+    if (segments.length > 0) {
       const last = segments[segments.length - 1];
       if (/^[a-f0-9]{24}$/i.test(last)) return last;
     }
@@ -38,7 +42,8 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => 
   const streamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef<number>(0);
   const scanningRef = useRef(false);
-  const refuseUntilRef = useRef(0);
+  const canvasReadyRef = useRef(false);
+  const lastScanRef = useRef(0);
 
   // Torch
   const [torchSupported, setTorchSupported] = useState(false);
@@ -50,11 +55,11 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => 
 
   const stopCamera = useCallback(() => {
     scanningRef.current = false;
+    canvasReadyRef.current = false;
     if (animFrameRef.current) {
       cancelAnimationFrame(animFrameRef.current);
     }
     if (streamRef.current) {
-      // Turn off torch before stopping
       if (videoTrackRef.current) {
         try {
           videoTrackRef.current.applyConstraints({ advanced: [{ torch: false } as any] });
@@ -94,9 +99,17 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => 
 
       ctx.drawImage(img, 0, 0);
       const imageData = ctx.getImageData(0, 0, img.width, img.height);
-      const code = jsQR(imageData.data, imageData.width, imageData.height, {
-        inversionAttempts: 'dontInvert',
-      });
+
+      let code;
+      try {
+        code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: 'attemptBoth',
+        });
+      } catch {
+        toast.error('Error reading QR code. Please try again.');
+        URL.revokeObjectURL(url);
+        return;
+      }
 
       URL.revokeObjectURL(url);
 
@@ -110,7 +123,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => 
         stopCamera();
         onScan(userId);
       } else {
-        toast.error('No QR code found in the image. Please try again.');
+        toast.error('QR code found but it is not a valid SBCards QR code.');
       }
     };
 
@@ -128,7 +141,6 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => 
     let cancelled = false;
 
     const startCamera = async () => {
-      // Try high resolution first, then fall back to lower
       const constraints = [
         { video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } },
         { video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } },
@@ -165,11 +177,13 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => 
           if (!cancelled) {
             setState('active');
             scanningRef.current = true;
-            scanFrame();
+            lastScanRef.current = 0;
+            canvasReadyRef.current = false;
+            scanFrame(performance.now());
           }
-          return; // success
+          return;
         } catch {
-          continue; // try next constraint
+          continue;
         }
       }
 
@@ -178,14 +192,15 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => 
       }
     };
 
-    const scanFrame = () => {
+    const scanFrame = (timestamp: number) => {
       if (!scanningRef.current) return;
 
-      // Cooldown: ignore frames for 3s after a scan attempt to prevent rapid-fire rescans
-      if (Date.now() < refuseUntilRef.current) {
+      // Throttle to ~10fps
+      if (timestamp - lastScanRef.current < SCAN_INTERVAL_MS) {
         animFrameRef.current = requestAnimationFrame(scanFrame);
         return;
       }
+      lastScanRef.current = timestamp;
 
       const video = videoRef.current;
       const canvas = canvasRef.current;
@@ -193,25 +208,37 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => 
       if (video && canvas && video.readyState === video.HAVE_ENOUGH_DATA) {
         const ctx = canvas.getContext('2d');
         if (ctx) {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
+          // Set canvas dimensions once
+          if (!canvasReadyRef.current || canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvasReadyRef.current = true;
+          }
+
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
           const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const code = jsQR(imageData.data, imageData.width, imageData.height, {
-            inversionAttempts: 'dontInvert',
-          });
+
+          let code;
+          try {
+            code = jsQR(imageData.data, imageData.width, imageData.height, {
+              inversionAttempts: 'attemptBoth',
+            });
+          } catch {
+            // jsQR threw — skip this frame, keep scanning
+            animFrameRef.current = requestAnimationFrame(scanFrame);
+            return;
+          }
 
           if (code && code.data) {
             const userId = extractUserId(code.data);
             if (userId) {
               scanningRef.current = false;
-              refuseUntilRef.current = Date.now() + 3000;
               stopCamera();
               onScan(userId);
               return;
             }
-            // If not valid, skip this frame and keep scanning
+            // QR found but not valid userId — keep scanning
           }
         }
       }
@@ -230,8 +257,10 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => 
   const handleRetry = () => {
     setErrorMessage('');
     setState('initializing');
-    // Force re-mount by reloading
-    window.location.reload();
+    // Force re-initialize without full page reload
+    canvasReadyRef.current = false;
+    lastScanRef.current = 0;
+    setTimeout(() => setState('initializing'), 50);
   };
 
   return (
@@ -244,15 +273,17 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => 
       {/* Hidden canvas for QR decoding */}
       <canvas ref={canvasRef} className="hidden" />
 
-      {/* Video element */}
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        className="w-full"
-        style={{ display: state === 'active' ? 'block' : 'none' }}
-      />
+      {/* Video element with proper aspect ratio */}
+      <div className="relative aspect-[4/3]">
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className="h-full w-full object-cover"
+          style={{ display: state === 'active' ? 'block' : 'none' }}
+        />
+      </div>
 
       {state === 'initializing' && (
         <div className="flex aspect-[4/3] flex-col items-center justify-center gap-3">
