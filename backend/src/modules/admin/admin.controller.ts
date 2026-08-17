@@ -15,13 +15,19 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AdminGuard } from '../../common/guards/admin.guard';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { JwtUser } from '../../common/strategies/jwt.strategy';
+import { UsersService } from '../users/users.service';
 
 @ApiTags('admin')
 @Controller('admin')
 @UseGuards(JwtAuthGuard, AdminGuard)
 @ApiBearerAuth()
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly usersService: UsersService,
+  ) {}
 
   @Get('stats')
   @ApiOperation({ summary: 'Get dashboard statistics' })
@@ -88,8 +94,16 @@ export class AdminController {
   @Post('events')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create an event' })
-  async createEvent(@Body() data: Record<string, any>) {
-    return this.adminService.createEvent(data);
+  async createEvent(
+    @CurrentUser() jwtUser: JwtUser,
+    @Body() data: Record<string, any>,
+  ) {
+    // Resolve the Firebase UID to a MongoDB user ID
+    const user = await this.usersService.findByFirebaseUid(jwtUser.uid);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    return this.adminService.createEvent({ ...data, creatorId: user.id });
   }
 
   @Patch('events/:id')
