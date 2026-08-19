@@ -44,7 +44,7 @@ export class Connection {
   isFavorite!: boolean;
 
   @Prop({
-    enum: ['qr_scan', 'manual', 'event_match', 'import', 'profile'],
+    enum: ['qr_scan', 'manual', 'event_match', 'import', 'profile', 'search', 'event_recommendation', 'admin'],
     default: 'qr_scan',
   })
   source!: string;
