@@ -173,7 +173,12 @@ export class ConnectionsController {
   ): Promise<Record<string, any>> {
     const userId = await this.resolveUserId(jwtUser);
     const connection = await this.connectionsService.create(userId, createConnectionDto);
-    return this.connectionsService.getEnrichedConnection(connection, userId);
+    try {
+      return await this.connectionsService.getEnrichedConnection(connection, userId);
+    } catch {
+      // Return basic connection data if enrichment fails (e.g., during cold start)
+      return connection.toJSON ? connection.toJSON() : connection;
+    }
   }
 
   @Get(':id')

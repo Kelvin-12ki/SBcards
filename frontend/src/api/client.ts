@@ -3,6 +3,7 @@ import { getFriendlyErrorMessage } from '@/utils/errorHandler';
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5177',
+  timeout: 120000, // 120s — Render free tier cold starts can take 30-60s
   headers: {
     'Content-Type': 'application/json',
   },

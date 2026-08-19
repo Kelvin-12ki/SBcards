@@ -49,6 +49,11 @@ export class ConnectionsService {
     userId: string,
     data: CreateConnectionDto,
   ): Promise<ConnectionDocument> {
+    // Validate connectedUserId is a valid ObjectId format
+    if (!data.connectedUserId || !/^[0-9a-fA-F]{24}$/.test(data.connectedUserId)) {
+      throw new NotFoundException(`User with ID "${data.connectedUserId}" not found`);
+    }
+
     const connectedUser = await this.usersService.findById(
       data.connectedUserId,
     );
