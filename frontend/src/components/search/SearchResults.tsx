@@ -96,6 +96,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({ results, onSelect, classN
   const navigate = useNavigate();
   const [connectingId, setConnectingId] = useState<string | null>(null);
   const [messagingId, setMessagingId] = useState<string | null>(null);
+  const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set());
 
   const hasResults = sections.some((s) => results?.results?.[s.key]?.length > 0);
 
@@ -117,7 +118,8 @@ const SearchResults: React.FC<SearchResultsProps> = ({ results, onSelect, classN
     setConnectingId(result.id);
     try {
       await createConnection({ connectedUserId: result.id, source: 'search' });
-      toast.success(`Connected with ${getResultTitle(result)}!`);
+      setRequestedIds((prev) => new Set(prev).add(result.id));
+      toast.success(`Request sent to ${getResultTitle(result)}!`);
     } catch (err: any) {
       if (err?.response?.status === 409) {
         toast('Already connected', { icon: 'ℹ️' });
@@ -225,15 +227,22 @@ const SearchResults: React.FC<SearchResultsProps> = ({ results, onSelect, classN
                     {/* Action buttons for people */}
                     {isUser && (
                       <div className="flex shrink-0 items-center gap-1.5">
-                        <button
-                          onClick={(e) => handleConnect(e, result)}
-                          disabled={connectingId === result.id}
-                          className="flex items-center gap-1 rounded-full bg-neon-cyan/10 px-2.5 py-1 text-[11px] font-semibold text-neon-cyan transition-all hover:bg-neon-cyan/20 hover:scale-105 disabled:opacity-50"
-                          title="Connect"
-                        >
-                          <UserPlus className="h-3 w-3" />
-                          Connect
-                        </button>
+                        {requestedIds.has(result.id) ? (
+                          <span className="flex items-center gap-1 rounded-full bg-neon-cyan/5 px-2.5 py-1 text-[11px] font-semibold text-neon-cyan/60 cursor-default" title="Request sent">
+                            <UserPlus className="h-3 w-3" />
+                            Requested
+                          </span>
+                        ) : (
+                          <button
+                            onClick={(e) => handleConnect(e, result)}
+                            disabled={connectingId === result.id}
+                            className="flex items-center gap-1 rounded-full bg-neon-cyan/10 px-2.5 py-1 text-[11px] font-semibold text-neon-cyan transition-all hover:bg-neon-cyan/20 hover:scale-105 disabled:opacity-50"
+                            title="Connect"
+                          >
+                            <UserPlus className="h-3 w-3" />
+                            Connect
+                          </button>
+                        )}
                         <button
                           onClick={(e) => handleMessage(e, result)}
                           disabled={messagingId === result.id}

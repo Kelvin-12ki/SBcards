@@ -137,6 +137,7 @@ const MatchDetailPage: React.FC = () => {
 
   const [data, setData] = useState<WhyRecommendation | null>(null);
   const [loading, setLoading] = useState(true);
+  const [requested, setRequested] = useState(false);
 
   useEffect(() => {
     if (!eventId || !targetUserId) return;
@@ -300,25 +301,32 @@ const MatchDetailPage: React.FC = () => {
 
       {/* Actions */}
       <div className="flex flex-wrap items-center gap-3">
-        <Button
-          variant="primary"
-          size="lg"
-          onClick={async () => {
-            if (!targetUserId) return;
-            try {
-              await createConnection({ connectedUserId: targetUserId, source: 'event_match' });
-              toast.success('Connection request sent!');
-            } catch (err: any) {
-              if (err?.response?.status === 409) {
-                toast('Already connected or request pending', { icon: 'ℹ️' });
-              } else {
-                showApiError(err, 'Failed to send request.');
+        {requested ? (
+          <span className="flex items-center gap-1.5 rounded-xl bg-neon-cyan/5 px-4 py-2 text-sm font-semibold text-neon-cyan/60 cursor-default">
+            Requested
+          </span>
+        ) : (
+          <Button
+            variant="primary"
+            size="lg"
+            onClick={async () => {
+              if (!targetUserId) return;
+              try {
+                await createConnection({ connectedUserId: targetUserId, source: 'event_match' });
+                setRequested(true);
+                toast.success('Connection request sent!');
+              } catch (err: any) {
+                if (err?.response?.status === 409) {
+                  toast('Already connected or request pending', { icon: 'ℹ️' });
+                } else {
+                  showApiError(err, 'Failed to send request.');
+                }
               }
-            }
-          }}
-        >
-          Connect
-        </Button>
+            }}
+          >
+            Connect
+          </Button>
+        )}
         <Button
           variant="secondary"
           size="lg"
