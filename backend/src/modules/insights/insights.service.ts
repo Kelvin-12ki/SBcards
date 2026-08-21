@@ -7,6 +7,7 @@ import { Match, MatchDocument } from '../matching/entities/match.entity';
 import { User, UserDocument } from '../users/entities/user.entity';
 import { Card, CardDocument } from '../cards/entities/card.entity';
 import { EventParticipation, EventParticipationDocument } from '../events/entities/event-participation.entity';
+import { Conversation, ConversationDocument } from '../messaging/entities/conversation.entity';
 
 @Injectable()
 export class InsightsService {
@@ -25,6 +26,8 @@ export class InsightsService {
     private readonly cardModel: Model<CardDocument>,
     @InjectModel(EventParticipation.name)
     private readonly participationModel: Model<EventParticipationDocument>,
+    @InjectModel(Conversation.name)
+    private readonly conversationModel: Model<ConversationDocument>,
   ) {}
 
   /**
@@ -297,6 +300,10 @@ export class InsightsService {
               : 0,
             matchScore: data.matchScore ?? 0,
           },
+          actionType: 'send_connection_request',
+          actionData: {
+            targetUserId: suggestedUserId,
+          },
         },
       });
       count++;
@@ -305,7 +312,7 @@ export class InsightsService {
     return count;
   }
 
-  // ─── Follow-up Reminders ─────────────────────────────────────────────
+  // ─── Follow-up Reminders (Smart) ─────────────────────────────────────
 
   private async generateFollowUpReminders(userId: string): Promise<number> {
     const connections = await this.connectionModel
@@ -322,28 +329,138 @@ export class InsightsService {
       if (!createdAt) continue;
 
       const daysSinceCreation = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
-
-      // Only remind for connections older than 7 days
-      if (daysSinceCreation < 7) continue;
-
       const targetUser = await this.userModel.findById(connection.connectedUserId).exec();
       const targetUserName = targetUser?.displayName || targetUser?.email || 'Unknown';
+      const targetUserId = connection.connectedUserId;
+
+      // ── Check messaging history ──
+      const conversation = await this.conversationModel
+        .findOne({ participantIds: { $all: [userId, targetUserId] } })
+        .exec();
+
+      let lastMessageDaysAgo: number | null = null;
+      let hasMessaged = false;
+
+      if (conversation && conversation.lastMessageAt) {
+        hasMessaged = true;
+        lastMessageDaysAgo = (Date.now() - new Date(conversation.lastMessageAt).getTime()) / (1000 * 60 * 60 * 24);
+      }
+
+      // ── Check if target user is still active (has a profile update or event in last 14 days) ──
+      const recentParticipation = await this.participationModel
+        .findOne({ userId: targetUserId, isVisible: true })
+        .sort({ createdAt: -1 })
+        .exec();
+
+      let targetIsActive = false;
+      if (recentParticipation) {
+        const lastParticipation = this.getCreatedAt(recentParticipation);
+        if (lastParticipation) {
+          const daysSinceActivity = (Date.now() - lastParticipation.getTime()) / (1000 * 60 * 60 * 24);
+          targetIsActive = daysSinceActivity < 14;
+        }
+      }
+
+      // ── Check if they connected with someone you know recently ──
+      const recentMutualIds = await this.findRecentMutualConnections(userId, targetUserId, 14);
+
+      // ── Determine urgency and generate the best insight ──
+      let title = '';
+      let description = '';
+      let urgency = 'normal';
+      let actionType = 'send_message';
+      const reasons: string[] = [];
+
+      if (hasMessaged && lastMessageDaysAgo !== null) {
+        // They've chatted before — follow up based on last message
+        if (lastMessageDaysAgo >= 14) {
+          title = `Reconnect with ${targetUserName}`;
+          description = `Your last conversation was ${Math.round(lastMessageDaysAgo)} days ago. A quick check-in could keep the relationship strong.`;
+          reasons.push(`Last message ${Math.round(lastMessageDaysAgo)} days ago`);
+          urgency = lastMessageDaysAgo >= 30 ? 'high' : 'normal';
+        } else {
+          // Less than 14 days — not urgent
+          continue;
+        }
+      } else {
+        // Never messaged — connection is older than 7 days
+        if (daysSinceCreation < 14) continue;
+        title = `Message ${targetUserName}`;
+        description = `You connected ${Math.round(daysSinceCreation)} days ago but haven't chatted yet. Break the ice!`;
+        reasons.push('Never messaged');
+        urgency = daysSinceCreation >= 30 ? 'high' : 'normal';
+      }
+
+      if (targetIsActive) {
+        reasons.push('Active on SBCards');
+      } else {
+        reasons.push('Haven\'t seen them recently');
+      }
+
+      if (recentMutualIds.length > 0) {
+        reasons.push(`${recentMutualIds.length} new mutual connection${recentMutualIds.length > 1 ? 's' : ''}`);
+      }
 
       await this.insightModel.create({
         userId,
         type: 'follow_up_reminder',
-        title: `Follow up with ${targetUserName}`,
-        description: `You haven't followed up with ${targetUserName} in ${Math.round(daysSinceCreation)} days`,
+        title,
+        description: description + (reasons.length > 0 ? ` (${reasons.join(', ')})` : ''),
         data: {
           connectionId: this.docId(connection),
+          targetUserId,
           targetUserName,
-          daysSinceLastMessage: Math.round(daysSinceCreation),
+          daysSinceConnection: Math.round(daysSinceCreation),
+          hasMessaged,
+          lastMessageDaysAgo: lastMessageDaysAgo ? Math.round(lastMessageDaysAgo) : null,
+          targetIsActive,
+          recentMutualCount: recentMutualIds.length,
+          urgency,
+          actionType,
+          actionData: {
+            targetUserId,
+            conversationId: conversation?.id ?? null,
+          },
         },
       });
       count++;
     }
 
     return count;
+  }
+
+  /**
+   * Find mutual connections who connected recently (within last N days).
+   */
+  private async findRecentMutualConnections(
+    userAId: string,
+    userBId: string,
+    withinDays: number,
+  ): Promise<string[]> {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - withinDays);
+
+    const [connectionsA, connectionsB] = await Promise.all([
+      this.connectionModel.find({ userId: userAId, status: 'accepted' }).exec(),
+      this.connectionModel.find({ userId: userBId, status: 'accepted' }).exec(),
+    ]);
+
+    const userAConnections = new Set(connectionsA.map((c) => c.connectedUserId));
+    const userBConnections = new Set(connectionsB.map((c) => c.connectedUserId));
+
+    const recentMutual: string[] = [];
+    for (const id of userAConnections) {
+      if (id !== userBId && userBConnections.has(id)) {
+        // Check if this mutual connection was recent
+        const connA = connectionsA.find((c) => c.connectedUserId === id);
+        const createdAt = connA ? (connA as any).createdAt : null;
+        if (createdAt && new Date(createdAt) >= cutoff) {
+          recentMutual.push(id);
+        }
+      }
+    }
+
+    return recentMutual;
   }
 
   // ─── Common Connections ──────────────────────────────────────────────
@@ -502,7 +619,7 @@ export class InsightsService {
         type: 'profile_tip',
         title: tip.tip,
         description: tip.suggestion,
-        data: { field: tip.field, suggestion: tip.suggestion },
+        data: { field: tip.field, suggestion: tip.suggestion, actionType: 'complete_profile', actionData: { field: tip.field } },
       });
       count++;
     }
