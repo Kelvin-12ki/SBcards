@@ -117,7 +117,10 @@ export class TablesController {
     return this.tablesService.listCheckIns(eventId);
   }
 
-  @Get('events/:eventId/attendees')
+  // NOTE: deliberately NOT `events/:eventId/attendees` — EventsController
+  // already owns that path and is registered first in AppModule, so a route
+  // by that name here is unreachable.
+  @Get('events/:eventId/table-attendees')
   @ApiOperation({
     summary: 'List checked-in attendees with profile details',
   })
@@ -146,6 +149,20 @@ export class TablesController {
       await this.resolveUserId(jwtUser),
     );
     return this.tablesService.assignTables(eventId);
+  }
+
+  @Post('events/:eventId/rotate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Advance to the next rotation round (organizer)' })
+  async rotate(
+    @Param('eventId') eventId: string,
+    @CurrentUser() jwtUser: JwtUser,
+  ): Promise<AssignTableDto[]> {
+    await this.tablesService.assertOrganizer(
+      eventId,
+      await this.resolveUserId(jwtUser),
+    );
+    return this.tablesService.rotate(eventId);
   }
 
   @Get('events/:eventId/my-assignment')

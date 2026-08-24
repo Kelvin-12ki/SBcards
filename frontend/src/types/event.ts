@@ -9,6 +9,12 @@ export interface Event {
   maxAttendees?: number;
   tableCount?: number;
   tableCapacity?: number;
+  tableConfig?: {
+    enabled: boolean;
+    seatsPerTable: number;
+    rotationIntervalMinutes?: number;
+  };
+  currentRotationRound?: number;
   isActive: boolean;
   creatorId: string;
   organizationId?: string;

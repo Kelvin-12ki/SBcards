@@ -293,6 +293,58 @@ export class TablesService {
   }
 
   /**
+   * Advance to the next rotation round and re-seat everyone. Pairings from
+   * earlier rounds are penalised so people meet someone new.
+   */
+  async rotate(eventId: string): Promise<AssignTableDto[]> {
+    const event = await this.eventModel.findById(eventId).exec();
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+
+    const nextRound = (event.currentRotationRound ?? 0) + 1;
+    event.currentRotationRound = nextRound;
+    await event.save();
+
+    this.logger.log(`Event ${eventId} rotating to round ${nextRound}`);
+    return this.seatAttendees(event, nextRound);
+  }
+
+  /**
+   * Pair keys for everyone who has already sat together in a round before
+   * `round`. Used to keep rotation from repeating tablemates.
+   */
+  private async buildMetBefore(
+    eventId: string,
+    round: number,
+  ): Promise<Set<string>> {
+    const pairs = new Set<string>();
+    if (round <= 0) return pairs;
+
+    const prior = await this.assignmentModel
+      .find({ eventId, rotationRound: { $lt: round } })
+      .exec();
+
+    // Group by (round, table), then mark every pair at that table as met.
+    const byTable = new Map<string, string[]>();
+    for (const a of prior) {
+      const key = `${a.rotationRound}:${a.tableNumber}`;
+      const list = byTable.get(key) ?? [];
+      list.push(a.userId);
+      byTable.set(key, list);
+    }
+
+    for (const members of byTable.values()) {
+      for (let i = 0; i < members.length; i++) {
+        for (let j = i + 1; j < members.length; j++) {
+          pairs.add(this.pairKey(members[i], members[j]));
+        }
+      }
+    }
+    return pairs;
+  }
+
+  /**
    * Core seating routine for a given rotation round. Clears prior seats for
    * that round, then greedily fills tables maximizing diversity.
    */
@@ -302,6 +354,10 @@ export class TablesService {
   ): Promise<AssignTableDto[]> {
     const eventId = event.id;
     const eligible = await this.getEligibleAttendees(eventId);
+
+    // Who has already shared a table in an earlier round, so rotation can
+    // avoid repeating pairings. Empty on round 0.
+    const metBefore = await this.buildMetBefore(eventId, round);
 
     // Ensure we have enough tables to seat everyone.
     const seatsPerTable = event.tableCapacity || 6;
@@ -361,7 +417,7 @@ export class TablesService {
         let best: EligibleAttendee | null = null;
         let bestScore = -Infinity;
         for (const cand of remaining.values()) {
-          const s = this.complementScore(cand, seated, scoreMap);
+          const s = this.complementScore(cand, seated, scoreMap, metBefore);
           if (s > bestScore) {
             bestScore = s;
             best = cand;
@@ -402,6 +458,7 @@ export class TablesService {
     cand: EligibleAttendee,
     seated: EligibleAttendee[],
     scoreMap: Map<string, number>,
+    metBefore?: Set<string>,
   ): number {
     const tableSkills = new Set(seated.flatMap((s) => s.skills));
     const tableIndustries = new Set(
@@ -446,12 +503,20 @@ export class TablesService {
         0,
       ) / seated.length;
 
+    // Rotation: strongly avoid re-seating people who have already shared a
+    // table in an earlier round — the point of rotating is to meet new people.
+    const repeats = metBefore
+      ? seated.filter((s) => metBefore.has(this.pairKey(cand.userId, s.userId)))
+          .length
+      : 0;
+
     return (
       skillDiversity * 3 +
       industryDiversity * 2 +
       seniorityBalance * 1.5 +
       sharedInterest * 1 +
-      avgOverlap * 1
+      avgOverlap * 1 -
+      repeats * 6
     );
   }
 

@@ -13,6 +13,8 @@ const CreateCardPage = React.lazy(() => import('@/pages/CreateCardPage'));
 const EventsPage = React.lazy(() => import('@/pages/EventsPage'));
 const EventDetailPage = React.lazy(() => import('@/pages/EventDetailPage'));
 const EventActivePage = React.lazy(() => import('@/pages/EventActivePage'));
+const EventOrganizerPage = React.lazy(() => import('@/pages/EventOrganizerPage'));
+const EventCheckInPage = React.lazy(() => import('@/pages/EventCheckInPage'));
 const MatchesPage = React.lazy(() => import('@/pages/MatchesPage'));
 const ScanCardPage = React.lazy(() => import('@/pages/ScanCardPage'));
 const ScanLandingPage = React.lazy(() => import('@/pages/ScanLandingPage'));
@@ -84,6 +86,8 @@ const RoutesTree: React.FC = () => {
             <Route path="/events" element={<EventsPage />} />
             <Route path="/events/:id" element={<EventDetailPage />} />
             <Route path="/events/:id/active" element={<EventActivePage />} />
+            <Route path="/events/:id/organizer" element={<EventOrganizerPage />} />
+            <Route path="/events/:id/check-in" element={<EventCheckInPage />} />
             <Route path="/events/:id/matches" element={<MatchesPage />} />
             <Route path="/events/:eventId/recommendations" element={<RecommendationsPage />} />
             <Route path="/events/:eventId/recommendations/why/:targetUserId" element={<MatchDetailPage />} />

@@ -184,6 +184,16 @@ const EventDetailPage: React.FC = () => {
               Manage Event
             </Button>
           )}
+          {isCreator && (
+            <Button variant="secondary" onClick={() => navigate(`/events/${event.id}/organizer`)}>
+              Organizer Portal
+            </Button>
+          )}
+          {hasJoined && !isCreator && (
+            <Button variant="primary" onClick={() => navigate(`/events/${event.id}/check-in`)}>
+              Check In
+            </Button>
+          )}
           {hasJoined && event.status === 'active' && (
             <Button variant="ghost" onClick={() => navigate(`/events/${event.id}/matches`)}>
               View Matches
