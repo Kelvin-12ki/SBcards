@@ -48,7 +48,12 @@ export class TablesController {
   async setupTables(
     @Param('eventId') eventId: string,
     @Body() dto: SetupTablesDto,
+    @CurrentUser() jwtUser: JwtUser,
   ): Promise<AssignTableDto[]> {
+    await this.tablesService.assertOrganizer(
+      eventId,
+      await this.resolveUserId(jwtUser),
+    );
     return this.tablesService.setupTables(eventId, dto);
   }
 
@@ -72,8 +77,13 @@ export class TablesController {
     @Body() dto: CheckInDto,
     @CurrentUser() jwtUser: JwtUser,
   ): Promise<CheckInResultDto> {
-    // If a userId is supplied it's an organizer checking someone else in.
-    const targetUserId = dto.userId ?? (await this.resolveUserId(jwtUser));
+    // If a userId is supplied it's an organizer checking someone else in,
+    // so that branch has to prove the caller actually is the organizer.
+    const callerId = await this.resolveUserId(jwtUser);
+    if (dto.userId && dto.userId !== callerId) {
+      await this.tablesService.assertOrganizer(eventId, callerId);
+    }
+    const targetUserId = dto.userId ?? callerId;
     const method = dto.method ?? (dto.userId ? 'manual' : 'qr');
     return this.tablesService.checkIn(eventId, targetUserId, method);
   }
@@ -84,13 +94,26 @@ export class TablesController {
   async checkOut(
     @Param('eventId') eventId: string,
     @Param('userId') userId: string,
+    @CurrentUser() jwtUser: JwtUser,
   ): Promise<void> {
+    // Attendees may check themselves out; anyone else has to be the organizer.
+    const callerId = await this.resolveUserId(jwtUser);
+    if (userId !== callerId) {
+      await this.tablesService.assertOrganizer(eventId, callerId);
+    }
     await this.tablesService.checkOut(eventId, userId);
   }
 
   @Get('events/:eventId/check-ins')
   @ApiOperation({ summary: 'List all check-ins for an event' })
-  async listCheckIns(@Param('eventId') eventId: string) {
+  async listCheckIns(
+    @Param('eventId') eventId: string,
+    @CurrentUser() jwtUser: JwtUser,
+  ) {
+    await this.tablesService.assertOrganizer(
+      eventId,
+      await this.resolveUserId(jwtUser),
+    );
     return this.tablesService.listCheckIns(eventId);
   }
 
@@ -98,7 +121,14 @@ export class TablesController {
   @ApiOperation({
     summary: 'List checked-in attendees with profile details',
   })
-  async getAttendees(@Param('eventId') eventId: string) {
+  async getAttendees(
+    @Param('eventId') eventId: string,
+    @CurrentUser() jwtUser: JwtUser,
+  ) {
+    await this.tablesService.assertOrganizer(
+      eventId,
+      await this.resolveUserId(jwtUser),
+    );
     return this.tablesService.getAttendees(eventId);
   }
 
@@ -109,7 +139,12 @@ export class TablesController {
   @ApiOperation({ summary: 'Run matching + table assignment (organizer)' })
   async assignTables(
     @Param('eventId') eventId: string,
+    @CurrentUser() jwtUser: JwtUser,
   ): Promise<AssignTableDto[]> {
+    await this.tablesService.assertOrganizer(
+      eventId,
+      await this.resolveUserId(jwtUser),
+    );
     return this.tablesService.assignTables(eventId);
   }
 

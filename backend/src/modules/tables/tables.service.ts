@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  Logger,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Table, TableDocument } from './entities/table.entity';
@@ -54,6 +59,28 @@ export class TablesService {
     private readonly matchingService: MatchingService,
     private readonly usersService: UsersService,
   ) {}
+
+  // ────────────────────────────────────────────────────────────
+  //  Authorization
+  // ────────────────────────────────────────────────────────────
+
+  /**
+   * Throw unless `userId` created the event. Organizer-only table endpoints
+   * go through here — the mobile app hides its organizer controls, but that
+   * is presentation, not enforcement.
+   */
+  async assertOrganizer(eventId: string, userId: string): Promise<EventDocument> {
+    const event = await this.eventModel.findById(eventId).exec();
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+    if (event.creatorId !== userId) {
+      throw new ForbiddenException(
+        'Only the event creator can manage tables for this event',
+      );
+    }
+    return event;
+  }
 
   // ────────────────────────────────────────────────────────────
   //  Table setup
