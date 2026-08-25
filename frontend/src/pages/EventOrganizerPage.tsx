@@ -41,6 +41,8 @@ const EventOrganizerPage: React.FC = () => {
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  /** A panel failed but the page is still usable — shown as a banner. */
+  const [partialError, setPartialError] = useState<string | null>(null);
   const [assigning, setAssigning] = useState(false);
   const [rotating, setRotating] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
@@ -72,15 +74,39 @@ const EventOrganizerPage: React.FC = () => {
         // Only the creator may read the organizer-only endpoints; skip them
         // otherwise so we don't fire calls that will 403.
         if (user && ev.creatorId === user.id) {
-          const [ci, at, tb] = await Promise.all([
+          // allSettled, not all: one failing panel shouldn't blank the whole
+          // dashboard mid-event. Whatever loaded still renders.
+          const [ciR, atR, tbR] = await Promise.allSettled([
             getCheckIns(id),
             getTableAttendees(id),
             getEventTables(id),
           ]);
           if (cancelled) return;
-          setCheckIns(ci);
-          setAttendees(at);
-          setTables(tb);
+
+          if (ciR.status === 'fulfilled') setCheckIns(ciR.value);
+          if (atR.status === 'fulfilled') setAttendees(atR.value);
+          if (tbR.status === 'fulfilled') setTables(tbR.value);
+
+          const failed = [
+            ['check-ins', ciR],
+            ['table-attendees', atR],
+            ['tables', tbR],
+          ].filter(([, r]) => (r as PromiseSettledResult<unknown>).status === 'rejected');
+
+          if (failed.length > 0) {
+            const detail = failed
+              .map(([name, r]) => {
+                const e = (r as PromiseRejectedResult).reason as {
+                  response?: { status?: number; data?: { message?: unknown } };
+                };
+                const status = e?.response?.status ?? 'no response';
+                const msg = e?.response?.data?.message;
+                console.error(`[organizer] ${name} failed`, status, msg, e);
+                return `${name} (${status})`;
+              })
+              .join(', ');
+            setPartialError(`Could not load: ${detail}`);
+          }
 
           // Expected headcount for the "14 / 36" counter.
           try {
@@ -92,9 +118,16 @@ const EventOrganizerPage: React.FC = () => {
         }
       } catch (err) {
         if (!cancelled) {
+          const e = err as {
+            friendlyMessage?: string;
+            config?: { url?: string };
+            response?: { status?: number };
+          };
+          console.error('[organizer] load failed', e?.config?.url, e?.response?.status, e);
+          const status = e?.response?.status;
           setLoadError(
-            (err as { friendlyMessage?: string })?.friendlyMessage ??
-              'Could not load this event.',
+            `${e?.friendlyMessage ?? 'Could not load this event.'}` +
+              (status ? ` (${e?.config?.url ?? 'request'} → ${status})` : ''),
           );
         }
       } finally {
@@ -285,6 +318,12 @@ const EventOrganizerPage: React.FC = () => {
           Rotate
         </Button>
       </div>
+
+      {partialError && (
+        <p className="mb-6 rounded-xl border border-danger/30 bg-danger/10 p-3 text-sm text-danger">
+          {partialError}. Details are in the browser console.
+        </p>
+      )}
 
       {attendees.length === 0 && (
         <p className="mb-6 rounded-xl border border-border-subtle bg-surface-2 p-3 text-sm text-text-secondary">
