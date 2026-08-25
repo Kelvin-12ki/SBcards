@@ -137,3 +137,32 @@ export async function updateProfile(data: Partial<User>): Promise<User> {
   const { data: result } = await apiClient.patch<User>('/users/me', data);
   return result;
 }
+
+// ── Organizer requests ──────────────────────────────────────────
+
+export async function requestOrganizer(payload: {
+  company?: string;
+  jobTitle?: string;
+  reason: string;
+}): Promise<User> {
+  const { data } = await apiClient.post<User>('/users/organizer-request', payload);
+  return data;
+}
+
+/** Admin only: everyone with a pending application. */
+export async function getOrganizerRequests(): Promise<User[]> {
+  const { data } = await apiClient.get<User[]>('/users/organizer-requests');
+  return data;
+}
+
+/** Admin only: approve promotes the user to organizer. */
+export async function reviewOrganizerRequest(
+  userId: string,
+  status: 'approved' | 'rejected',
+): Promise<User> {
+  const { data } = await apiClient.patch<User>(
+    `/users/${userId}/organizer-request`,
+    { status },
+  );
+  return data;
+}

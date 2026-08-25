@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/auth/useAuth';
 import { getCards } from '@/api/cards';
-import { updateProfile, uploadProfilePhoto } from '@/api/users';
+import { updateProfile, uploadProfilePhoto, requestOrganizer } from '@/api/users';
+import { canOrganize } from '@/types/user';
 import { hasPasswordProvider, setPasswordForGoogleUser, changePassword, getFirebaseAuthErrorMessage } from '@/api/auth';
 import type { Card } from '@/types/card';
 import CardPreview from '@/components/cards/CardPreview';
@@ -52,6 +53,28 @@ const ProfilePage: React.FC = () => {
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordError, setPasswordError] = useState('');
+
+  // Organizer application state
+  const [orgForm, setOrgForm] = useState({ company: '', jobTitle: '', reason: '' });
+  const [orgSubmitting, setOrgSubmitting] = useState(false);
+
+  const handleOrganizerRequest = async () => {
+    setOrgSubmitting(true);
+    try {
+      await requestOrganizer({
+        company: orgForm.company.trim() || undefined,
+        jobTitle: orgForm.jobTitle.trim() || undefined,
+        reason: orgForm.reason.trim(),
+      });
+      // Pull the updated user so the section switches to "under review".
+      await refreshUser();
+      toast.success('Application submitted');
+    } catch (err) {
+      showApiError(err, 'Could not submit your application.');
+    } finally {
+      setOrgSubmitting(false);
+    }
+  };
 
   const defaultCard = cards.find((c) => c.isDefault) || cards[0];
 
@@ -371,6 +394,71 @@ const ProfilePage: React.FC = () => {
           ))}
         </section>
       )}
+
+      {/* Organizer access */}
+      <section className="card-magical rounded-2xl border border-border-subtle p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <svg className="h-5 w-5 text-gold" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+          </svg>
+          <h3 className="font-display text-sm font-bold text-gradient-gold">Organizer access</h3>
+        </div>
+
+        {canOrganize(user) ? (
+          <p className="text-sm text-text-secondary">
+            <span className="font-medium text-success">You're an organizer.</span> You can
+            create events and run the organizer portal from the{' '}
+            <Link to="/events" className="text-gold hover:underline">Events</Link> page.
+          </p>
+        ) : user?.organizerRequest?.status === 'pending' ? (
+          <p className="text-sm text-text-secondary">
+            <span className="font-medium text-warning">Application under review.</span> An
+            admin will approve or decline it shortly.
+          </p>
+        ) : (
+          <>
+            <p className="text-sm text-text-secondary">
+              {user?.organizerRequest?.status === 'rejected'
+                ? 'Your previous application was declined. You can apply again with more detail.'
+                : 'Organizers can create events, seat attendees at tables, and run the organizer portal.'}
+            </p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Input
+                label="Company"
+                value={orgForm.company}
+                onChange={(e) => setOrgForm({ ...orgForm, company: e.target.value })}
+                placeholder="Acme Events"
+              />
+              <Input
+                label="Job title"
+                value={orgForm.jobTitle}
+                onChange={(e) => setOrgForm({ ...orgForm, jobTitle: e.target.value })}
+                placeholder="Community Lead"
+              />
+            </div>
+            <div>
+              <label htmlFor="organizer-reason" className="mb-1.5 block text-sm font-medium text-text-secondary">
+                Why do you need to run events?
+              </label>
+              <textarea
+                id="organizer-reason"
+                rows={3}
+                value={orgForm.reason}
+                onChange={(e) => setOrgForm({ ...orgForm, reason: e.target.value })}
+                className="w-full rounded-xl border border-border-subtle bg-surface-2 px-4 py-2.5 text-sm text-text-primary placeholder:text-text-secondary focus:border-gold/50 focus:outline-none"
+                placeholder="We host a monthly meetup for 120 developers."
+              />
+            </div>
+            <Button
+              onClick={handleOrganizerRequest}
+              loading={orgSubmitting}
+              disabled={orgForm.reason.trim().length === 0}
+            >
+              Apply to become an organizer
+            </Button>
+          </>
+        )}
+      </section>
 
       {/* Security / Password Section */}
       <section className="card-magical rounded-2xl border border-border-subtle p-5 space-y-4">

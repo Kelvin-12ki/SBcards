@@ -1,19 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ExternalLink, Calendar } from 'lucide-react';
+import { ExternalLink, Calendar, Plus } from 'lucide-react';
 import { getEvents, getExternalEvents } from '@/api/events';
 import type { Event } from '@/types/event';
 import type { ExternalEvent } from '@/api/events';
 import EventList from '@/components/events/EventList';
 import ExternalEventCard from '@/components/events/ExternalEventCard';
+import CreateEventModal from '@/components/events/CreateEventModal';
 import Spinner from '@/components/ui/Spinner';
+import Button from '@/components/ui/Button';
 import { showApiError } from '@/utils/errorHandler';
+import { useAuth } from '@/auth/useAuth';
+import { canOrganize } from '@/types/user';
 
 const EventsPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isOrganizer = canOrganize(user);
 
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<'all' | 'mine'>('all');
+  const [createOpen, setCreateOpen] = useState(false);
 
   const [externalEvents, setExternalEvents] = useState<ExternalEvent[]>([]);
   const [externalLoading, setExternalLoading] = useState(true);
@@ -57,6 +65,18 @@ const EventsPage: React.FC = () => {
     navigate(`/events/${eventId}`);
   };
 
+  const handleCreated = (created: Event) => {
+    setEvents((prev) => [created, ...prev]);
+    setTab('mine');
+    navigate(`/events/${created.id}`);
+  };
+
+  // "My Events" is organizer-only, so an attendee always sees the full list.
+  const visibleEvents =
+    isOrganizer && tab === 'mine'
+      ? events.filter((e) => e.creatorId === user?.id)
+      : events;
+
   return (
     <div>
       {/* Header */}
@@ -64,16 +84,48 @@ const EventsPage: React.FC = () => {
         <h1 className="font-display text-3xl font-extrabold tracking-tight text-gradient-gold">
           Events
         </h1>
-        <a
-          href="https://nairobieventsguide.com/upcoming-events/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1.5 rounded-xl bg-surface-2 border border-border-subtle px-3 py-2 text-xs font-medium text-text-secondary transition-all hover:border-gold/40 hover:text-gold"
-        >
-          <ExternalLink className="h-3.5 w-3.5" />
-          Nairobi Events Guide
-        </a>
+        <div className="flex items-center gap-2">
+          {isOrganizer && (
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-1.5 h-4 w-4" />
+              Create Event
+            </Button>
+          )}
+          <a
+            href="https://nairobieventsguide.com/upcoming-events/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 rounded-xl bg-surface-2 border border-border-subtle px-3 py-2 text-xs font-medium text-text-secondary transition-all hover:border-gold/40 hover:text-gold"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            Nairobi Events Guide
+          </a>
+        </div>
       </div>
+
+      {/* Tabs — organizers only; attendees have nothing to filter by */}
+      {isOrganizer && (
+        <div className="mb-5 flex gap-1 border-b border-border-subtle" role="tablist">
+          {([['all', 'All Events'], ['mine', 'My Events']] as const).map(
+            ([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={tab === key}
+                onClick={() => setTab(key)}
+                className={
+                  tab === key
+                    ? 'border-b-2 border-gold px-4 py-2.5 text-sm font-semibold text-gold'
+                    : 'border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary'
+                }
+              >
+                {label}
+              </button>
+            ),
+          )}
+        </div>
+      )}
 
       {/* Local Events */}
       <section>
@@ -82,9 +134,17 @@ const EventsPage: React.FC = () => {
             <Spinner size="lg" />
           </div>
         ) : (
-          <EventList events={events} onJoin={handleJoin} onView={handleView} />
+          <EventList events={visibleEvents} onJoin={handleJoin} onView={handleView} />
         )}
       </section>
+
+      {isOrganizer && (
+        <CreateEventModal
+          isOpen={createOpen}
+          onClose={() => setCreateOpen(false)}
+          onCreated={handleCreated}
+        />
+      )}
 
       {/* External Events from Nairobi Events Guide */}
       {(externalLoading || externalEvents.length > 0) && (

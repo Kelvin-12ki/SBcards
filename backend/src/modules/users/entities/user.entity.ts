@@ -76,8 +76,28 @@ export class User {
   @Prop({ default: false })
   profileComplete!: boolean;
 
-  @Prop({ enum: ['user', 'admin'], default: 'user' })
+  /**
+   * 'attendee' is the default for new signups. 'user' is the legacy value
+   * carried by accounts created before roles existed and is treated as
+   * equivalent to 'attendee' everywhere — it stays in the enum so those
+   * documents still validate on save.
+   */
+  @Prop({
+    enum: ['user', 'attendee', 'organizer', 'admin'],
+    default: 'attendee',
+  })
   role!: string;
+
+  /** Standing application to be upgraded to the organizer role. */
+  @Prop({ type: Object, default: null })
+  organizerRequest?: {
+    status: 'none' | 'pending' | 'approved' | 'rejected';
+    company?: string;
+    jobTitle?: string;
+    reason?: string;
+    requestedAt?: Date;
+    reviewedAt?: Date;
+  };
 
   @Prop({ enum: ['active', 'suspended', 'banned'], default: 'active' })
   status!: string;

@@ -6,6 +6,7 @@ import type { Event } from '@/types/event';
 import type { Card } from '@/types/card';
 import type { EventParticipation, EventParticipant } from '@/types/event';
 import { useAuth } from '@/auth/useAuth';
+import { canOrganize } from '@/types/user';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
 import Badge from '@/components/ui/Badge';
@@ -120,6 +121,9 @@ const EventDetailPage: React.FC = () => {
     event.status === 'active' ? 'success' : event.status === 'completed' ? 'default' : 'default';
 
   const isCreator = user?.id === event.creatorId;
+  // Holding the organizer role isn't enough — the portal is for the event's
+  // own creator. Both must be true.
+  const isOrganizer = canOrganize(user);
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -184,7 +188,7 @@ const EventDetailPage: React.FC = () => {
               Manage Event
             </Button>
           )}
-          {isCreator && (
+          {isOrganizer && isCreator && (
             <Button variant="secondary" onClick={() => navigate(`/events/${event.id}/organizer`)}>
               Organizer Portal
             </Button>

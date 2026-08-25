@@ -10,6 +10,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { EventsService } from './events.service';
@@ -57,6 +58,12 @@ export class EventsController {
     const user = await this.usersService.findByFirebaseUid(jwtUser.uid);
     if (!user) {
       throw new Error('User not found');
+    }
+    // Role is read from the database, not the JWT, so a promotion takes effect
+    // without the user signing out and back in. 'user' is the legacy value for
+    // accounts predating roles and is treated as an attendee.
+    if (user.role !== 'organizer' && user.role !== 'admin') {
+      throw new ForbiddenException('Organizer role required to create events');
     }
     return this.eventsService.create(user.id, createEventDto);
   }

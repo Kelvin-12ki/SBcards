@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { listUsers, banUser, suspendUser, restoreUser, type PaginatedUsers } from '@/api/admin';
+import { getOrganizerRequests, reviewOrganizerRequest } from '@/api/users';
+import type { User } from '@/types/user';
 import { timeAgo } from '@/utils/helpers';
 import { showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
@@ -30,10 +32,116 @@ const RoleBadge: React.FC<{ role: string }> = ({ role }) => {
       </span>
     );
   }
+  if (role === 'organizer') {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-neon-purple/20 text-neon-purple border border-neon-purple/30">
+        Organizer
+      </span>
+    );
+  }
+  // 'attendee' and the legacy 'user' value read the same to an admin.
   return (
     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-surface-2 text-text-tertiary border border-border-subtle">
-      User
+      Attendee
     </span>
+  );
+};
+
+// ─── Pending organizer applications ─────────────────────────────────────────
+
+const PendingOrganizerRequests: React.FC = () => {
+  const [requests, setRequests] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [acting, setActing] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      setLoading(true);
+      setRequests(await getOrganizerRequests());
+    } catch (err: any) {
+      showApiError(err, 'Failed to load organizer applications');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const review = async (userId: string, status: 'approved' | 'rejected') => {
+    setActing(userId);
+    try {
+      await reviewOrganizerRequest(userId, status);
+      toast.success(status === 'approved' ? 'User is now an organizer' : 'Application rejected');
+      // Drop it locally so the queue shrinks immediately.
+      setRequests((prev) => prev.filter((r) => r.id !== userId));
+    } catch (err: any) {
+      showApiError(err, 'Failed to review application');
+      load();
+    } finally {
+      setActing(null);
+    }
+  };
+
+  if (loading || requests.length === 0) return null;
+
+  return (
+    <div className="rounded-2xl border border-yellow-500/30 bg-yellow-500/5 p-5">
+      <h2 className="text-lg font-semibold text-text-primary mb-1">
+        Organizer applications
+        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+          {requests.length} pending
+        </span>
+      </h2>
+      <p className="text-sm text-text-tertiary mb-4">
+        Approving grants the organizer role and the ability to create events.
+      </p>
+
+      <ul className="space-y-3">
+        {requests.map((r) => (
+          <li
+            key={r.id}
+            className="flex flex-col gap-3 rounded-xl border border-border-subtle bg-surface-1 p-4 sm:flex-row sm:items-start sm:justify-between"
+          >
+            <div className="min-w-0 flex-1">
+              <Link
+                to={`/admin/users/${r.id}`}
+                className="font-medium text-text-primary hover:text-gold transition-colors"
+              >
+                {r.displayName || r.email}
+              </Link>
+              <p className="text-xs text-text-tertiary">
+                {[r.organizerRequest?.jobTitle, r.organizerRequest?.company]
+                  .filter(Boolean)
+                  .join(' · ') || r.email}
+              </p>
+              {r.organizerRequest?.reason && (
+                <p className="mt-1.5 text-sm text-text-secondary">
+                  {r.organizerRequest.reason}
+                </p>
+              )}
+            </div>
+            <div className="flex flex-shrink-0 gap-2">
+              <button
+                onClick={() => review(r.id, 'approved')}
+                disabled={acting === r.id}
+                className="rounded-xl px-4 py-2 text-sm font-medium bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30 transition-colors disabled:opacity-50"
+              >
+                Approve
+              </button>
+              <button
+                onClick={() => review(r.id, 'rejected')}
+                disabled={acting === r.id}
+                className="rounded-xl px-4 py-2 text-sm font-medium bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-colors disabled:opacity-50"
+              >
+                Reject
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 };
 
@@ -96,6 +204,9 @@ const AdminUsersPage: React.FC = () => {
         <h1 className="text-2xl font-bold text-text-primary">Users</h1>
         <p className="text-text-tertiary mt-1">Manage all registered users.</p>
       </div>
+
+      {/* Pending organizer applications — hides itself when the queue is empty */}
+      <PendingOrganizerRequests />
 
       {/* Search */}
       <form onSubmit={handleSearch} className="flex gap-3">

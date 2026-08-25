@@ -9,11 +9,17 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { AdminGuard } from '../../common/guards/admin.guard';
+import {
+  OrganizerRequestDto,
+  ReviewOrganizerRequestDto,
+} from './dto/organizer-request.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtUser } from '../../common/strategies/jwt.strategy';
 import { User } from './entities/user.entity';
@@ -69,6 +75,43 @@ export class UsersController {
   })
   async search(@Query('q') query: string): Promise<User[]> {
     return this.usersService.search(query);
+  }
+
+  // ── Organizer requests ────────────────────────────────────────
+  // NOTE: these must stay ABOVE `@Get(':userId')`. Nest matches routes in
+  // declaration order, so a later `organizer-requests` would be swallowed by
+  // the `:userId` wildcard and never run.
+
+  @Post('organizer-request')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Apply to become an organizer' })
+  async requestOrganizer(
+    @CurrentUser() jwtUser: JwtUser,
+    @Body() dto: OrganizerRequestDto,
+  ): Promise<User> {
+    const user = await this.usersService.findByFirebaseUid(jwtUser.uid);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return this.usersService.requestOrganizer(user.id, dto);
+  }
+
+  @Get('organizer-requests')
+  @UseGuards(AdminGuard)
+  @ApiOperation({ summary: 'List pending organizer applications (admin)' })
+  async listOrganizerRequests(): Promise<User[]> {
+    return this.usersService.listOrganizerRequests();
+  }
+
+  @Patch(':id/organizer-request')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminGuard)
+  @ApiOperation({ summary: 'Approve or reject an application (admin)' })
+  async reviewOrganizerRequest(
+    @Param('id') id: string,
+    @Body() dto: ReviewOrganizerRequestDto,
+  ): Promise<User> {
+    return this.usersService.reviewOrganizerRequest(id, dto.status);
   }
 
   @Get(':userId')

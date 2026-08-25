@@ -1,6 +1,7 @@
 import {
   Injectable,
   NotFoundException,
+  BadRequestException,
   Logger,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -100,6 +101,70 @@ export class UsersService {
     data: UpdateUserDto,
   ): Promise<UserDocument> {
     return this.update(id, data);
+  }
+
+  // ── Organizer requests ──────────────────────────────────────────
+
+  /**
+   * File (or re-file) an application to become an organizer. Users who are
+   * already organizers or admins have nothing to apply for.
+   */
+  async requestOrganizer(
+    userId: string,
+    data: { company?: string; jobTitle?: string; reason: string },
+  ): Promise<UserDocument> {
+    const user = await this.findById(userId);
+
+    if (user.role === 'organizer' || user.role === 'admin') {
+      throw new BadRequestException('You already have organizer access');
+    }
+    if (user.organizerRequest?.status === 'pending') {
+      throw new BadRequestException('Your application is already under review');
+    }
+
+    user.organizerRequest = {
+      status: 'pending',
+      company: data.company,
+      jobTitle: data.jobTitle,
+      reason: data.reason,
+      requestedAt: new Date(),
+    };
+    return user.save();
+  }
+
+  /** Every application an admin still needs to act on, oldest first. */
+  async listOrganizerRequests(): Promise<UserDocument[]> {
+    return this.userModel
+      .find({ 'organizerRequest.status': 'pending' })
+      .sort({ 'organizerRequest.requestedAt': 1 })
+      .exec();
+  }
+
+  /**
+   * Approve or reject an application. Approving promotes the user to the
+   * organizer role; rejecting leaves the role untouched.
+   */
+  async reviewOrganizerRequest(
+    userId: string,
+    status: 'approved' | 'rejected',
+  ): Promise<UserDocument> {
+    const user = await this.findById(userId);
+
+    if (!user.organizerRequest || user.organizerRequest.status !== 'pending') {
+      throw new BadRequestException('No pending request for this user');
+    }
+
+    user.organizerRequest = {
+      ...user.organizerRequest,
+      status,
+      reviewedAt: new Date(),
+    };
+    if (status === 'approved') {
+      user.role = 'organizer';
+    }
+
+    this.logger.log(`Organizer request for ${userId} ${status}`);
+    return user.save();
   }
 
   /**

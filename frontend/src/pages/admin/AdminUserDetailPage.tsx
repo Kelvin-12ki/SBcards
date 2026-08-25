@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getUserDetail, banUser, suspendUser, restoreUser, type UserDetail } from '@/api/admin';
+import { reviewOrganizerRequest } from '@/api/users';
 import { formatDate } from '@/utils/helpers';
 import { showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
@@ -74,6 +75,23 @@ const AdminUserDetailPage: React.FC = () => {
       setUser(data);
     } catch (err: any) {
       showApiError(err, `Failed to ${action} user`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleReview = async (status: 'approved' | 'rejected') => {
+    if (!userId) return;
+    setActionLoading(true);
+    try {
+      await reviewOrganizerRequest(userId, status);
+      toast.success(
+        status === 'approved' ? 'Approved — user is now an organizer' : 'Application rejected',
+      );
+      const data = await getUserDetail(userId);
+      setUser(data);
+    } catch (err: any) {
+      showApiError(err, `Failed to ${status === 'approved' ? 'approve' : 'reject'} application`);
     } finally {
       setActionLoading(false);
     }
@@ -173,6 +191,75 @@ const AdminUserDetailPage: React.FC = () => {
           <InfoRow label="Created At" value={user.createdAt ? formatDate(user.createdAt) : '-'} />
         </div>
       </div>
+
+      {/* Organizer Application */}
+      {user.organizerRequest && user.organizerRequest.status !== 'none' && (
+        <div className="rounded-2xl border border-border-subtle bg-surface-1 p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <h2 className="text-lg font-semibold text-text-primary">Organizer Application</h2>
+            <span
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                user.organizerRequest.status === 'pending'
+                  ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                  : user.organizerRequest.status === 'approved'
+                    ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                    : 'bg-red-500/20 text-red-400 border-red-500/30'
+              }`}
+            >
+              {user.organizerRequest.status}
+            </span>
+          </div>
+
+          <div className="grid gap-x-8 gap-y-1 sm:grid-cols-2">
+            <InfoRow label="Company" value={user.organizerRequest.company} />
+            <InfoRow label="Job Title" value={user.organizerRequest.jobTitle} />
+            <InfoRow
+              label="Requested"
+              value={
+                user.organizerRequest.requestedAt
+                  ? formatDate(user.organizerRequest.requestedAt)
+                  : '-'
+              }
+            />
+            <InfoRow
+              label="Reviewed"
+              value={
+                user.organizerRequest.reviewedAt
+                  ? formatDate(user.organizerRequest.reviewedAt)
+                  : '-'
+              }
+            />
+          </div>
+
+          {user.organizerRequest.reason && (
+            <div className="mt-4">
+              <p className="text-sm text-text-tertiary mb-1">Reason</p>
+              <p className="text-sm text-text-primary whitespace-pre-wrap">
+                {user.organizerRequest.reason}
+              </p>
+            </div>
+          )}
+
+          {user.organizerRequest.status === 'pending' && (
+            <div className="mt-5 flex flex-wrap gap-3">
+              <button
+                onClick={() => handleReview('approved')}
+                disabled={actionLoading}
+                className="rounded-xl px-5 py-2.5 text-sm font-medium bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30 transition-colors disabled:opacity-50"
+              >
+                {actionLoading ? 'Processing...' : 'Approve — make organizer'}
+              </button>
+              <button
+                onClick={() => handleReview('rejected')}
+                disabled={actionLoading}
+                className="rounded-xl px-5 py-2.5 text-sm font-medium bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-colors disabled:opacity-50"
+              >
+                {actionLoading ? 'Processing...' : 'Reject'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-3">
