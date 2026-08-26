@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
   Logger,
   OnModuleInit,
   OnModuleDestroy,
@@ -12,10 +13,23 @@ import {
   Conversation,
   ConversationDocument,
 } from './entities/conversation.entity';
-import { Message, MessageDocument } from './entities/message.entity';
+import {
+  Message,
+  MessageDocument,
+  MessageType,
+  SharedCardData,
+} from './entities/message.entity';
 import { UsersService } from '../users/users.service';
 import { ConnectionsService } from '../connections/connections.service';
 import { PushService } from '../notifications/push.service';
+
+/** Optional payload accompanying a non-text message. */
+export interface SendMessageOptions {
+  type?: MessageType;
+  mediaUrl?: string | null;
+  cardData?: SharedCardData | null;
+  encrypted?: boolean;
+}
 
 @Injectable()
 export class MessagingService implements OnModuleInit, OnModuleDestroy {
@@ -89,23 +103,33 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
       throw new ForbiddenException('Cannot create conversation with yourself');
     }
 
-    const { allowed, status } = await this.connectionsService.hasAcceptedConnection(userId, participantId);
+    const { allowed, status } =
+      await this.connectionsService.hasAcceptedConnection(
+        userId,
+        participantId,
+      );
     if (!allowed) {
       if (status === 'pending') {
-        throw new ForbiddenException('Connection request is pending. Please wait for the other user to accept before messaging.');
+        throw new ForbiddenException(
+          'Connection request is pending. Please wait for the other user to accept before messaging.',
+        );
       }
-      throw new ForbiddenException('You can only message users with whom you have an accepted connection.');
+      throw new ForbiddenException(
+        'You can only message users with whom you have an accepted connection.',
+      );
     }
 
     const sortedParticipants = [userId, participantId].sort();
 
     // Use atomic findOneAndUpdate with upsert to prevent race conditions
     // and duplicate conversations. The sorted order ensures [A,B] == [B,A].
-    let conversation = await this.conversationModel.findOneAndUpdate(
-      { participantIds: { $eq: sortedParticipants } },
-      { $setOnInsert: { participantIds: sortedParticipants } },
-      { upsert: true, new: true, runValidators: true },
-    ).exec();
+    let conversation = await this.conversationModel
+      .findOneAndUpdate(
+        { participantIds: { $eq: sortedParticipants } },
+        { $setOnInsert: { participantIds: sortedParticipants } },
+        { upsert: true, new: true, runValidators: true },
+      )
+      .exec();
 
     this.logger.log(
       `Conversation resolved between ${userId} and ${participantId}`,
@@ -144,7 +168,9 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
     // Collect all unique other participant IDs (coerce to string)
     const otherIds = new Set<string>();
     for (const conv of conversations) {
-      const otherId = conv.participantIds.find((id) => id.toString() !== userId);
+      const otherId = conv.participantIds.find(
+        (id) => id.toString() !== userId,
+      );
       if (otherId) otherIds.add(otherId.toString());
     }
 
@@ -154,7 +180,9 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
       const users = await this.usersService.findByIds(Array.from(otherIds));
       userMap = new Map(users.map((u) => [u._id.toString(), u]));
     } catch (error) {
-      this.logger.error(`Failed to fetch user profiles for enrichment: ${error}`);
+      this.logger.error(
+        `Failed to fetch user profiles for enrichment: ${error}`,
+      );
       // Filter out any IDs that would cause a CastError
       const validIds = Array.from(otherIds).filter((id) => {
         try {
@@ -169,14 +197,18 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
           const users = await this.usersService.findByIds(validIds);
           userMap = new Map(users.map((u) => [u._id.toString(), u]));
         } catch (retryError) {
-          this.logger.error(`Retry fetch for ${validIds.length} valid users also failed: ${retryError}`);
+          this.logger.error(
+            `Retry fetch for ${validIds.length} valid users also failed: ${retryError}`,
+          );
         }
       }
     }
 
     // Enrich conversations
     return conversations.map((conv) => {
-      const otherId = conv.participantIds.find((id) => id.toString() !== userId);
+      const otherId = conv.participantIds.find(
+        (id) => id.toString() !== userId,
+      );
       const otherUser = otherId ? userMap.get(otherId.toString()) : null;
       const plain = conv.toObject();
       plain.id = conv._id?.toString() ?? plain.id;
@@ -203,7 +235,12 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
     page = 1,
     limit = 50,
     afterMessageId?: string,
-  ): Promise<{ messages: MessageDocument[]; total: number; page: number; limit: number }> {
+  ): Promise<{
+    messages: MessageDocument[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
     const conversation = await this.conversationModel
       .findById(conversationId)
       .exec();
@@ -213,12 +250,16 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
     }
 
     if (!conversation.participantIds.some((id) => id.toString() === userId)) {
-      throw new ForbiddenException('You are not a participant in this conversation');
+      throw new ForbiddenException(
+        'You are not a participant in this conversation',
+      );
     }
 
     // Cursor-based filtering: only fetch messages after a given message
     if (afterMessageId) {
-      const afterMessage = await this.messageModel.findById(afterMessageId).exec();
+      const afterMessage = await this.messageModel
+        .findById(afterMessageId)
+        .exec();
       if (!afterMessage) {
         throw new NotFoundException('Cursor message not found');
       }
@@ -258,6 +299,7 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
     conversationId: string,
     senderId: string,
     content: string,
+    options: SendMessageOptions = {},
   ): Promise<MessageDocument> {
     const conversation = await this.conversationModel
       .findById(conversationId)
@@ -268,30 +310,47 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
     }
 
     if (!conversation.participantIds.some((id) => id.toString() === senderId)) {
-      throw new ForbiddenException('You are not a participant in this conversation');
+      throw new ForbiddenException(
+        'You are not a participant in this conversation',
+      );
     }
 
     // Ensure the sender still has an accepted connection with the other participant
-    const otherParticipantId = conversation.participantIds.find((id) => id.toString() !== senderId)?.toString();
+    const otherParticipantId = conversation.participantIds
+      .find((id) => id.toString() !== senderId)
+      ?.toString();
     if (otherParticipantId) {
-      const { allowed, status } = await this.connectionsService.hasAcceptedConnection(senderId, otherParticipantId);
+      const { allowed, status } =
+        await this.connectionsService.hasAcceptedConnection(
+          senderId,
+          otherParticipantId,
+        );
       if (!allowed) {
         if (status === 'pending') {
-          throw new ForbiddenException('Connection request is pending. Please wait for the other user to accept before messaging.');
+          throw new ForbiddenException(
+            'Connection request is pending. Please wait for the other user to accept before messaging.',
+          );
         }
-        throw new ForbiddenException('You can only message users with whom you have an accepted connection.');
+        throw new ForbiddenException(
+          'You can only message users with whom you have an accepted connection.',
+        );
       }
     }
+
+    const type = options.type ?? 'text';
 
     const message = await this.messageModel.create({
       conversationId,
       senderId,
-      content,
+      content: content ?? '',
+      type,
+      mediaUrl: options.mediaUrl ?? null,
+      cardData: options.cardData ?? null,
+      encrypted: options.encrypted ?? false,
     });
 
     // Update conversation metadata
-    const preview =
-      content.length > 100 ? content.substring(0, 97) + '...' : content;
+    const preview = this.buildPreview(content, type);
 
     await this.conversationModel
       .findByIdAndUpdate(conversationId, {
@@ -308,14 +367,13 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
       if (recipientId) {
         const sender = await this.usersService.findById(senderId);
         const senderName = sender?.displayName || sender?.email || 'Someone';
-        const body = content.length > 100 ? content.substring(0, 97) + '...' : content;
+        const body = this.buildPreview(content, type);
 
-        this.pushService.sendPush(
-          recipientId,
-          senderName,
-          body,
-          { link: `/messages?conversation=${conversationId}` },
-        ).catch(() => {}); // fire-and-forget
+        this.pushService
+          .sendPush(recipientId, senderName, body, {
+            link: `/messages?conversation=${conversationId}`,
+          })
+          .catch(() => {}); // fire-and-forget
       }
     } catch {
       // Don't fail the message send if push fails
@@ -335,7 +393,9 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
       throw new NotFoundException('Conversation not found');
     }
     if (!conversation.participantIds.some((id) => id.toString() === userId)) {
-      throw new ForbiddenException('You are not a participant in this conversation');
+      throw new ForbiddenException(
+        'You are not a participant in this conversation',
+      );
     }
 
     if (!this.typingStatus.has(conversationId)) {
@@ -373,8 +433,14 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
       throw new NotFoundException('Conversation not found');
     }
 
-    if (!conversation.participantIds.some((id) => id.toString() === requestingUserId)) {
-      throw new ForbiddenException('You are not a participant in this conversation');
+    if (
+      !conversation.participantIds.some(
+        (id) => id.toString() === requestingUserId,
+      )
+    ) {
+      throw new ForbiddenException(
+        'You are not a participant in this conversation',
+      );
     }
 
     const now = Date.now();
@@ -396,10 +462,7 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
    * Mark all messages in a conversation as read for the given user.
    * Marks only messages where senderId !== userId (i.e. messages from the other participant).
    */
-  async markAsRead(
-    conversationId: string,
-    userId: string,
-  ): Promise<number> {
+  async markAsRead(conversationId: string, userId: string): Promise<number> {
     const conversation = await this.conversationModel
       .findById(conversationId)
       .exec();
@@ -409,7 +472,9 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
     }
 
     if (!conversation.participantIds.some((id) => id.toString() === userId)) {
-      throw new ForbiddenException('You are not a participant in this conversation');
+      throw new ForbiddenException(
+        'You are not a participant in this conversation',
+      );
     }
 
     const result = await this.messageModel
@@ -450,7 +515,9 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
     }
 
     if (!conversation.participantIds.some((id) => id.toString() === userId)) {
-      throw new ForbiddenException('You are not a participant in this conversation');
+      throw new ForbiddenException(
+        'You are not a participant in this conversation',
+      );
     }
 
     const message = await this.messageModel.findById(messageId).exec();
@@ -469,7 +536,8 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
     if (
       conversation.lastMessageAt &&
       message.createdAt &&
-      new Date(message.createdAt).getTime() >= new Date(conversation.lastMessageAt).getTime() - 1000
+      new Date(message.createdAt).getTime() >=
+        new Date(conversation.lastMessageAt).getTime() - 1000
     ) {
       const previousMessage = await this.messageModel
         .findOne({ conversationId })
@@ -522,5 +590,242 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
       .exec();
 
     return count;
+  }
+
+  /**
+   * One-line summary of a message for the conversation list and push bodies.
+   * Non-text messages have no meaningful body of their own.
+   */
+  private buildPreview(content: string, type: MessageType): string {
+    const body = (content ?? '').trim();
+
+    if (type === 'image') {
+      return body ? `📷 ${this.truncate(body)}` : '📷 Photo';
+    }
+    if (type === 'card-share') {
+      return body ? `📇 ${this.truncate(body)}` : '📇 Shared a card';
+    }
+    return this.truncate(body);
+  }
+
+  private truncate(value: string, max = 100): string {
+    return value.length > max ? `${value.substring(0, max - 3)}...` : value;
+  }
+
+  /**
+   * Ids of every conversation the user belongs to.
+   *
+   * Deliberately lean: the gateway calls this on each socket connect purely to
+   * work out which rooms to join, and does not need the profile enrichment
+   * getConversations() performs.
+   */
+  async getConversationIdsForUser(userId: string): Promise<string[]> {
+    const conversations = await this.conversationModel
+      .find({ participantIds: userId })
+      .select('_id')
+      .lean()
+      .exec();
+
+    return conversations.map((c: any) => c._id.toString());
+  }
+
+  /** Participant ids of a single conversation, or [] if it no longer exists. */
+  async getParticipantIds(conversationId: string): Promise<string[]> {
+    if (!Types.ObjectId.isValid(conversationId)) {
+      return [];
+    }
+
+    const conversation = await this.conversationModel
+      .findById(conversationId)
+      .select('participantIds')
+      .lean()
+      .exec();
+
+    return ((conversation as any)?.participantIds ?? []).map((id: any) =>
+      id.toString(),
+    );
+  }
+
+  /**
+   * Every user the given user shares a conversation with. Used to scope
+   * presence lookups so online status is not readable for arbitrary accounts.
+   */
+  async getConversationPartnerIds(userId: string): Promise<string[]> {
+    const conversations = await this.conversationModel
+      .find({ participantIds: userId })
+      .select('participantIds')
+      .lean()
+      .exec();
+
+    const partners = new Set<string>();
+    for (const conv of conversations as any[]) {
+      for (const id of conv.participantIds ?? []) {
+        const value = id.toString();
+        if (value !== userId) partners.add(value);
+      }
+    }
+
+    return Array.from(partners);
+  }
+
+  /**
+   * Load a conversation and confirm the user belongs to it.
+   * Shared by the endpoints and by the websocket gateway, which does not go
+   * through the HTTP guards.
+   */
+  async assertParticipant(
+    conversationId: string,
+    userId: string,
+  ): Promise<ConversationDocument> {
+    if (!Types.ObjectId.isValid(conversationId)) {
+      throw new NotFoundException('Conversation not found');
+    }
+
+    const conversation = await this.conversationModel
+      .findById(conversationId)
+      .exec();
+
+    if (!conversation) {
+      throw new NotFoundException('Conversation not found');
+    }
+
+    if (!conversation.participantIds.some((id) => id.toString() === userId)) {
+      throw new ForbiddenException(
+        'You are not a participant in this conversation',
+      );
+    }
+
+    return conversation;
+  }
+
+  /**
+   * Substring search over the messages of one conversation.
+   *
+   * The query is escaped before being used as a regex — an unescaped user
+   * string would let a caller inject a pattern and force catastrophic
+   * backtracking against every message in the conversation.
+   */
+  async searchMessages(
+    conversationId: string,
+    query: string,
+    userId: string,
+    limit = 50,
+  ): Promise<MessageDocument[]> {
+    await this.assertParticipant(conversationId, userId);
+
+    const term = (query ?? '').trim();
+    if (!term) {
+      return [];
+    }
+
+    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    return this.messageModel
+      .find({
+        conversationId,
+        content: { $regex: escaped, $options: 'i' },
+      })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .exec();
+  }
+
+  /** Reactions become Mongo update paths, so the key must stay path-safe. */
+  private assertValidEmoji(emoji: string): string {
+    const value = (emoji ?? '').trim();
+    if (!value || value.length > 16 || /[.$\s]/.test(value)) {
+      throw new BadRequestException('Invalid emoji');
+    }
+    return value;
+  }
+
+  private async findMessageInConversation(
+    conversationId: string,
+    messageId: string,
+  ): Promise<MessageDocument> {
+    if (!Types.ObjectId.isValid(messageId)) {
+      throw new NotFoundException('Message not found');
+    }
+
+    const message = await this.messageModel.findById(messageId).exec();
+
+    // Check the message actually belongs to the conversation the caller was
+    // authorised against, so a participant of one chat cannot react to a
+    // message in another simply by passing its id.
+    if (!message || message.conversationId !== conversationId) {
+      throw new NotFoundException('Message not found');
+    }
+
+    return message;
+  }
+
+  /** Add the user to the given emoji's reaction list. Idempotent. */
+  async addReaction(
+    conversationId: string,
+    messageId: string,
+    userId: string,
+    emoji: string,
+  ): Promise<MessageDocument> {
+    await this.assertParticipant(conversationId, userId);
+    const key = this.assertValidEmoji(emoji);
+    await this.findMessageInConversation(conversationId, messageId);
+
+    const updated = await this.messageModel
+      .findByIdAndUpdate(
+        messageId,
+        { $addToSet: { [`reactions.${key}`]: userId } },
+        { new: true },
+      )
+      .exec();
+
+    if (!updated) {
+      throw new NotFoundException('Message not found');
+    }
+
+    return updated;
+  }
+
+  /**
+   * Remove the user from the given emoji's reaction list, dropping the key
+   * entirely once nobody is left so the object does not accumulate empties.
+   */
+  async removeReaction(
+    conversationId: string,
+    messageId: string,
+    userId: string,
+    emoji: string,
+  ): Promise<MessageDocument> {
+    await this.assertParticipant(conversationId, userId);
+    const key = this.assertValidEmoji(emoji);
+    await this.findMessageInConversation(conversationId, messageId);
+
+    let updated = await this.messageModel
+      .findByIdAndUpdate(
+        messageId,
+        { $pull: { [`reactions.${key}`]: userId } },
+        { new: true },
+      )
+      .exec();
+
+    if (!updated) {
+      throw new NotFoundException('Message not found');
+    }
+
+    const remaining = (updated.reactions ?? {})[key];
+    if (Array.isArray(remaining) && remaining.length === 0) {
+      updated = await this.messageModel
+        .findByIdAndUpdate(
+          messageId,
+          { $unset: { [`reactions.${key}`]: '' } },
+          { new: true },
+        )
+        .exec();
+    }
+
+    if (!updated) {
+      throw new NotFoundException('Message not found');
+    }
+
+    return updated;
   }
 }
