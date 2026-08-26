@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Check, CheckCheck, Trash2, Contact, SmilePlus } from 'lucide-react';
 import { cn, timeAgo } from '@/utils/helpers';
 import Avatar from '@/components/ui/Avatar';
@@ -94,13 +95,15 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     }
 
     // WEB: shared business card. Links to /card/:id — the public card view.
+    // /cards/:id is not a route in this app (only /cards/new and
+    // /cards/:id/edit exist), so that path would fall through to NotFound.
     if (messageType === 'card-share' && message.cardData) {
       const { cardId, name, role, company, avatarUrl } = message.cardData;
       const subtitle = [role, company].filter(Boolean).join(' at ');
 
       return (
-        <a
-          href={`/card/${cardId}`}
+        <Link
+          to={`/card/${cardId}`}
           className={cn(
             'block w-fit max-w-[80%] transition-all duration-200 hover:scale-[1.02]',
             bubbleShape,
@@ -132,7 +135,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               View card
             </div>
           </div>
-        </a>
+        </Link>
       );
     }
 

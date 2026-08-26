@@ -11,7 +11,6 @@ import {
   markAsRead,
   setTypingStatus,
   deleteMessage,
-  uploadMessageImage,
 } from '@/api/messaging';
 import type {
   Conversation,
@@ -461,24 +460,6 @@ const MessagesPage: React.FC = () => {
       }
     },
     [activeConvId, currentUserId, dispatchMessage],
-  );
-
-  // WEB: upload the image over REST, then announce it over the socket
-  const handleSendImage = useCallback(
-    async (file: File) => {
-      if (!activeConvId) return;
-      const { url } = await uploadMessageImage(activeConvId, file);
-      const newMsg = await dispatchMessage(activeConvId, {
-        content: '',
-        type: 'image',
-        mediaUrl: url,
-      });
-      setMessages((prev) =>
-        prev.some((m) => m.id === newMsg.id) ? prev : [...prev, newMsg],
-      );
-      lastMessageIdRef.current = newMsg.id;
-    },
-    [activeConvId, dispatchMessage],
   );
 
   const handleSendCard = useCallback(

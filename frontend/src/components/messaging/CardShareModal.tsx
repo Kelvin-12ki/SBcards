@@ -3,7 +3,8 @@ import { Contact, Loader2 } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import Avatar from '@/components/ui/Avatar';
 import { getCards, getWalletCards } from '@/api/cards';
-import type { Card, WalletCardEntry } from '@/api/cards';
+import type { WalletCardEntry } from '@/api/cards';
+import type { Card } from '@/types/card';
 import type { SharedCardData } from '@/types/messaging';
 
 export interface CardShareModalProps {
@@ -78,7 +79,7 @@ const CardShareModal: React.FC<CardShareModalProps> = ({
           className="border border-border-subtle ring-2 ring-gold/20 flex-shrink-0"
           fallbackInitials={card.fullName
             .split(' ')
-            .map((n) => n[0])
+            .map((n: string) => n[0])
             .join('')
             .toUpperCase()
             .slice(0, 2)}
