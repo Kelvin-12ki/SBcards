@@ -272,7 +272,7 @@ export class MessagingController {
   async uploadImage(
     @CurrentUser() jwtUser: JwtUser,
     @Body() dto: UploadImageDto,
-    @UploadedFile() file?: Express.Multer.File,
+    @UploadedFile() file?: any,
   ) {
     if (!file) {
       throw new BadRequestException('No file was uploaded');
