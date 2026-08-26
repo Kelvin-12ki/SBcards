@@ -1,10 +1,33 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { Send, MessageSquare, ArrowLeft, Loader2, ArrowDown } from 'lucide-react';
+import {
+  Send,
+  MessageSquare,
+  ArrowLeft,
+  Loader2,
+  ArrowDown,
+  ImagePlus,
+  Contact,
+  Search,
+  X,
+} from 'lucide-react';
 import { cn } from '@/utils/helpers';
 import Avatar from '@/components/ui/Avatar';
 import MessageBubble from './MessageBubble';
 import TypingIndicator from './TypingIndicator';
-import type { Message } from '@/types/messaging';
+import CardShareModal from './CardShareModal';
+import { searchMessages } from '@/api/messaging';
+import type { Message, SharedCardData, PresenceStatus } from '@/types/messaging';
+
+/** WEB: images are rejected client-side before the upload round-trip. */
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const ACCEPTED_IMAGE_TYPES = [
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/heic',
+];
 
 export interface ChatWindowProps {
   messages: Message[];
@@ -27,6 +50,11 @@ export interface ChatWindowProps {
   hasMoreOlder?: boolean;
   scrollContainerRef?: React.RefObject<HTMLDivElement>;
   conversationId?: string;
+  // WEB: real-time additions
+  onSendImage?: (file: File) => Promise<void> | void;
+  onSendCard?: (cardData: SharedCardData) => void;
+  onToggleReaction?: (messageId: string, emoji: string) => void;
+  otherUserPresence?: PresenceStatus;
 }
 
 /** Format a date to a human-readable label for date separators */
@@ -118,10 +146,27 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   hasMoreOlder = false,
   scrollContainerRef,
   conversationId,
+  onSendImage,
+  onSendCard,
+  onToggleReaction,
+  otherUserPresence,
 }) => {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // WEB: attachment state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [attachError, setAttachError] = useState<string | null>(null);
+  const [cardModalOpen, setCardModalOpen] = useState(false);
+
+  // WEB: in-conversation search state
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Message[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
   const displayName = otherUser?.displayName
     || (otherUser ? [otherUser.firstName, otherUser.lastName].filter(Boolean).join(' ') : '')
@@ -149,6 +194,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   useEffect(() => {
     hasScrolledInitialRef.current = false;
     setNewMessageCount(0);
+    // WEB: attachments and search are per-conversation
+    setSearchOpen(false);
+    setSearchQuery('');
+    setSearchResults([]);
+    setAttachError(null);
+    setHighlightedId(null);
   }, [conversationId]);
 
   // Track new incoming messages and show pill when scrolled up
@@ -219,6 +270,95 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     onInputChange?.(value);
   }, [onInputChange]);
 
+  // ── WEB: image attachment ────────────────────────────────────────────────
+
+  const handlePickImage = useCallback(() => {
+    setAttachError(null);
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileChosen = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      // Reset immediately so choosing the same file twice still fires onChange.
+      e.target.value = '';
+      if (!file || !onSendImage) return;
+
+      if (!ACCEPTED_IMAGE_TYPES.includes(file.type.toLowerCase())) {
+        setAttachError('That file type is not supported. Use JPEG, PNG, WebP or GIF.');
+        return;
+      }
+      if (file.size > MAX_IMAGE_BYTES) {
+        setAttachError('That image is larger than 10MB.');
+        return;
+      }
+
+      setAttachError(null);
+      setUploading(true);
+      try {
+        await onSendImage(file);
+      } catch {
+        setAttachError('Could not send that image. Try again.');
+      } finally {
+        setUploading(false);
+      }
+    },
+    [onSendImage],
+  );
+
+  // ── WEB: message search ──────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!searchOpen || !conversationId) return;
+
+    const term = searchQuery.trim();
+    if (!term) {
+      setSearchResults([]);
+      setSearching(false);
+      return;
+    }
+
+    let cancelled = false;
+    setSearching(true);
+
+    // Debounced so a query is not issued on every keystroke.
+    const handle = setTimeout(async () => {
+      try {
+        const results = await searchMessages(conversationId, term);
+        if (!cancelled) setSearchResults(results);
+      } catch {
+        if (!cancelled) setSearchResults([]);
+      } finally {
+        if (!cancelled) setSearching(false);
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [searchQuery, searchOpen, conversationId]);
+
+  const handleJumpToMessage = useCallback((messageId: string) => {
+    const el = document.getElementById(`message-${messageId}`);
+    if (!el) {
+      // The match sits outside the loaded window; older messages must be
+      // pulled in before it can be scrolled to.
+      setAttachError('Load older messages to jump to that result.');
+      return;
+    }
+
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setHighlightedId(messageId);
+    setTimeout(() => setHighlightedId(null), 2000);
+  }, []);
+
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false);
+    setSearchQuery('');
+    setSearchResults([]);
+  }, []);
+
   return (
     <div className="flex h-full w-full flex-col">
       {/* Header — glass-morphism */}
@@ -233,21 +373,93 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </button>
         )}
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          <Avatar
-            src={otherUser?.avatarUrl}
-            alt={displayName}
-            size="md"
-            className="border border-border-subtle ring-2 ring-gold/20"
-            fallbackInitials={initials}
-          />
+          <div className="relative flex-shrink-0">
+            <Avatar
+              src={otherUser?.avatarUrl}
+              alt={displayName}
+              size="md"
+              className="border border-border-subtle ring-2 ring-gold/20"
+              fallbackInitials={initials}
+            />
+            {/* WEB: online dot */}
+            {otherUserPresence === 'online' && (
+              <span
+                className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-500 border-2 border-surface-1"
+                aria-label="Online"
+              />
+            )}
+          </div>
           <div className="min-w-0">
             <p className="text-sm font-bold text-text-primary truncate">{displayName}</p>
-            {otherUser?.email && otherUser.email !== displayName && (
-              <p className="text-[11px] text-text-tertiary truncate">{otherUser.email}</p>
+            {otherUserPresence === 'online' ? (
+              <p className="text-[11px] text-green-400 truncate">Online</p>
+            ) : (
+              otherUser?.email && otherUser.email !== displayName && (
+                <p className="text-[11px] text-text-tertiary truncate">{otherUser.email}</p>
+              )
             )}
           </div>
         </div>
+
+        {/* WEB: search toggle */}
+        <button
+          onClick={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
+          className={cn(
+            'min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full transition-colors flex-shrink-0',
+            searchOpen
+              ? 'bg-gold/15 text-gold'
+              : 'text-text-tertiary hover:bg-surface-2 hover:text-text-primary',
+          )}
+          aria-label={searchOpen ? 'Close search' : 'Search messages'}
+        >
+          {searchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
+        </button>
       </div>
+
+      {/* WEB: search panel */}
+      {searchOpen && (
+        <div className="border-b border-border-subtle bg-surface-1 px-4 py-3">
+          <div className="flex items-center gap-2 rounded-xl bg-surface-2 border border-border-subtle px-3 py-2.5 search-glow transition-all duration-200">
+            <Search className="h-4 w-4 text-text-tertiary flex-shrink-0" />
+            <input
+              type="text"
+              autoFocus
+              placeholder="Search this conversation..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-tertiary outline-none"
+            />
+            {searching && <Loader2 className="h-4 w-4 animate-spin text-text-tertiary" />}
+          </div>
+
+          {searchQuery.trim() && !searching && (
+            <div className="mt-2 max-h-52 overflow-y-auto">
+              {searchResults.length === 0 ? (
+                <p className="py-3 text-center text-xs text-text-tertiary">
+                  No messages found.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-1">
+                  {searchResults.map((result) => (
+                    <button
+                      key={result.id}
+                      onClick={() => handleJumpToMessage(result.id)}
+                      className="rounded-lg border border-border-subtle bg-surface-2 px-3 py-2 text-left transition-colors hover:bg-surface-3"
+                    >
+                      <p className="text-xs text-text-primary line-clamp-2">
+                        {result.content}
+                      </p>
+                      <p className="mt-0.5 text-[10px] text-text-tertiary">
+                        {new Date(result.createdAt).toLocaleString()}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Messages area */}
       <div className="relative flex-1 overflow-hidden">
@@ -322,6 +534,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                       isFirstInGroup={msgIdx === 0}
                       isLastInGroup={msgIdx === group.messages.length - 1}
                       onDelete={onDelete}
+                      currentUserId={currentUserId}
+                      onToggleReaction={onToggleReaction}
+                      highlighted={highlightedId === msg.id}
                     />
                   ))}
                 </div>
@@ -352,7 +567,58 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       {/* Input area — refined glass input */}
       <div className="glass border-t border-border-subtle px-4 py-3 sm:px-5 sm:py-4">
-        <div className="flex items-end gap-3">
+        {/* WEB: attachment error */}
+        {attachError && (
+          <div className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-2 text-xs text-red-400">
+            <span>{attachError}</span>
+            <button
+              onClick={() => setAttachError(null)}
+              className="flex-shrink-0 text-red-400/70 hover:text-red-400"
+              aria-label="Dismiss"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+
+        <div className="flex items-end gap-2 sm:gap-3">
+          {/* WEB: hidden file input driving the image button */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileChosen}
+          />
+
+          {/* WEB: image attach */}
+          {onSendImage && (
+            <button
+              onClick={handlePickImage}
+              disabled={uploading || loading}
+              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-surface-2 border border-border-subtle text-text-tertiary transition-all duration-200 hover:text-gold hover:border-gold/40 active:scale-95 disabled:opacity-50"
+              aria-label="Send an image"
+            >
+              {uploading ? (
+                <Loader2 className="h-4.5 w-4.5 animate-spin" />
+              ) : (
+                <ImagePlus className="h-4.5 w-4.5" />
+              )}
+            </button>
+          )}
+
+          {/* WEB: card share */}
+          {onSendCard && (
+            <button
+              onClick={() => setCardModalOpen(true)}
+              disabled={loading}
+              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-surface-2 border border-border-subtle text-text-tertiary transition-all duration-200 hover:text-gold hover:border-gold/40 active:scale-95 disabled:opacity-50"
+              aria-label="Share a card"
+            >
+              <Contact className="h-4.5 w-4.5" />
+            </button>
+          )}
+
           <div className="flex-1 flex items-end rounded-2xl bg-surface-2 border border-border-subtle px-4 py-2 focus-within:border-gold/50 focus-within:ring-1 focus-within:ring-gold/20 transition-all duration-200">
             <textarea
               ref={textareaRef}
@@ -380,6 +646,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </button>
         </div>
       </div>
+
+      {/* WEB: card picker */}
+      {onSendCard && (
+        <CardShareModal
+          isOpen={cardModalOpen}
+          onClose={() => setCardModalOpen(false)}
+          onSelect={onSendCard}
+        />
+      )}
     </div>
   );
 };

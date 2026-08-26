@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { MessageSquare, Search, Plus } from 'lucide-react';
 import { cn, timeAgo } from '@/utils/helpers';
 import Avatar from '@/components/ui/Avatar';
-import type { Conversation } from '@/types/messaging';
+import type { Conversation, PresenceMap } from '@/types/messaging';
 
 export interface ConversationListProps {
   conversations: Conversation[];
   activeId?: string;
   onSelect: (id: string) => void;
   currentUserId: string;
+  /** WEB: userId -> online status, driven by the chat gateway. */
+  presenceMap?: PresenceMap;
 }
 
 const ConversationList: React.FC<ConversationListProps> = ({
@@ -16,6 +18,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
   activeId,
   onSelect,
   currentUserId: _currentUserId,
+  presenceMap = {},
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -75,6 +78,8 @@ const ConversationList: React.FC<ConversationListProps> = ({
             || otherUser?.email
             || 'Unknown User';
           const hasUnread = (conv.unreadCount ?? 0) > 0;
+          // WEB: green dot when the other participant is connected
+          const isOnline = !!otherUser?.id && presenceMap[otherUser.id] === 'online';
 
           return (
             <button
@@ -108,6 +113,13 @@ const ConversationList: React.FC<ConversationListProps> = ({
                   <div className="unread-pulse absolute -top-0.5 -right-0.5 h-4 min-w-[16px] flex items-center justify-center rounded-full bg-gold px-1 text-[10px] font-bold text-gold-ink shadow-lg shadow-gold/30">
                     {conv.unreadCount! > 99 ? '99+' : conv.unreadCount}
                   </div>
+                )}
+                {/* WEB: presence dot — sits opposite the unread badge so the two never overlap */}
+                {isOnline && (
+                  <span
+                    className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-500 border-2 border-surface-1"
+                    aria-label="Online"
+                  />
                 )}
               </div>
 
