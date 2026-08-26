@@ -18,6 +18,10 @@ function buildAllowedOrigins(configService: ConfigService): string[] {
   const raw = [
     configService.get<string>('FRONTEND_URL'),
     ...(configService.get<string>('CORS_ORIGINS') ?? '').split(','),
+    // Hardcoded fallbacks so the app works even if env vars are missing on
+    // Render. These are the known production origins.
+    'https://sbcards.vercel.app',
+    'http://localhost:3007',
   ];
 
   return Array.from(
