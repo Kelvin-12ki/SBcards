@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Contact, Loader2 } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import Avatar from '@/components/ui/Avatar';
-import { getCards } from '@/api/cards';
-import type { Card } from '@/types/card';
+import { getCards, getWalletCards } from '@/api/cards';
+import type { Card, WalletCardEntry } from '@/api/cards';
 import type { SharedCardData } from '@/types/messaging';
 
 export interface CardShareModalProps {
@@ -12,18 +12,13 @@ export interface CardShareModalProps {
   onSelect: (cardData: SharedCardData) => void;
 }
 
-/**
- * WEB: pick one of the current user's business cards to share into a chat.
- *
- * The chosen card is flattened into the snapshot the message stores, so the
- * bubble still renders correctly if the card is later edited or deleted.
- */
 const CardShareModal: React.FC<CardShareModalProps> = ({
   isOpen,
   onClose,
   onSelect,
 }) => {
   const [cards, setCards] = useState<Card[]>([]);
+  const [walletCards, setWalletCards] = useState<WalletCardEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,8 +30,14 @@ const CardShareModal: React.FC<CardShareModalProps> = ({
       setLoading(true);
       setError(null);
       try {
-        const data = await getCards();
-        if (!cancelled) setCards(data);
+        const [cardsData, walletData] = await Promise.all([
+          getCards(),
+          getWalletCards().catch(() => []),
+        ]);
+        if (!cancelled) {
+          setCards(cardsData);
+          setWalletCards(walletData);
+        }
       } catch {
         if (!cancelled) setError('Could not load your cards. Try again.');
       } finally {
@@ -62,6 +63,43 @@ const CardShareModal: React.FC<CardShareModalProps> = ({
     onClose();
   };
 
+  const renderCardButton = (card: Card, key: string) => {
+    const subtitle = [card.role, card.company].filter(Boolean).join(' at ');
+    return (
+      <button
+        key={key}
+        onClick={() => handlePick(card)}
+        className="flex items-center gap-3 rounded-xl border border-border-subtle bg-surface-2 p-3 text-left transition-all duration-200 hover:bg-surface-3 hover:border-gold/40 active:scale-[0.99]"
+      >
+        <Avatar
+          src={card.avatarUrl}
+          alt={card.fullName}
+          size="md"
+          className="border border-border-subtle ring-2 ring-gold/20 flex-shrink-0"
+          fallbackInitials={card.fullName
+            .split(' ')
+            .map((n) => n[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2)}
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold text-text-primary truncate">
+            {card.fullName}
+          </p>
+          {subtitle && (
+            <p className="text-xs text-text-tertiary truncate">{subtitle}</p>
+          )}
+        </div>
+        {card.isDefault && (
+          <span className="flex-shrink-0 rounded-full bg-gold/20 px-2 py-0.5 text-[10px] font-bold text-gold">
+            Default
+          </span>
+        )}
+      </button>
+    );
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Share a card" size="md">
       {loading ? (
@@ -70,7 +108,7 @@ const CardShareModal: React.FC<CardShareModalProps> = ({
         </div>
       ) : error ? (
         <p className="py-6 text-center text-sm text-red-400">{error}</p>
-      ) : cards.length === 0 ? (
+      ) : cards.length === 0 && walletCards.length === 0 ? (
         <div className="flex flex-col items-center py-8 text-center">
           <div className="mb-4 rounded-2xl gradient-magical p-4 text-white">
             <Contact className="h-7 w-7" />
@@ -81,42 +119,18 @@ const CardShareModal: React.FC<CardShareModalProps> = ({
         </div>
       ) : (
         <div className="flex flex-col gap-2 max-h-[60vh] overflow-y-auto">
-          {cards.map((card) => {
-            const subtitle = [card.role, card.company].filter(Boolean).join(' at ');
-            return (
-              <button
-                key={card.id}
-                onClick={() => handlePick(card)}
-                className="flex items-center gap-3 rounded-xl border border-border-subtle bg-surface-2 p-3 text-left transition-all duration-200 hover:bg-surface-3 hover:border-gold/40 active:scale-[0.99]"
-              >
-                <Avatar
-                  src={card.avatarUrl}
-                  alt={card.fullName}
-                  size="md"
-                  className="border border-border-subtle ring-2 ring-gold/20 flex-shrink-0"
-                  fallbackInitials={card.fullName
-                    .split(' ')
-                    .map((n) => n[0])
-                    .join('')
-                    .toUpperCase()
-                    .slice(0, 2)}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-text-primary truncate">
-                    {card.fullName}
-                  </p>
-                  {subtitle && (
-                    <p className="text-xs text-text-tertiary truncate">{subtitle}</p>
-                  )}
-                </div>
-                {card.isDefault && (
-                  <span className="flex-shrink-0 rounded-full bg-gold/20 px-2 py-0.5 text-[10px] font-bold text-gold">
-                    Default
-                  </span>
-                )}
-              </button>
-            );
-          })}
+          {cards.length > 0 && (
+            <>
+              <p className="text-xs font-semibold text-text-secondary px-1">My Cards</p>
+              {cards.map((card) => renderCardButton(card, `my-${card.id}`))}
+            </>
+          )}
+          {walletCards.length > 0 && (
+            <>
+              <p className="text-xs font-semibold text-text-secondary px-1 mt-2">Connected Users&apos; Cards</p>
+              {walletCards.map((entry) => renderCardButton(entry.card, `wallet-${entry.card.id}`))}
+            </>
+          )}
         </div>
       )}
     </Modal>

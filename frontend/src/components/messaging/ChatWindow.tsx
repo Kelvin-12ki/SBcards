@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   Loader2,
   ArrowDown,
-  ImagePlus,
   Contact,
   Search,
   X,
@@ -17,17 +16,6 @@ import TypingIndicator from './TypingIndicator';
 import CardShareModal from './CardShareModal';
 import { searchMessages } from '@/api/messaging';
 import type { Message, SharedCardData, PresenceStatus } from '@/types/messaging';
-
-/** WEB: images are rejected client-side before the upload round-trip. */
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-const ACCEPTED_IMAGE_TYPES = [
-  'image/jpeg',
-  'image/jpg',
-  'image/png',
-  'image/webp',
-  'image/gif',
-  'image/heic',
-];
 
 export interface ChatWindowProps {
   messages: Message[];
@@ -51,7 +39,6 @@ export interface ChatWindowProps {
   scrollContainerRef?: React.RefObject<HTMLDivElement>;
   conversationId?: string;
   // WEB: real-time additions
-  onSendImage?: (file: File) => Promise<void> | void;
   onSendCard?: (cardData: SharedCardData) => void;
   onToggleReaction?: (messageId: string, emoji: string) => void;
   otherUserPresence?: PresenceStatus;
@@ -146,7 +133,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   hasMoreOlder = false,
   scrollContainerRef,
   conversationId,
-  onSendImage,
   onSendCard,
   onToggleReaction,
   otherUserPresence,
@@ -155,10 +141,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // WEB: attachment state
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-  const [attachError, setAttachError] = useState<string | null>(null);
+  // WEB: card share state
   const [cardModalOpen, setCardModalOpen] = useState(false);
 
   // WEB: in-conversation search state
@@ -194,11 +177,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   useEffect(() => {
     hasScrolledInitialRef.current = false;
     setNewMessageCount(0);
-    // WEB: attachments and search are per-conversation
+    // WEB: search is per-conversation
     setSearchOpen(false);
     setSearchQuery('');
     setSearchResults([]);
-    setAttachError(null);
     setHighlightedId(null);
   }, [conversationId]);
 
@@ -270,42 +252,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     onInputChange?.(value);
   }, [onInputChange]);
 
-  // ── WEB: image attachment ────────────────────────────────────────────────
-
-  const handlePickImage = useCallback(() => {
-    setAttachError(null);
-    fileInputRef.current?.click();
-  }, []);
-
-  const handleFileChosen = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      // Reset immediately so choosing the same file twice still fires onChange.
-      e.target.value = '';
-      if (!file || !onSendImage) return;
-
-      if (!ACCEPTED_IMAGE_TYPES.includes(file.type.toLowerCase())) {
-        setAttachError('That file type is not supported. Use JPEG, PNG, WebP or GIF.');
-        return;
-      }
-      if (file.size > MAX_IMAGE_BYTES) {
-        setAttachError('That image is larger than 10MB.');
-        return;
-      }
-
-      setAttachError(null);
-      setUploading(true);
-      try {
-        await onSendImage(file);
-      } catch {
-        setAttachError('Could not send that image. Try again.');
-      } finally {
-        setUploading(false);
-      }
-    },
-    [onSendImage],
-  );
-
   // ── WEB: message search ──────────────────────────────────────────────────
 
   useEffect(() => {
@@ -342,9 +288,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const handleJumpToMessage = useCallback((messageId: string) => {
     const el = document.getElementById(`message-${messageId}`);
     if (!el) {
-      // The match sits outside the loaded window; older messages must be
-      // pulled in before it can be scrolled to.
-      setAttachError('Load older messages to jump to that result.');
       return;
     }
 
@@ -567,46 +510,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       {/* Input area — refined glass input */}
       <div className="glass border-t border-border-subtle px-4 py-3 sm:px-5 sm:py-4">
-        {/* WEB: attachment error */}
-        {attachError && (
-          <div className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-2 text-xs text-red-400">
-            <span>{attachError}</span>
-            <button
-              onClick={() => setAttachError(null)}
-              className="flex-shrink-0 text-red-400/70 hover:text-red-400"
-              aria-label="Dismiss"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )}
-
         <div className="flex items-end gap-2 sm:gap-3">
-          {/* WEB: hidden file input driving the image button */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleFileChosen}
-          />
-
-          {/* WEB: image attach */}
-          {onSendImage && (
-            <button
-              onClick={handlePickImage}
-              disabled={uploading || loading}
-              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-surface-2 border border-border-subtle text-text-tertiary transition-all duration-200 hover:text-gold hover:border-gold/40 active:scale-95 disabled:opacity-50"
-              aria-label="Send an image"
-            >
-              {uploading ? (
-                <Loader2 className="h-4.5 w-4.5 animate-spin" />
-              ) : (
-                <ImagePlus className="h-4.5 w-4.5" />
-              )}
-            </button>
-          )}
-
           {/* WEB: card share */}
           {onSendCard && (
             <button

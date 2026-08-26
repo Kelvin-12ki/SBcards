@@ -740,7 +740,6 @@ const MessagesPage: React.FC = () => {
               hasMoreOlder={hasMoreOlder}
               scrollContainerRef={chatContainerRef}
               conversationId={activeConvId}
-              onSendImage={handleSendImage}
               onSendCard={handleSendCard}
               onToggleReaction={handleToggleReaction}
               otherUserPresence={
