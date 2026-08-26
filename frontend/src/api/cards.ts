@@ -1,5 +1,5 @@
 import apiClient from './client';
-import { storage } from '@/utils/firebase';
+import { auth, storage } from '@/utils/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { Card } from '@/types/card';
 import { cacheSet, cacheGet, CACHE_KEYS } from '@/utils/offlineCache';
@@ -68,6 +68,12 @@ function blobToDataURL(blob: Blob): Promise<string> {
  * Upload a card photo. Compresses first, tries Firebase Storage, falls back to base64.
  */
 export async function uploadCardPhoto(file: File, userId: string): Promise<string> {
+  // Storage rules scope writes to `card-photos/{firebase uid}/`, so the path
+  // must use the Firebase UID. Callers historically passed the Mongo user id,
+  // which the rules reject — uploads then fell through to the base64 branch
+  // below and bloated the card document.
+  const ownerId = auth?.currentUser?.uid ?? userId;
+
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
     throw new Error('Invalid file type. Please upload a JPEG, PNG, or WebP image.');
   }
@@ -83,7 +89,7 @@ export async function uploadCardPhoto(file: File, userId: string): Promise<strin
   if (storage) {
     try {
       const timestamp = Date.now();
-      const storageRef = ref(storage, `card-photos/${userId}/${timestamp}.jpg`);
+      const storageRef = ref(storage, `card-photos/${ownerId}/${timestamp}.jpg`);
       const snapshot = await uploadBytes(storageRef, compressed, { contentType: 'image/jpeg' });
       return await getDownloadURL(snapshot.ref);
     } catch (err: any) {

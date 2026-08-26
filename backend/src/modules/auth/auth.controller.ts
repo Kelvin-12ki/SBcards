@@ -6,19 +6,18 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
-  Inject,
-  forwardRef,
+  NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtUser } from '../../common/strategies/jwt.strategy';
-import { User, UserDocument } from '../users/entities/user.entity';
+import { User } from '../users/entities/user.entity';
 import { IsNotEmpty, IsString } from 'class-validator';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
 
 class VerifyTokenDto {
   @IsNotEmpty()
@@ -32,11 +31,12 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
-    @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
+    private readonly configService: ConfigService,
   ) {}
 
   @Post('verify')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ auth: { limit: 20, ttl: 60000 } })
   @ApiOperation({ summary: 'Verify Firebase ID token and get JWT' })
   @ApiBody({ type: VerifyTokenDto })
   async verify(
@@ -45,10 +45,24 @@ export class AuthController {
     return this.authService.verifyFirebaseToken(body.idToken);
   }
 
+  /**
+   * Local development convenience only.
+   *
+   * This mints a real, fully-privileged JWT with no credential of any kind, so
+   * it is hard-disabled outside development — reachable in production it is a
+   * complete authentication bypass for anyone who knows the path.
+   */
   @Post('demo-login')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Demo login - creates a real JWT for testing' })
+  @Throttle({ auth: { limit: 5, ttl: 60000 } })
+  @ApiOperation({
+    summary: '[dev only] Demo login - creates a real JWT for testing',
+  })
   async demoLogin(): Promise<{ accessToken: string; user: User }> {
+    if (this.configService.get<string>('NODE_ENV') === 'production') {
+      throw new NotFoundException();
+    }
+
     // Find or create a demo user in the database
     const demoFirebaseUid = 'demo-uid';
     const demoEmail = 'demo@sbcards.app';
@@ -90,7 +104,10 @@ export class AuthController {
         jwtUser.email || '',
         displayName,
       );
-      return { user: newUser, accessToken: this.authService.generateToken(newUser) };
+      return {
+        user: newUser,
+        accessToken: this.authService.generateToken(newUser),
+      };
     }
 
     // If DB role differs from JWT role, issue a fresh token
@@ -100,37 +117,5 @@ export class AuthController {
     }
 
     return { user };
-  }
-
-  /**
-   * Bootstrap: first authenticated user to call this becomes admin.
-   * Only works when NO admin exists yet. Safe for production.
-   */
-  @Post('bootstrap-admin')
-  @UseGuards(JwtAuthGuard)
-  @HttpCode(HttpStatus.OK)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'First user to call this becomes admin (only if no admin exists)' })
-  async bootstrapAdmin(@CurrentUser() jwtUser: JwtUser) {
-    // Check if any admin already exists
-    const adminExists = await this.userModel.findOne({ role: 'admin' });
-    if (adminExists) {
-      return { message: 'Admin already exists', claimed: false };
-    }
-
-    // Promote this user to admin
-    const user = await this.userModel.findOneAndUpdate(
-      { firebaseUid: jwtUser.uid },
-      { $set: { role: 'admin' } },
-      { new: true },
-    );
-
-    if (!user) {
-      return { message: 'User not found', claimed: false };
-    }
-
-    // Issue fresh JWT with admin role
-    const accessToken = this.authService.generateToken(user as any);
-    return { message: 'You are now the admin!', claimed: true, role: user.role, accessToken };
   }
 }

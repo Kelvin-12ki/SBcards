@@ -118,7 +118,7 @@ const CardForm: React.FC<CardFormProps> = ({
     setPhotoUploading(true);
 
     try {
-      const url = await uploadCardPhoto(file, user?.id || 'anonymous');
+      const url = await uploadCardPhoto(file, user?.firebaseUid || 'anonymous');
       if (url) {
         setAvatarUrl(url);
         setPhotoChanged(true);

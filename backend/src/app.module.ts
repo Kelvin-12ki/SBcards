@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ThrottlerModule, seconds } from '@nestjs/throttler';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { CardsModule } from './modules/cards/cards.module';
@@ -21,8 +23,11 @@ import { SearchModule } from './modules/search/search.module';
 import { InsightsModule } from './modules/insights/insights.module';
 import { HeatmapModule } from './modules/heatmap/heatmap.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { HealthModule } from './modules/health/health.module';
 import databaseConfig from './config/database.config';
+import { validateEnv } from './config/env.validation';
 import { FirebaseConfig } from './config/firebase.config';
+import { UserThrottlerGuard } from './common/guards/user-throttler.guard';
 
 @Module({
   imports: [
@@ -30,7 +35,25 @@ import { FirebaseConfig } from './config/firebase.config';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+      validate: validateEnv,
     }),
+
+    // Rate limiting. Buckets are keyed per authenticated user (see
+    // UserThrottlerGuard) so a venue full of attendees on one NAT address is
+    // not treated as a single client.
+    ThrottlerModule.forRoot([
+      {
+        name: 'default',
+        ttl: seconds(60),
+        limit: 200,
+      },
+      {
+        // Applied explicitly with @Throttle({ auth: ... }) on sensitive routes.
+        name: 'auth',
+        ttl: seconds(60),
+        limit: 20,
+      },
+    ]),
 
     // Mongoose async configuration
     MongooseModule.forRootAsync({
@@ -60,8 +83,15 @@ import { FirebaseConfig } from './config/firebase.config';
     InsightsModule,
     HeatmapModule,
     AdminModule,
+    HealthModule,
   ],
   controllers: [],
-  providers: [FirebaseConfig],
+  providers: [
+    FirebaseConfig,
+    {
+      provide: APP_GUARD,
+      useClass: UserThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

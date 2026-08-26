@@ -1,5 +1,5 @@
 import apiClient from './client';
-import { storage } from '@/utils/firebase';
+import { auth, storage } from '@/utils/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { User } from '@/types/user';
 import type { Card } from '@/types/card';
@@ -91,6 +91,9 @@ export async function uploadProfilePhoto(file: File, userId: string): Promise<st
     throw new Error('File is too large. Maximum size is 5MB.');
   }
 
+  // Must be the Firebase UID — storage rules scope writes per uid.
+  const ownerId = auth?.currentUser?.uid ?? userId;
+
   // Compress the image first
   const compressed = await compressImage(file);
 
@@ -98,7 +101,7 @@ export async function uploadProfilePhoto(file: File, userId: string): Promise<st
   if (storage) {
     try {
       const timestamp = Date.now();
-      const storageRef = ref(storage, `avatars/${userId}/${timestamp}.jpg`);
+      const storageRef = ref(storage, `avatars/${ownerId}/${timestamp}.jpg`);
 
       const snapshot = await uploadBytes(storageRef, compressed, {
         contentType: 'image/jpeg',

@@ -1,12 +1,33 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow authenticated users to read/write their own card photos
-    match /card-photos/{userId}/{allPaths} {
+
+    // Card photos are publicly readable — a business card is meant to be
+    // shared via its public link. Writes are restricted to the owning user:
+    // the previous rule only required *any* authenticated session, which let
+    // any signed-in user overwrite another user's photos.
+    match /card-photos/{userId}/{allPaths=**} {
       allow read: if true;
       allow write: if request.auth != null
+                   && request.auth.uid == userId
                    && request.resource.size < 5 * 1024 * 1024
                    && request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Profile avatars, same ownership model.
+    match /avatars/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Deny everything else by default.
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }
