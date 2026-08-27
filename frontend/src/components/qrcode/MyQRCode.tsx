@@ -17,8 +17,8 @@ const MyQRCode: React.FC<MyQRCodeProps> = ({ dataUrl, userName, className }) => 
         const blob = await response.blob();
         const file = new File([blob], 'my-qr-code.png', { type: 'image/png' });
         await navigator.share({
-          title: 'My SBCards QR Code',
-          text: `Scan my QR code to connect on SBCards!${userName ? ` - ${userName}` : ''}`,
+          title: 'My NEXAS QR Code',
+          text: `Scan my QR code to connect on NEXAS!${userName ? ` - ${userName}` : ''}`,
           files: [file],
         });
       } catch {

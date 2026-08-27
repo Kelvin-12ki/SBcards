@@ -1,5 +1,5 @@
 /**
- * Seed Script for SBCards Platform
+ * Seed Script for NEXAS Platform
  * Creates 50 test accounts with full data including users, cards, events,
  * participations, matches, organizations, memberships, and connections.
  *
@@ -549,13 +549,13 @@ function computeMatch(userA: UserData, userB: UserData, cardA: CardData, cardB: 
 
 async function seed() {
   const startTime = Date.now();
-  console.log('🌱 SBCards Seed Script');
+  console.log('🌱 NEXAS Seed Script');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log(`MongoDB URI: ${process.env.MONGODB_URI || 'mongodb://localhost:27017/sbcards'}`);
+  console.log(`MongoDB URI: ${process.env.MONGODB_URI || 'mongodb://localhost:27017/nexas'}`);
   console.log('');
 
   // Connect
-  const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/sbcards';
+  const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/nexas';
   await mongoose.connect(uri);
   console.log('✅ Connected to MongoDB');
   console.log('');

@@ -37,7 +37,7 @@ const TemplatePicker: React.FC<TemplatePickerProps> = ({ selected, onSelect }) =
                 isSelected && 'scale-[1.03] border-glow-gold',
                 !isSelected && 'opacity-70 hover:opacity-90',
               )}
-              style={{ border: isSelected ? '2px solid #D4A853' : '2px solid transparent' }}
+              style={{ border: isSelected ? '2px solid #2563EB' : '2px solid transparent' }}
             >
               {/* Thumbnail gradient */}
               <div

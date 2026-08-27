@@ -4,11 +4,14 @@ export default {
   theme: {
     extend: {
       colors: {
+        // WEB: NEXAS blue. The key stays `gold` on purpose — text-gold,
+        // bg-gold etc. are used throughout, and renaming the token is a
+        // separate, riskier change.
         gold: {
-          DEFAULT: '#D4A853',
-          strong: '#C49A3C',
-          soft: 'rgba(212,168,83,0.12)',
-          ink: '#1A1208',
+          DEFAULT: '#2563EB',
+          strong: '#1D4ED8',
+          soft: 'rgba(37,99,235,0.12)',
+          ink: '#FFFFFF',
         },
         background: '#0A0A0B',
         surface: {

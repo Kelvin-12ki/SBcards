@@ -13,7 +13,7 @@ const App: React.FC = () => {
         toast(
           () => (
             <div className="flex flex-col gap-1">
-              <p className="font-bold text-sm">{payload.title || 'SBCards'}</p>
+              <p className="font-bold text-sm">{payload.title || 'NEXAS'}</p>
               <p className="text-xs text-text-secondary">{payload.body}</p>
             </div>
           ),

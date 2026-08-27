@@ -36,25 +36,25 @@ export default async function middleware(request: Request) {
     // fallback to generic
   }
 
-  const name = card?.fullName || 'SBCards User';
+  const name = card?.fullName || 'NEXAS User';
   const role = card?.role || card?.headline || '';
   const company = card?.company || '';
-  const desc = role && company ? `${role} at ${company} — View their digital business card on SBCards` : 'Digital business card on SBCards';
+  const desc = role && company ? `${role} at ${company} — View their digital business card on NEXAS` : 'Digital business card on NEXAS';
   const ogImg = `https://sbcards.vercel.app/api/og/${id}`;
   const pageUrl = `https://sbcards.vercel.app/card/${id}`;
 
   const html = `<!DOCTYPE html><html><head>
-<meta charset="utf-8"><title>${name} | SBCards</title>
-<meta property="og:title" content="${name} | SBCards" />
+<meta charset="utf-8"><title>${name} | NEXAS</title>
+<meta property="og:title" content="${name} | NEXAS" />
 <meta property="og:description" content="${desc}" />
 <meta property="og:image" content="${ogImg}" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
 <meta property="og:url" content="${pageUrl}" />
 <meta property="og:type" content="profile" />
-<meta property="og:site_name" content="SBCards" />
+<meta property="og:site_name" content="NEXAS" />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="${name} | SBCards" />
+<meta name="twitter:title" content="${name} | NEXAS" />
 <meta name="twitter:description" content="${desc}" />
 <meta name="twitter:image" content="${ogImg}" />
 <meta http-equiv="refresh" content="0;url=${pageUrl}" />

@@ -108,8 +108,8 @@ async function bootstrap() {
 
   if (swaggerEnabled) {
     const swaggerConfig = new DocumentBuilder()
-      .setTitle('SBCards API')
-      .setDescription('SBCards - Digital Business Card & Smart Networking')
+      .setTitle('NEXAS API')
+      .setDescription('NEXAS - Digital Business Card & Smart Networking')
       .setVersion('1.0')
       .addBearerAuth()
       .build();
@@ -127,7 +127,7 @@ async function bootstrap() {
 
   await app.listen(port, '0.0.0.0');
 
-  logger.log(`SBCards API listening on port ${port} (${nodeEnv})`);
+  logger.log(`NEXAS API listening on port ${port} (${nodeEnv})`);
   logger.log(
     `CORS allowlist: ${allowedOrigins.join(', ') || '(none configured)'}`,
   );

@@ -9,7 +9,7 @@ import Spinner from '@/components/ui/Spinner';
 import EmptyState from '@/components/ui/EmptyState';
 import { showApiError } from '@/utils/errorHandler';
 
-const RECENT_SEARCHES_KEY = 'sbcards_recent_searches';
+const RECENT_SEARCHES_KEY = 'nexas_recent_searches';
 const MAX_RECENT = 8;
 
 const SearchPage: React.FC = () => {
@@ -168,7 +168,7 @@ const SearchPage: React.FC = () => {
           {recentSearches.length === 0 && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <Search className="h-12 w-12 text-text-tertiary mb-4" />
-              <h3 className="font-display text-lg font-bold text-text-primary">Search across SBCards</h3>
+              <h3 className="font-display text-lg font-bold text-text-primary">Search across NEXAS</h3>
               <p className="mt-1 text-sm text-text-secondary max-w-md">
                 Find people, events, organizations, exhibitors, and more. Start typing above to search.
               </p>

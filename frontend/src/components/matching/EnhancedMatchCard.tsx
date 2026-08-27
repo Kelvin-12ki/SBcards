@@ -133,7 +133,7 @@ const EnhancedMatchCard: React.FC<EnhancedMatchCardProps> = ({
                 filter: scorePercent >= 80
                   ? 'drop-shadow(0 0 6px rgba(52,211,153,0.6))'
                   : scorePercent >= 60
-                    ? 'drop-shadow(0 0 6px rgba(212,168,83,0.6))'
+                    ? 'drop-shadow(0 0 6px rgba(37, 99, 235,0.6))'
                     : 'drop-shadow(0 0 6px rgba(0,245,255,0.6))',
               }}
             />

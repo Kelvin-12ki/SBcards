@@ -392,7 +392,7 @@ export class InsightsService {
       }
 
       if (targetIsActive) {
-        reasons.push('Active on SBCards');
+        reasons.push('Active on NEXAS');
       } else {
         reasons.push('Haven\'t seen them recently');
       }

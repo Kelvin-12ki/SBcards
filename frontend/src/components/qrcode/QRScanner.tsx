@@ -123,7 +123,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onError, className }) => 
         stopCamera();
         onScan(userId);
       } else {
-        toast.error('QR code found but it is not a valid SBCards QR code.');
+        toast.error('QR code found but it is not a valid NEXAS QR code.');
       }
     };
 

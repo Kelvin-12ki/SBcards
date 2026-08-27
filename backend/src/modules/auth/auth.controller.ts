@@ -65,7 +65,7 @@ export class AuthController {
 
     // Find or create a demo user in the database
     const demoFirebaseUid = 'demo-uid';
-    const demoEmail = 'demo@sbcards.app';
+    const demoEmail = 'demo@nexas.app';
 
     let user = await this.usersService.findByFirebaseUid(demoFirebaseUid);
 

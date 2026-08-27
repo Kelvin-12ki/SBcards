@@ -137,7 +137,7 @@ const HeatmapGrid: React.FC<HeatmapGridProps> = ({ data, metric = 'connections',
                     connections: '0, 245, 255',
                     messages: '191, 95, 255',
                     checkins: '52, 211, 153',
-                    scans: '212, 168, 83',
+                    scans: '37, 99, 235',
                   };
                   const rgb = colorMap[activeMetric];
                   const alpha = Math.min(0.15 + intensity * 0.8, 0.95);
@@ -193,7 +193,7 @@ const HeatmapGrid: React.FC<HeatmapGridProps> = ({ data, metric = 'connections',
               connections: '0, 245, 255',
               messages: '191, 95, 255',
               checkins: '52, 211, 153',
-              scans: '212, 168, 83',
+              scans: '37, 99, 235',
             };
             const rgb = colorMap[activeMetric];
             return (

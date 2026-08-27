@@ -15,7 +15,7 @@ export default async function handler(req: Request) {
 
   if (!id || id === 'default') {
     return new ImageResponse(
-      buildHtml({ name: 'SBCards', role: 'Digital Business Cards', company: '', accent: '#D4A853', bg: '#0A0A0B', text: '#D4A853', textSec: '#8E8E93', initials: 'SB' }),
+      buildHtml({ name: 'NEXAS', role: 'Digital Business Cards', company: '', accent: '#D4A853', bg: '#0A0A0B', text: '#D4A853', textSec: '#8E8E93', initials: 'SB' }),
       { width: 1200, height: 630, headers: { 'Cache-Control': 'public, max-age=86400, s-maxage=86400' } },
     );
   }
@@ -27,12 +27,12 @@ export default async function handler(req: Request) {
     card = await res.json();
   } catch {
     return new ImageResponse(
-      buildHtml({ name: 'SBCards', role: 'Digital Business Cards', company: '', accent: '#D4A853', bg: '#0A0A0B', text: '#D4A853', textSec: '#8E8E93', initials: 'SB' }),
+      buildHtml({ name: 'NEXAS', role: 'Digital Business Cards', company: '', accent: '#D4A853', bg: '#0A0A0B', text: '#D4A853', textSec: '#8E8E93', initials: 'SB' }),
       { width: 1200, height: 630, headers: { 'Cache-Control': 'public, max-age=3600, s-maxage=3600' } },
     );
   }
 
-  const name = card.fullName || 'SBCards User';
+  const name = card.fullName || 'NEXAS User';
   const role = card.role || card.headline || '';
   const company = card.company || '';
   const theme = THEMES[card.theme] || THEMES.classic;
@@ -61,7 +61,7 @@ ${opts.company ? `<div style="font-size:24px;color:${opts.textSec};">${opts.comp
 </div>
 </div>
 <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;">
-<span style="font-size:20px;color:${opts.textSec};">SBCards</span>
+<span style="font-size:20px;color:${opts.textSec};">NEXAS</span>
 <span style="font-size:16px;color:${opts.textSec};">sbcards.vercel.app</span>
 </div></div></body></html>`;
 }

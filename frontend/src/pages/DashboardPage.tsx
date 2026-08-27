@@ -100,9 +100,9 @@ const DashboardPage: React.FC = () => {
 
   // Check if user just registered
   useEffect(() => {
-    if (localStorage.getItem('sbcards_just_registered') === '1') {
+    if (localStorage.getItem('nexas_just_registered') === '1') {
       setIsNewUser(true);
-      localStorage.removeItem('sbcards_just_registered');
+      localStorage.removeItem('nexas_just_registered');
     }
   }, []);
 
@@ -115,7 +115,7 @@ const DashboardPage: React.FC = () => {
           {isNewUser ? 'Welcome' : 'Welcome back'}{user?.displayName ? `, ${user.displayName}` : ''}!
         </h1>
         <p className="mt-1.5 text-base text-text-secondary">
-          {isNewUser ? 'Let\'s get you started with SBCards.' : 'Here\'s your networking overview.'}
+          {isNewUser ? 'Let\'s get you started with NEXAS.' : 'Here\'s your networking overview.'}
         </p>
       </div>
 
@@ -167,7 +167,7 @@ const DashboardPage: React.FC = () => {
             <Search className="h-5 w-5" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium text-text-primary">Search SBCards</p>
+            <p className="text-sm font-medium text-text-primary">Search NEXAS</p>
             <p className="text-xs text-text-secondary">Find people, events, organizations...</p>
           </div>
           <kbd className="hidden rounded-md border border-border-subtle bg-surface-2 px-2 py-0.5 text-[10px] text-text-tertiary sm:inline-block">

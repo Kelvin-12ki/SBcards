@@ -9,7 +9,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'SBCards',
+        name: 'NEXAS',
         theme_color: '#0A0A0B',
         display: 'standalone',
         icons: [
@@ -24,7 +24,7 @@ export default defineConfig({
             urlPattern: ({ url }) => url.origin === 'https://sbcards.onrender.com',
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'sbcards-api',
+              cacheName: 'nexas-api',
               networkTimeoutSeconds: 5,
               expiration: {
                 maxEntries: 100,

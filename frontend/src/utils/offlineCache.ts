@@ -1,6 +1,6 @@
 import { openDB } from 'idb';
 
-const DB_NAME = 'sbcards-offline';
+const DB_NAME = 'nexas-offline';
 const DB_VERSION = 1;
 const STORE_NAME = 'cache';
 

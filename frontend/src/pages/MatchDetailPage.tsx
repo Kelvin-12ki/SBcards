@@ -266,7 +266,7 @@ const MatchDetailPage: React.FC = () => {
                       )}
                       style={{
                         width: `${factorPercent}%`,
-                        boxShadow: `0 0 8px ${colorClass.includes('gold') ? 'rgba(212,168,83,0.4)' : colorClass.includes('cyan') ? 'rgba(0,245,255,0.4)' : colorClass.includes('pink') ? 'rgba(255,110,199,0.4)' : colorClass.includes('purple') ? 'rgba(191,95,255,0.4)' : colorClass.includes('blue') ? 'rgba(59,130,246,0.4)' : 'rgba(52,211,153,0.4)'}`,
+                        boxShadow: `0 0 8px ${colorClass.includes('gold') ? 'rgba(37, 99, 235,0.4)' : colorClass.includes('cyan') ? 'rgba(0,245,255,0.4)' : colorClass.includes('pink') ? 'rgba(255,110,199,0.4)' : colorClass.includes('purple') ? 'rgba(191,95,255,0.4)' : colorClass.includes('blue') ? 'rgba(59,130,246,0.4)' : 'rgba(52,211,153,0.4)'}`,
                       }}
                     />
                   </div>

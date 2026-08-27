@@ -33,7 +33,7 @@ const RegisterPage: React.FC = () => {
         navigate('/dashboard', { replace: true });
       }
     } else {
-      toast.success('Welcome to SBCards!');
+      toast.success('Welcome to NEXAS!');
       navigate('/dashboard', { replace: true });
     }
   };
@@ -62,7 +62,7 @@ const RegisterPage: React.FC = () => {
       await register(email.trim(), password.trim(), displayName.trim() || undefined);
 
       // Mark as new user so Dashboard shows "Welcome" instead of "Welcome back"
-      localStorage.setItem('sbcards_just_registered', '1');
+      localStorage.setItem('nexas_just_registered', '1');
 
       const ref = searchParams.get('ref') || sessionStorage.getItem('qr_ref');
       await handlePostRegister(ref);
@@ -80,8 +80,8 @@ const RegisterPage: React.FC = () => {
     setError('');
     try {
       await loginWithGoogle();
-      localStorage.setItem('sbcards_just_registered', '1');
-      toast.success('Welcome to SBCards!');
+      localStorage.setItem('nexas_just_registered', '1');
+      toast.success('Welcome to NEXAS!');
       const ref = searchParams.get('ref') || sessionStorage.getItem('qr_ref');
       await handlePostRegister(ref);
     } catch (err: any) {
