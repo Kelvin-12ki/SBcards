@@ -9,10 +9,10 @@ self.addEventListener('push', (event) => {
   try {
     payload = event.data.json();
   } catch {
-    payload = { notification: { title: 'SBCards', body: event.data.text() } };
+    payload = { notification: { title: 'NEXAS', body: event.data.text() } };
   }
 
-  const title = payload.notification?.title || payload.data?.title || 'SBCards';
+  const title = payload.notification?.title || payload.data?.title || 'NEXAS';
   const body = payload.notification?.body || payload.data?.body || '';
   const link = payload.data?.link || '/messages';
 
@@ -22,7 +22,7 @@ self.addEventListener('push', (event) => {
       icon: '/sing-192x192.png',
       badge: '/sing-50x50.png',
       data: { link },
-      tag: 'sbcards-notification',
+      tag: 'nexas-notification',
     }),
   );
 });

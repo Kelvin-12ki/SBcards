@@ -41,19 +41,19 @@ const NetworkIllustration: React.FC = () => (
         </linearGradient>
         <linearGradient id="av2" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#FF6EC7" />
-          <stop offset="100%" stopColor="#2563EB" />
+          <stop offset="100%" stopColor="#D4A853" />
         </linearGradient>
         <linearGradient id="av3" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#BF5FFF" />
           <stop offset="100%" stopColor="#00F5FF" />
         </linearGradient>
         <linearGradient id="av4" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#2563EB" />
+          <stop offset="0%" stopColor="#D4A853" />
           <stop offset="100%" stopColor="#FF6EC7" />
         </linearGradient>
         <linearGradient id="av5" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#00F5FF" />
-          <stop offset="100%" stopColor="#2563EB" />
+          <stop offset="100%" stopColor="#D4A853" />
         </linearGradient>
         <linearGradient id="av6" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#FF6EC7" />
@@ -71,10 +71,10 @@ const NetworkIllustration: React.FC = () => (
         </linearGradient>
         <linearGradient id="ln3" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#BF5FFF" />
-          <stop offset="100%" stopColor="#2563EB" />
+          <stop offset="100%" stopColor="#D4A853" />
         </linearGradient>
         <linearGradient id="ln4" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#2563EB" />
+          <stop offset="0%" stopColor="#D4A853" />
           <stop offset="100%" stopColor="#00F5FF" />
         </linearGradient>
       </defs>
@@ -137,7 +137,7 @@ const NetworkIllustration: React.FC = () => (
 
       {/* ── Avatar 4 — Left ── */}
       <g className="nf-f4" style={{ transformOrigin: '70px 300px' }}>
-        <circle cx={70} cy={300} r={38} fill="none" stroke="#2563EB" strokeWidth="2" className="nf-glow-gold" />
+        <circle cx={70} cy={300} r={38} fill="none" stroke="#D4A853" strokeWidth="2" className="nf-glow-gold" />
         <circle cx={70} cy={300} r={32} fill="url(#av4)" />
         <ellipse cx={62} cy={290} rx={14} ry={10} fill="white" opacity="0.10" />
         <circle cx={64} cy={298} r={3} fill="#0A0A0B" />

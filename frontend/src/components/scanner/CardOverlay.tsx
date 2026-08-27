@@ -33,25 +33,25 @@ const CardOverlay: React.FC = () => {
       {/* Corner bracket accents — gold L-shapes */}
       {/* Top-left */}
       <div className="absolute left-1/2 top-1/2 -translate-x-[175px] -translate-y-[100px]">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2.5" strokeLinecap="round">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D4A853" strokeWidth="2.5" strokeLinecap="round">
           <path d="M20 4H4v16" />
         </svg>
       </div>
       {/* Top-right */}
       <div className="absolute left-1/2 top-1/2 translate-x-[151px] -translate-y-[100px]">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2.5" strokeLinecap="round">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D4A853" strokeWidth="2.5" strokeLinecap="round">
           <path d="M4 4h16v16" />
         </svg>
       </div>
       {/* Bottom-left */}
       <div className="absolute left-1/2 top-1/2 -translate-x-[175px] translate-y-[76px]">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2.5" strokeLinecap="round">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D4A853" strokeWidth="2.5" strokeLinecap="round">
           <path d="M20 20H4V4" />
         </svg>
       </div>
       {/* Bottom-right */}
       <div className="absolute left-1/2 top-1/2 translate-x-[151px] translate-y-[76px]">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2.5" strokeLinecap="round">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D4A853" strokeWidth="2.5" strokeLinecap="round">
           <path d="M4 20h16V4" />
         </svg>
       </div>
