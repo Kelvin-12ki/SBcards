@@ -107,7 +107,7 @@ const RegisterPage: React.FC = () => {
       <div className="w-full max-w-sm relative z-10">
         <div className="mb-8 text-center">
           <h1 className="font-display text-4xl font-extrabold tracking-tight text-text-primary">
-            SB<span className="text-gradient-gold">Cards</span>
+            NE<span className="text-gradient-gold">XAS</span>
           </h1>
           <p className="mt-2 text-base text-text-secondary">
             Create your account
