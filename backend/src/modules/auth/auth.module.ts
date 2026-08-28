@@ -6,6 +6,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { UsersModule } from '../users/users.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { User, UserSchema } from '../users/entities/user.entity';
 import { JwtStrategy } from '../../common/strategies/jwt.strategy';
 
@@ -23,6 +24,7 @@ import { JwtStrategy } from '../../common/strategies/jwt.strategy';
       }),
     }),
     forwardRef(() => UsersModule),
+    NotificationsModule,
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
   ],
   providers: [AuthService, JwtStrategy],

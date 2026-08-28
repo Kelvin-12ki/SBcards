@@ -8,6 +8,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import * as admin from 'firebase-admin';
 import { UsersService } from '../users/users.service';
+import { EmailService } from '../notifications/email.service';
 import { User, UserDocument } from '../users/entities/user.entity';
 
 @Injectable()
@@ -18,6 +19,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     @Inject(forwardRef(() => UsersService))
     private readonly usersService: UsersService,
+    private readonly emailService: EmailService,
   ) {}
 
   /**
@@ -37,6 +39,9 @@ export class AuthService {
         );
       }
 
+      // Check if user already exists (before upsert)
+      const existingUser = await this.usersService.findByFirebaseUid(uid);
+
       // Upsert user in database
       const user = await this.usersService.upsertFirebaseUser(
         uid,
@@ -48,6 +53,14 @@ export class AuthService {
       if (picture && user.avatarUrl !== picture) {
         await this.usersService.update(user.id, { avatarUrl: picture });
         user.avatarUrl = picture;
+      }
+
+      // Send welcome email to new users (fire-and-forget)
+      if (!existingUser) {
+        const displayName = name || email.split('@')[0];
+        this.emailService.sendWelcomeEmail(email, displayName).catch((err) => {
+          this.logger.error(`Failed to send welcome email: ${(err as Error).message}`);
+        });
       }
 
       // Generate JWT
