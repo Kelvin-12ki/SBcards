@@ -128,7 +128,7 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle }) => {
 
         <Link to="/dashboard" className="flex items-center gap-2 group">
           <span className="font-display text-xl font-extrabold tracking-tight text-text-primary">
-            SB<span className="text-gradient-gold">Cards</span>
+            NE<span className="text-gradient-gold">XAS</span>
           </span>
         </Link>
       </div>

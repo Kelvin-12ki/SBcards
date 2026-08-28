@@ -16,7 +16,7 @@ import { UsersService } from '../users/users.service';
 export class QrCodeService {
   private readonly logger = new Logger(QrCodeService.name);
 
-  private readonly BASE_URL = 'https://sbcards.vercel.app/scan?ref=';
+  private readonly BASE_URL = 'https://nexas.vercel.app/scan?ref=';
 
   constructor(
     @InjectModel(QrCodeScan.name)

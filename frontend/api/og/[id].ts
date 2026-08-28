@@ -62,6 +62,6 @@ ${opts.company ? `<div style="font-size:24px;color:${opts.textSec};">${opts.comp
 </div>
 <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;">
 <span style="font-size:20px;color:${opts.textSec};">NEXAS</span>
-<span style="font-size:16px;color:${opts.textSec};">sbcards.vercel.app</span>
+<span style="font-size:16px;color:${opts.textSec};">nexas.vercel.app</span>
 </div></div></body></html>`;
 }
