@@ -20,7 +20,7 @@ function buildAllowedOrigins(configService: ConfigService): string[] {
     ...(configService.get<string>('CORS_ORIGINS') ?? '').split(','),
     // Hardcoded fallbacks so the app works even if env vars are missing on
     // Render. These are the known production origins.
-    'https://nexas.vercel.app',
+    'https://sbcards.vercel.app',
     'http://localhost:3007',
   ];
 

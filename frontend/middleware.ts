@@ -40,8 +40,8 @@ export default async function middleware(request: Request) {
   const role = card?.role || card?.headline || '';
   const company = card?.company || '';
   const desc = role && company ? `${role} at ${company} — View their digital business card on NEXAS` : 'Digital business card on NEXAS';
-  const ogImg = `https://nexas.vercel.app/api/og/${id}`;
-  const pageUrl = `https://nexas.vercel.app/card/${id}`;
+  const ogImg = `https://sbcards.vercel.app/api/og/${id}`;
+  const pageUrl = `https://sbcards.vercel.app/card/${id}`;
 
   const html = `<!DOCTYPE html><html><head>
 <meta charset="utf-8"><title>${name} | NEXAS</title>

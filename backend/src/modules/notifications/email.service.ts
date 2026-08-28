@@ -48,7 +48,7 @@ export class EmailService {
             <p style="color: #A0A0A5; line-height: 1.6; margin: 0 0 24px;">
               <strong style="color: #D4A853;">${senderName}</strong> (${senderEmail}) wants to connect with you on NEXAS.
             </p>
-            <a href="${this.configService.get<string>('FRONTEND_URL', 'https://nexas.vercel.app')}/connections?tab=requests"
+            <a href="${this.configService.get<string>('FRONTEND_URL', 'https://sbcards.vercel.app')}/connections?tab=requests"
                style="display: inline-block; background: linear-gradient(135deg, #D4A853, #B8922E); color: #0A0A0B; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-weight: 700; font-size: 14px;">
               View Request
             </a>
