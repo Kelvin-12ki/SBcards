@@ -144,3 +144,35 @@ export async function getLeaderboard(
   });
   return data;
 }
+
+// ─── Organizer Requests ─────────────────────────────────────────────────────
+
+export interface OrganizerRequest {
+  id: string;
+  displayName?: string;
+  email: string;
+  avatarUrl?: string;
+  organizerRequest: {
+    status: 'none' | 'pending' | 'approved' | 'rejected';
+    company?: string;
+    jobTitle?: string;
+    reason?: string;
+    requestedAt?: string;
+    reviewedAt?: string;
+  };
+}
+
+export async function getOrganizerRequests(): Promise<OrganizerRequest[]> {
+  const { data } = await apiClient.get<OrganizerRequest[]>('/admin/organizer-requests');
+  return data;
+}
+
+export async function approveOrganizerRequest(userId: string): Promise<any> {
+  const { data } = await apiClient.patch(`/admin/organizer-requests/${userId}/approve`);
+  return data;
+}
+
+export async function rejectOrganizerRequest(userId: string): Promise<any> {
+  const { data } = await apiClient.patch(`/admin/organizer-requests/${userId}/reject`);
+  return data;
+}

@@ -361,6 +361,73 @@ export class AdminService {
   }
 
   /**
+   * Get all organizer requests (any status).
+   */
+  async getOrganizerRequests() {
+    return this.userModel
+      .find({ 'organizerRequest.status': { $ne: 'none' } })
+      .select('displayName email organizerRequest avatarUrl')
+      .sort({ 'organizerRequest.requestedAt': -1 })
+      .exec();
+  }
+
+  /**
+   * Approve an organizer request: set status to 'approved', set reviewedAt,
+   * and promote user role to 'organizer'.
+   */
+  async approveOrganizerRequest(userId: string) {
+    if (!Types.ObjectId.isValid(userId)) {
+      throw new NotFoundException(`Invalid user ID: "${userId}"`);
+    }
+
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) {
+      throw new NotFoundException(`User with ID "${userId}" not found`);
+    }
+
+    if (!user.organizerRequest || user.organizerRequest.status !== 'pending') {
+      throw new NotFoundException('No pending organizer request found for this user');
+    }
+
+    user.organizerRequest = {
+      ...user.organizerRequest,
+      status: 'approved',
+      reviewedAt: new Date(),
+    };
+    user.role = 'organizer';
+
+    this.logger.log(`Organizer request approved for user ${userId}`);
+    return user.save();
+  }
+
+  /**
+   * Reject an organizer request: set status to 'rejected' and set reviewedAt.
+   */
+  async rejectOrganizerRequest(userId: string) {
+    if (!Types.ObjectId.isValid(userId)) {
+      throw new NotFoundException(`Invalid user ID: "${userId}"`);
+    }
+
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) {
+      throw new NotFoundException(`User with ID "${userId}" not found`);
+    }
+
+    if (!user.organizerRequest || user.organizerRequest.status !== 'pending') {
+      throw new NotFoundException('No pending organizer request found for this user');
+    }
+
+    user.organizerRequest = {
+      ...user.organizerRequest,
+      status: 'rejected',
+      reviewedAt: new Date(),
+    };
+
+    this.logger.log(`Organizer request rejected for user ${userId}`);
+    return user.save();
+  }
+
+  /**
    * Get leaderboard top users by metric.
    */
   async getLeaderboard(metric: string, limit: number) {

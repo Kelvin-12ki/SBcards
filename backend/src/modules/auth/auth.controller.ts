@@ -18,6 +18,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtUser } from '../../common/strategies/jwt.strategy';
 import { User } from '../users/entities/user.entity';
 import { IsNotEmpty, IsString } from 'class-validator';
+import { ApplyOrganizerDto } from './dto/apply-organizer.dto';
 
 class VerifyTokenDto {
   @IsNotEmpty()
@@ -117,5 +118,34 @@ export class AuthController {
     }
 
     return { user };
+  }
+
+  @Post('apply-organizer')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Apply for organizer role' })
+  @ApiBody({ type: ApplyOrganizerDto })
+  async applyForOrganizer(
+    @CurrentUser() jwtUser: JwtUser,
+    @Body() dto: ApplyOrganizerDto,
+  ) {
+    const user = await this.usersService.findByFirebaseUid(jwtUser.uid);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return this.authService.applyForOrganizer(user.id, dto);
+  }
+
+  @Get('organizer-status')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current user organizer application status' })
+  async getOrganizerStatus(@CurrentUser() jwtUser: JwtUser) {
+    const user = await this.usersService.findByFirebaseUid(jwtUser.uid);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return this.authService.getOrganizerStatus(user.id);
   }
 }

@@ -47,6 +47,7 @@ const AdminUsersPage = React.lazy(() => import('@/pages/admin/AdminUsersPage'));
 const AdminUserDetailPage = React.lazy(() => import('@/pages/admin/AdminUserDetailPage'));
 const AdminEventsPage = React.lazy(() => import('@/pages/admin/AdminEventsPage'));
 const AdminAnalyticsPage = React.lazy(() => import('@/pages/admin/AdminAnalyticsPage'));
+const AdminOrganizerRequestsPage = React.lazy(() => import('@/pages/admin/AdminOrganizerRequestsPage'));
 
 // Admin layout
 const AdminLayout = React.lazy(() => import('@/components/admin/AdminLayout'));
@@ -119,6 +120,7 @@ const RoutesTree: React.FC = () => {
               <Route path="/admin/users" element={<AdminUsersPage />} />
               <Route path="/admin/users/:userId" element={<AdminUserDetailPage />} />
               <Route path="/admin/events" element={<AdminEventsPage />} />
+              <Route path="/admin/organizer-requests" element={<AdminOrganizerRequestsPage />} />
               <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
             </Route>
           </Route>

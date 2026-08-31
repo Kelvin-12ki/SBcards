@@ -140,4 +140,24 @@ export class AdminController {
       parseInt(limit || '20', 10),
     );
   }
+
+  @Get('organizer-requests')
+  @ApiOperation({ summary: 'List all organizer requests' })
+  async getOrganizerRequests() {
+    return this.adminService.getOrganizerRequests();
+  }
+
+  @Patch('organizer-requests/:id/approve')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Approve an organizer request' })
+  async approveOrganizerRequest(@Param('id') id: string) {
+    return this.adminService.approveOrganizerRequest(id);
+  }
+
+  @Patch('organizer-requests/:id/reject')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reject an organizer request' })
+  async rejectOrganizerRequest(@Param('id') id: string) {
+    return this.adminService.rejectOrganizerRequest(id);
+  }
 }
