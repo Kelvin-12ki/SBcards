@@ -30,7 +30,7 @@ export class AdminGuard implements CanActivate {
 
     // Check DB for current role (JWT may be stale)
     const dbUser = await this.userModel.findOne({ firebaseUid: user.uid }).lean();
-    if (!dbUser || dbUser.role !== 'admin') {
+    if (!dbUser || (dbUser.role !== 'admin' && dbUser.role !== 'organizer')) {
       this.logger.warn(
         `User ${user.userId || user.uid} with role "${dbUser?.role || 'none'}" attempted to access admin route`,
       );
