@@ -10,6 +10,15 @@ import { UsersModule } from '../users/users.module';
 import { CardsModule } from '../cards/cards.module';
 import { User, UserSchema } from '../users/entities/user.entity';
 import { Card, CardSchema } from '../cards/entities/card.entity';
+import {
+  EventCheckIn,
+  EventCheckInSchema,
+} from '../tables/entities/event-checkin.entity';
+import {
+  TableAssignment,
+  TableAssignmentSchema,
+} from '../tables/entities/table-assignment.entity';
+import { Match, MatchSchema } from '../matching/entities/match.entity';
 
 @Module({
   imports: [
@@ -18,6 +27,12 @@ import { Card, CardSchema } from '../cards/entities/card.entity';
       { name: EventParticipation.name, schema: EventParticipationSchema },
       { name: User.name, schema: UserSchema },
       { name: Card.name, schema: CardSchema },
+      // Read-only here: my-status reports check-in and seating state that
+      // TablesModule owns. Registering the schema in two modules is fine;
+      // writes still go through TablesService.
+      { name: EventCheckIn.name, schema: EventCheckInSchema },
+      { name: TableAssignment.name, schema: TableAssignmentSchema },
+      { name: Match.name, schema: MatchSchema },
     ]),
     UsersModule,
     CardsModule,

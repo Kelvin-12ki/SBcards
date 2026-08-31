@@ -5,14 +5,15 @@ import type { Event, EventParticipation } from '@/types/event';
 import Badge from '@/components/ui/Badge';
 import TableAssignment from '@/components/matching/TableAssignment';
 import MatchList from '@/components/matching/MatchList';
-import type { Match, TableAssignment as TableAssignmentType } from '@/types/match';
+import type { Match } from '@/types/match';
+import type { MyAssignment } from '@/types/table';
 
 export interface EventDashboardProps {
   event: Event;
   participants: EventParticipation[];
   matches?: Match[];
   matchesLoading?: boolean;
-  tableAssignment?: TableAssignmentType | null;
+  tableAssignment?: MyAssignment | null;
   tableLoading?: boolean;
   className?: string;
 }
@@ -79,7 +80,7 @@ const EventDashboard: React.FC<EventDashboardProps> = ({
 
       <div>
         <h3 className="mb-3 font-display text-lg font-bold text-gradient-magical">My Table</h3>
-        <TableAssignment tableAssignment={tableAssignment} loading={tableLoading} />
+        <TableAssignment assignment={tableAssignment ?? null} loading={tableLoading} />
       </div>
 
       <div>

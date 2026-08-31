@@ -16,6 +16,15 @@ import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { User, UserDocument } from '../users/entities/user.entity';
 import { Card, CardDocument } from '../cards/entities/card.entity';
+import {
+  EventCheckIn,
+  EventCheckInDocument,
+} from '../tables/entities/event-checkin.entity';
+import {
+  TableAssignment,
+  TableAssignmentDocument,
+} from '../tables/entities/table-assignment.entity';
+import { Match, MatchDocument } from '../matching/entities/match.entity';
 
 @Injectable()
 export class EventsService {
@@ -30,7 +39,139 @@ export class EventsService {
     private readonly userModel: Model<UserDocument>,
     @InjectModel(Card.name)
     private readonly cardModel: Model<CardDocument>,
+    @InjectModel(EventCheckIn.name)
+    private readonly checkInModel: Model<EventCheckInDocument>,
+    @InjectModel(TableAssignment.name)
+    private readonly assignmentModel: Model<TableAssignmentDocument>,
+    @InjectModel(Match.name)
+    private readonly matchModel: Model<MatchDocument>,
   ) {}
+
+  /**
+   * Everything the client needs to decide which buttons to show for one user
+   * on one event, in a single round trip.
+   *
+   * The mobile event screen previously guessed at this by firing join/check-in
+   * calls and reading the errors. Returning the state explicitly means the UI
+   * renders the right action first time.
+   *
+   * `assignment` is scoped to the event's CURRENT rotation round, so after an
+   * organizer rotates, this reports the new seat rather than a stale one.
+   */
+  async getMyEventStatus(
+    eventId: string,
+    userId: string,
+  ): Promise<{
+    joined: boolean;
+    checkedIn: boolean;
+    hasCard: boolean;
+    isOrganizer: boolean;
+    currentRound: number;
+    assignment: {
+      tableNumber: number;
+      seatNumber: number;
+      label: string;
+      tablemateCount: number;
+      tablemates: {
+        userId: string;
+        displayName: string;
+        avatarUrl?: string;
+        matchScore: number | null;
+      }[];
+    } | null;
+  }> {
+    const event = await this.eventModel.findById(eventId).exec();
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+
+    const currentRound = event.currentRotationRound ?? 0;
+
+    const [participation, checkIn, card, assignment] = await Promise.all([
+      this.participationModel.findOne({ eventId, userId }).exec(),
+      this.checkInModel.findOne({ eventId, userId }).exec(),
+      this.cardModel.findOne({ userId }).exec(),
+      this.assignmentModel
+        .findOne({ eventId, userId, rotationRound: currentRound })
+        .exec(),
+    ]);
+
+    const base = {
+      joined: !!participation,
+      checkedIn: !!checkIn,
+      hasCard: !!card,
+      isOrganizer: event.creatorId === userId,
+      currentRound,
+    };
+
+    if (!assignment) {
+      return { ...base, assignment: null };
+    }
+
+    // Everyone else seated at this table, this round.
+    const mates = await this.assignmentModel
+      .find({
+        eventId,
+        tableNumber: assignment.tableNumber,
+        rotationRound: currentRound,
+        userId: { $ne: userId },
+      })
+      .sort({ seatNumber: 1 })
+      .exec();
+
+    const mateIds = mates.map((m) => m.userId);
+
+    const [mateUsers, matches] = await Promise.all([
+      mateIds.length
+        ? this.userModel.find({ _id: { $in: mateIds } }).exec()
+        : Promise.resolve([]),
+      mateIds.length
+        ? this.matchModel
+            .find({
+              eventId,
+              $or: [
+                { userAId: userId, userBId: { $in: mateIds } },
+                { userBId: userId, userAId: { $in: mateIds } },
+              ],
+            })
+            .select('userAId userBId overlapScore')
+            .lean()
+            .exec()
+        : Promise.resolve([] as any[]),
+    ]);
+
+    const userById = new Map(mateUsers.map((u) => [u.id as string, u]));
+    const scoreByUser = new Map<string, number>();
+    for (const m of matches as any[]) {
+      const other = m.userAId === userId ? m.userBId : m.userAId;
+      scoreByUser.set(other, m.overlapScore ?? 0);
+    }
+
+    const label =
+      event.tables?.find((t) => t.number === assignment.tableNumber)?.label ??
+      `Table ${assignment.tableNumber}`;
+
+    return {
+      ...base,
+      assignment: {
+        tableNumber: assignment.tableNumber,
+        seatNumber: assignment.seatNumber,
+        label,
+        tablemateCount: mates.length,
+        tablemates: mates.map((m) => {
+          const u = userById.get(m.userId);
+          return {
+            userId: m.userId,
+            displayName: u?.displayName || 'Attendee',
+            avatarUrl: u?.avatarUrl,
+            matchScore: scoreByUser.has(m.userId)
+              ? (scoreByUser.get(m.userId) as number)
+              : null,
+          };
+        }),
+      },
+    };
+  }
 
   /**
    * Create a new event.

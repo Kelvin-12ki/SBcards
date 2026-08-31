@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getMatches, getMyTable } from '@/api/matching';
+import { getMatches } from '@/api/matching';
+import { getMyAssignment } from '@/api/tables';
 import { getEvent } from '@/api/events';
-import type { Match, TableAssignment } from '@/types/match';
+import type { Match } from '@/types/match';
+import type { MyAssignment } from '@/types/table';
 import type { Event } from '@/types/event';
 import MatchList from '@/components/matching/MatchList';
 import TableAssignmentComponent from '@/components/matching/TableAssignment';
@@ -18,7 +20,7 @@ const MatchesPage: React.FC = () => {
   const [event, setEvent] = useState<Event | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tableAssignment, setTableAssignment] = useState<TableAssignment | null>(null);
+  const [tableAssignment, setTableAssignment] = useState<MyAssignment | null>(null);
   const [tableLoading, setTableLoading] = useState(true);
   const [search, setSearch] = useState('');
 
@@ -35,7 +37,7 @@ const MatchesPage: React.FC = () => {
         setMatches(matchesData);
 
         try {
-          const tableData = await getMyTable(id);
+          const tableData = await getMyAssignment(id);
           setTableAssignment(tableData);
         } catch {
           // No table assigned
@@ -112,7 +114,7 @@ const MatchesPage: React.FC = () => {
 
       <section>
         <h2 className="mb-3 font-display text-lg font-bold text-gradient-magical">Your Table</h2>
-        <TableAssignmentComponent tableAssignment={tableAssignment} loading={tableLoading} />
+        <TableAssignmentComponent assignment={tableAssignment} loading={tableLoading} />
       </section>
 
       <section>

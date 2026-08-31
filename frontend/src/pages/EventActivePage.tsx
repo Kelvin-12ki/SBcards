@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getEvent, getAttendees, getParticipants } from '@/api/events';
-import { getMatches, runMatching, getMyTable, assignTables } from '@/api/matching';
+import { getMatches } from '@/api/matching';
+import { getMyAssignment } from '@/api/tables';
 import { useAuth } from '@/auth/useAuth';
 import type { Event, EventParticipation, EventParticipant } from '@/types/event';
-import type { Match, TableAssignment } from '@/types/match';
+import type { Match } from '@/types/match';
+import type { MyAssignment } from '@/types/table';
 import EventDashboard from '@/components/events/EventDashboard';
 import ParticipantList from '@/components/events/ParticipantList';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
 import { showApiError } from '@/utils/errorHandler';
-import toast from 'react-hot-toast';
 
 const EventActivePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -22,11 +23,9 @@ const EventActivePage: React.FC = () => {
   const [detailedParticipants, setDetailedParticipants] = useState<EventParticipant[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [matchesLoading, setMatchesLoading] = useState(true);
-  const [tableAssignment, setTableAssignment] = useState<TableAssignment | null>(null);
+  const [tableAssignment, setTableAssignment] = useState<MyAssignment | null>(null);
   const [tableLoading, setTableLoading] = useState(true);
   const [loading, setLoading] = useState(true);
-  const [matchingLoading, setMatchingLoading] = useState(false);
-  const [assignTablesLoading, setAssignTablesLoading] = useState(false);
 
   const isCreator = user?.id === event?.creatorId;
 
@@ -60,7 +59,7 @@ const EventActivePage: React.FC = () => {
       setMatchesLoading(false);
 
       try {
-        const tableData = await getMyTable(id);
+        const tableData = await getMyAssignment(id);
         setTableAssignment(tableData);
       } catch {
         // Table may not be assigned yet
@@ -78,34 +77,9 @@ const EventActivePage: React.FC = () => {
     fetchData();
   }, [id, navigate]);
 
-  const handleRunMatching = async () => {
-    if (!id) return;
-    setMatchingLoading(true);
-    try {
-      const matchData = await runMatching(id);
-      setMatches(matchData);
-      toast.success('Matching complete!');
-    } catch (err: any) {
-      showApiError(err, 'Failed to run matching.');
-    } finally {
-      setMatchingLoading(false);
-    }
-  };
-
-  const handleAssignTables = async () => {
-    if (!id) return;
-    setAssignTablesLoading(true);
-    try {
-      await assignTables(id);
-      toast.success('Tables assigned!');
-      const tableData = await getMyTable(id);
-      setTableAssignment(tableData);
-    } catch (err: any) {
-      showApiError(err, 'Failed to assign tables.');
-    } finally {
-      setAssignTablesLoading(false);
-    }
-  };
+  // Run Matching / Assign Tables deliberately do NOT live here. This page is
+  // the attendee dashboard; seating is driven from the Organizer Portal so
+  // there is one place that owns it.
 
   if (loading) {
     return (
@@ -133,14 +107,9 @@ const EventActivePage: React.FC = () => {
         </button>
 
         {isCreator && (
-          <div className="flex items-center gap-3">
-            <Button variant="primary" size="sm" loading={matchingLoading} onClick={handleRunMatching}>
-              Run Matching
-            </Button>
-            <Button variant="secondary" size="sm" loading={assignTablesLoading} onClick={handleAssignTables} disabled={matches.length === 0}>
-              Assign Tables
-            </Button>
-          </div>
+          <Button variant="secondary" size="sm" onClick={() => navigate(`/events/${id}/organizer`)}>
+            Organizer Portal
+          </Button>
         )}
       </div>
 

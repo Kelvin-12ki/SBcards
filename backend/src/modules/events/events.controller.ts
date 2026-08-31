@@ -11,6 +11,7 @@ import {
   HttpCode,
   HttpStatus,
   ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { EventsService } from './events.service';
@@ -72,6 +73,21 @@ export class EventsController {
   @ApiOperation({ summary: 'Get event details' })
   async findById(@Param('id') id: string): Promise<Event | null> {
     return this.eventsService.findById(id);
+  }
+
+  @Get(':id/my-status')
+  @ApiOperation({
+    summary: "Current user's join / check-in / seating state for an event",
+  })
+  async getMyEventStatus(
+    @Param('id') id: string,
+    @CurrentUser() jwtUser: JwtUser,
+  ) {
+    const user = await this.usersService.findByFirebaseUid(jwtUser.uid);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return this.eventsService.getMyEventStatus(id, user.id);
   }
 
   @Patch(':id')

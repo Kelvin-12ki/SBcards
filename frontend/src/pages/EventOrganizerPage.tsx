@@ -183,6 +183,9 @@ const EventOrganizerPage: React.FC = () => {
             ...prev,
             tableCount: payload.tableCount,
             tableCapacity: payload.seatsPerTable,
+            // Re-running setup clears every assignment and resets the counter
+            // on the server. Keep local state in step.
+            currentRotationRound: 0,
           }
         : prev,
     );
@@ -193,6 +196,16 @@ const EventOrganizerPage: React.FC = () => {
 
   const handleAssign = async () => {
     if (!id) return;
+    // Seating overwrites any existing arrangement mid-event, so make the scale
+    // of it explicit before it happens.
+    const tableWord = tables.length === 1 ? 'table' : 'tables';
+    if (
+      !window.confirm(
+        `This will seat ${attendees.length} attendees across ${tables.length} ${tableWord}. Continue?`,
+      )
+    ) {
+      return;
+    }
     setAssigning(true);
     try {
       const result = await assignTables(id);
@@ -211,11 +224,26 @@ const EventOrganizerPage: React.FC = () => {
 
   const handleRotate = async () => {
     if (!id) return;
+    const nextRound = (event?.currentRotationRound ?? 0) + 1;
+    if (
+      !window.confirm(
+        `This will advance to Round ${nextRound} and reassign everyone. Continue?`,
+      )
+    ) {
+      return;
+    }
     setRotating(true);
     try {
       const result = await rotateTables(id);
       setTables(result);
-      toast.success('Rotated — everyone has new tablemates');
+      // The round badge is read from the event, so advance it here rather than
+      // refetching the whole event mid-rotation.
+      setEvent((prev) =>
+        prev ? { ...prev, currentRotationRound: nextRound } : prev,
+      );
+      toast.success(
+        `Advanced to Round ${nextRound} — everyone has new tablemates`,
+      );
     } catch (err) {
       toast.error(
         (err as { friendlyMessage?: string })?.friendlyMessage ??
@@ -275,6 +303,7 @@ const EventOrganizerPage: React.FC = () => {
   const seatsPerTable = event.tableCapacity;
   const hasTables = tables.length > 0;
   const seatedCount = tables.reduce((n, t) => n + t.attendees.length, 0);
+  const currentRound = event.currentRotationRound ?? 0;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:py-8">
@@ -290,11 +319,27 @@ const EventOrganizerPage: React.FC = () => {
         </h1>
         <p className="mt-1 text-sm text-text-secondary">
           Run check-in, seat attendees, and rotate tables.
-          {typeof event.currentRotationRound === 'number' &&
-            event.currentRotationRound > 0 && (
-              <> Currently on round {event.currentRotationRound + 1}.</>
-            )}
         </p>
+
+        {/* Overview. The round number is shown raw and matches what attendees
+            see in the app — an off-by-one between the two is unrecoverable
+            confusion in a live room. */}
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-neon-cyan/30 bg-neon-cyan/10 px-3 py-1 text-sm font-semibold text-neon-cyan">
+            Round {currentRound}
+          </span>
+          <span className="rounded-full border border-border-subtle bg-surface-2 px-3 py-1 text-sm text-text-secondary">
+            <span className="font-semibold text-text-primary">{checkIns.length}</span>
+            {typeof expected === 'number' ? ` / ${expected}` : ''} checked in
+          </span>
+          <span className="rounded-full border border-border-subtle bg-surface-2 px-3 py-1 text-sm text-text-secondary">
+            <span className="font-semibold text-text-primary">{seatedCount}</span> seated
+          </span>
+          <span className="rounded-full border border-border-subtle bg-surface-2 px-3 py-1 text-sm text-text-secondary">
+            <span className="font-semibold text-text-primary">{tables.length}</span>{' '}
+            {tables.length === 1 ? 'table' : 'tables'}
+          </span>
+        </div>
       </header>
 
       {/* Actions */}
@@ -305,7 +350,7 @@ const EventOrganizerPage: React.FC = () => {
         <Button
           onClick={handleAssign}
           loading={assigning}
-          disabled={attendees.length === 0}
+          disabled={attendees.length === 0 || !hasTables}
         >
           Assign Tables
         </Button>
@@ -325,7 +370,14 @@ const EventOrganizerPage: React.FC = () => {
         </p>
       )}
 
-      {attendees.length === 0 && (
+      {!hasTables && (
+        <p className="mb-6 rounded-xl border border-border-subtle bg-surface-2 p-3 text-sm text-text-secondary">
+          No table layout yet. Use <strong>Setup Tables</strong> to define the
+          room before seating anyone.
+        </p>
+      )}
+
+      {hasTables && attendees.length === 0 && (
         <p className="mb-6 rounded-xl border border-border-subtle bg-surface-2 p-3 text-sm text-text-secondary">
           Assignment needs checked-in attendees who have a card. Nobody
           qualifies yet.

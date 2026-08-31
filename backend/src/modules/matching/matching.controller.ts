@@ -6,6 +6,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { MatchingService } from './matching.service';
@@ -33,7 +34,11 @@ export class MatchingController {
     @Param('eventId') eventId: string,
     @CurrentUser() jwtUser: JwtUser,
   ): Promise<Match[]> {
-    // Organizer check would be done here in production
+    const user = await this.usersService.findByFirebaseUid(jwtUser.uid);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    await this.matchingService.assertOrganizer(eventId, user.id, user.role);
     return this.matchingService.runMatching(eventId);
   }
 

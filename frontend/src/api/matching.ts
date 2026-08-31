@@ -1,5 +1,5 @@
 import apiClient from './client';
-import type { Match, TableAssignment } from '@/types/match';
+import type { Match } from '@/types/match';
 import type { Recommendation, WhyRecommendation } from '@/types/recommendation';
 
 export async function runMatching(eventId: string): Promise<Match[]> {
@@ -16,32 +16,9 @@ export async function getMatches(eventId: string): Promise<Match[]> {
   return data;
 }
 
-export async function getEventTables(
-  eventId: string,
-): Promise<TableAssignment[]> {
-  const { data } = await apiClient.get<TableAssignment[]>(
-    `/events/${eventId}/tables`,
-  );
-  return data;
-}
-
-export async function assignTables(
-  eventId: string,
-): Promise<TableAssignment[]> {
-  const { data } = await apiClient.post<TableAssignment[]>(
-    `/events/${eventId}/assign-tables`,
-  );
-  return data;
-}
-
-export async function getMyTable(
-  eventId: string,
-): Promise<TableAssignment> {
-  const { data } = await apiClient.get<TableAssignment>(
-    `/events/${eventId}/my-table`,
-  );
-  return data;
-}
+// Table functions deliberately live in `api/tables.ts` only. This module
+// previously carried a second, diverging copy of getEventTables/assignTables
+// plus a getMyTable bound to the legacy round-unaware endpoint.
 
 export async function getRecommendations(
   eventId: string,

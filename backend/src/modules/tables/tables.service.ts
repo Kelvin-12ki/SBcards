@@ -114,6 +114,18 @@ export class TablesService {
     await event.save();
 
     await this.createTablesForEvent(eventId, dto.tableCount, dto.seatsPerTable);
+
+    // The Table documents were just replaced, so every existing assignment
+    // now points at a tableId that no longer exists. Clear them, and reset
+    // the rotation counter with them — leaving the round advanced against an
+    // empty assignment set makes the next rotate() penalise pairings that,
+    // as far as the data is concerned, never happened.
+    await this.assignmentModel.deleteMany({ eventId }).exec();
+    if (event.currentRotationRound !== 0) {
+      event.currentRotationRound = 0;
+      await event.save();
+    }
+
     return this.getEventTables(eventId);
   }
 

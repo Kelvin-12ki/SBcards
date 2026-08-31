@@ -41,7 +41,9 @@ const SetupTablesModal: React.FC<SetupTablesModalProps> = ({
     Number.isInteger(seats) &&
     seats >= 2 &&
     Number.isInteger(rotation) &&
-    rotation >= 0;
+    // Backend DTO is @Min(1); allowing 0 here produced a client-side-valid
+    // form that the API rejected with a 400.
+    rotation >= 1;
 
   const handleSubmit = async () => {
     if (!valid) {

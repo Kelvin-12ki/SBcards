@@ -1,6 +1,8 @@
 import {
   Injectable,
   Logger,
+  ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -18,6 +20,7 @@ import { MatchResultDto } from './dto/match-result.dto';
 import { UsersService } from '../users/users.service';
 import { User, UserDocument } from '../users/entities/user.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { Event, EventDocument } from '../events/entities/event.entity';
 
 /** Complementary industry pairs — industries that naturally benefit from networking */
 const INDUSTRY_AFFINITY: Record<string, string[]> = {
@@ -50,9 +53,39 @@ export class MatchingService {
     private readonly cardModel: Model<CardDocument>,
     @InjectModel(Connection.name)
     private readonly connectionModel: Model<ConnectionDocument>,
+    @InjectModel(Event.name)
+    private readonly eventModel: Model<EventDocument>,
     private readonly usersService: UsersService,
     private readonly notificationsService: NotificationsService,
   ) {}
+
+  /**
+   * Only the event's creator (or an admin) may trigger a match run.
+   *
+   * Mirrors TablesService.assertOrganizer. Running matching writes a full
+   * pairwise scoring table over every participant's profile, so leaving it
+   * open to any authenticated user let a stranger both burn the event's
+   * compute and overwrite its match set.
+   *
+   * Deliberately NOT satisfied by `role === 'organizer'` alone: that would
+   * let any organizer act on an event they do not own.
+   */
+  async assertOrganizer(
+    eventId: string,
+    userId: string,
+    role?: string,
+  ): Promise<EventDocument> {
+    const event = await this.eventModel.findById(eventId).exec();
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+    if (event.creatorId !== userId && role !== 'admin') {
+      throw new ForbiddenException(
+        'Only the event creator can run matching for this event',
+      );
+    }
+    return event;
+  }
 
   /**
    * Get keywords (skill names + interest names) for a given card.
@@ -337,6 +370,26 @@ export class MatchingService {
       connectionMap.set(key2, conn.status);
     }
 
+    // Batch-fetch every participant's user and card before the pairwise loop.
+    // The loop is O(n^2), so per-pair lookups meant O(n^2) round-trips to
+    // Mongo; this reduces the whole run to two queries.
+    const uniqueUserIds = Array.from(
+      new Set(validParticipations.map((p) => p.userId)),
+    );
+    const uniqueCardIds = Array.from(
+      new Set(
+        validParticipations
+          .map((p) => p.cardId)
+          .filter((id): id is string => !!id),
+      ),
+    );
+    const [allUsers, allCards] = await Promise.all([
+      this.usersService.findByIds(uniqueUserIds),
+      this.cardModel.find({ _id: { $in: uniqueCardIds } }).exec(),
+    ]);
+    const userMap = new Map(allUsers.map((u) => [u.id as string, u]));
+    const cardMap = new Map(allCards.map((c) => [c.id as string, c]));
+
     const matchData: any[] = [];
 
     for (let i = 0; i < validParticipations.length; i++) {
@@ -344,13 +397,12 @@ export class MatchingService {
         const partA = validParticipations[i];
         const partB = validParticipations[j];
 
-        // Fetch user records (needed for multi-factor scoring)
-        const [userA, userB, cardA, cardB] = await Promise.all([
-          this.usersService.findById(partA.userId),
-          this.usersService.findById(partB.userId),
-          this.cardModel.findById(partA.cardId).exec(),
-          this.cardModel.findById(partB.cardId).exec(),
-        ]);
+        // User + card records for multi-factor scoring, served from the
+        // maps built above rather than re-queried per pair.
+        const userA = userMap.get(partA.userId);
+        const userB = userMap.get(partB.userId);
+        const cardA = partA.cardId ? cardMap.get(partA.cardId) : undefined;
+        const cardB = partB.cardId ? cardMap.get(partB.cardId) : undefined;
 
         if (!userA || !userB || !cardA || !cardB) {
           continue;

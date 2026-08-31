@@ -1,17 +1,25 @@
 import React from 'react';
 import { cn } from '@/utils/helpers';
-import type { TableAssignment as TableAssignmentType } from '@/types/match';
+import type { MyAssignment } from '@/types/table';
 import Spinner from '@/components/ui/Spinner';
 import EmptyState from '@/components/ui/EmptyState';
 
 export interface TableAssignmentProps {
-  tableAssignment: TableAssignmentType | null;
+  /**
+   * The viewer's own seat for the CURRENT rotation round, from
+   * `/events/:id/my-assignment`.
+   *
+   * Previously fed by the legacy `/my-table`, which returns a whole-table
+   * snapshot with no seat, no round and no per-pair match data — so a rotated
+   * attendee had no way to tell a stale view from a live one.
+   */
+  assignment: MyAssignment | null;
   loading?: boolean;
   className?: string;
 }
 
 const TableAssignment: React.FC<TableAssignmentProps> = ({
-  tableAssignment,
+  assignment,
   loading = false,
   className,
 }) => {
@@ -23,7 +31,7 @@ const TableAssignment: React.FC<TableAssignmentProps> = ({
     );
   }
 
-  if (!tableAssignment) {
+  if (!assignment) {
     return (
       <EmptyState
         icon={
@@ -37,44 +45,99 @@ const TableAssignment: React.FC<TableAssignmentProps> = ({
     );
   }
 
-  const { tableNumber, label, capacity, currentCount, attendees } = tableAssignment;
+  const { tableNumber, label, seatNumber, rotationRound, tablemates } = assignment;
 
   return (
     <div className={cn('card-magical rounded-2xl p-5 shimmer-magical', className)}>
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h3 className="font-display text-lg font-bold text-gradient-magical">Table {tableNumber}</h3>
-          {label && <p className="text-sm text-text-secondary">{label}</p>}
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="font-display text-lg font-bold text-gradient-magical">
+            {label || `Table ${tableNumber}`}
+          </h3>
+          <p className="text-sm text-text-secondary">Seat {seatNumber}</p>
         </div>
-        <div className="text-right text-sm text-text-secondary">
-          <span className="text-text-primary font-medium">{currentCount}</span> / {capacity} seats
-        </div>
+        <span className="flex-shrink-0 rounded-full border border-neon-cyan/30 bg-neon-cyan/10 px-3 py-1 text-xs font-semibold text-neon-cyan">
+          Round {rotationRound}
+        </span>
       </div>
 
-      <div className="space-y-3">
-        {attendees.map((attendee) => {
-          const initials = attendee.userName
-            .split(' ')
-            .map((n) => n[0])
-            .join('')
-            .toUpperCase()
-            .slice(0, 2);
+      {tablemates.length === 0 ? (
+        <p className="rounded-xl border border-border-subtle bg-surface-2 p-3 text-sm text-text-secondary">
+          You&apos;re the first one here. Others will appear as they&apos;re seated.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {tablemates.map((mate) => {
+            const initials = mate.userName
+              .split(' ')
+              .filter(Boolean)
+              .map((n) => n[0])
+              .join('')
+              .toUpperCase()
+              .slice(0, 2);
+            const subtitle = [mate.jobRole, mate.company].filter(Boolean).join(' · ');
+            const score = Math.round((mate.overlapScore ?? 0) * 100);
 
-          return (
-            <div
-              key={attendee.userId}
-              className="flex items-center gap-3 rounded-xl border border-border-subtle bg-surface-2 p-3"
-            >
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full gradient-magical text-xs font-semibold text-white">
-                {initials}
+            return (
+              <div
+                key={mate.userId}
+                className="rounded-xl border border-border-subtle bg-surface-2 p-3"
+              >
+                <div className="flex items-center gap-3">
+                  {mate.avatarUrl ? (
+                    <img
+                      src={mate.avatarUrl}
+                      alt=""
+                      className="h-9 w-9 flex-shrink-0 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full gradient-magical text-xs font-semibold text-white">
+                      {initials}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-text-primary">
+                      {mate.userName}
+                    </p>
+                    {subtitle && (
+                      <p className="truncate text-xs text-text-secondary">{subtitle}</p>
+                    )}
+                  </div>
+                  {score > 0 && (
+                    <span className="flex-shrink-0 rounded-full bg-neon-cyan/10 px-2.5 py-1 text-xs font-semibold text-neon-cyan">
+                      {score}%
+                    </span>
+                  )}
+                </div>
+
+                {mate.sharedKeywords.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {mate.sharedKeywords.slice(0, 6).map((k) => (
+                      <span
+                        key={k}
+                        className="rounded-full border border-border-subtle px-2 py-0.5 text-[11px] text-text-secondary"
+                      >
+                        {k}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {mate.conversationStarters.length > 0 && (
+                  <ul className="mt-2 space-y-1">
+                    {mate.conversationStarters.slice(0, 2).map((s) => (
+                      <li key={s} className="flex gap-2 text-xs text-text-secondary">
+                        <span aria-hidden="true">💡</span>
+                        <span>{s}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-text-primary truncate">{attendee.userName}</p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
