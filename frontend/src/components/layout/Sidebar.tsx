@@ -238,8 +238,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             ))}
           </div>
 
-          {/* Admin Panel link - only visible for admin users */}
-          {user?.role === 'admin' && (
+          {/* Admin Panel link - visible for admin and organizer users */}
+          {(user?.role === 'admin' || user?.role === 'organizer') && (
             <div className="mt-4 pt-4 border-t border-border-subtle">
               <div className="flex flex-col gap-1">
                 <NavLink

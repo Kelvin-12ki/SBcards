@@ -23,7 +23,7 @@ const AdminRoute: React.FC = () => {
     return <Navigate to="/login" replace />;
   }
 
-  if (user.role === 'admin') {
+  if (user.role === 'admin' || user.role === 'organizer') {
     return <Outlet />;
   }
 
