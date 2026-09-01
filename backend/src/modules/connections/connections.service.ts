@@ -22,6 +22,7 @@ import { UsersService } from '../users/users.service';
 import { CardsService } from '../cards/cards.service';
 import { TimelineService } from '../timeline/timeline.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { PushService } from '../notifications/push.service';
 import { EmailService } from '../notifications/email.service';
 
 @Injectable()
@@ -37,6 +38,7 @@ export class ConnectionsService {
     private readonly cardsService: CardsService,
     private readonly timelineService: TimelineService,
     private readonly notificationsService: NotificationsService,
+    private readonly pushService: PushService,
     private readonly emailService: EmailService,
   ) {}
 
@@ -120,8 +122,16 @@ export class ConnectionsService {
         'connection_request',
         'New Connection Request',
         `${sender?.displayName || sender?.email || 'Someone'} wants to connect with you.`,
-        `/connections?tab=requests`,
+        `/connections`,
       );
+
+      // Send push notification
+      this.pushService.sendPush(
+        data.connectedUserId,
+        'New Connection Request',
+        `${sender?.displayName || sender?.email || 'Someone'} wants to connect with you.`,
+        { type: 'connection_request', id: connection._id.toString(), senderName: sender?.displayName || '', senderAvatar: sender?.avatarUrl || '' },
+      ).catch(() => {});
 
       await this.timelineService.record(data.connectedUserId, 'connection_request', {
         connectionId: connection._id.toString(),
@@ -202,6 +212,14 @@ export class ConnectionsService {
         `${acceptor?.displayName || acceptor?.email || 'Someone'} accepted your connection request.`,
         `/connections`,
       );
+
+      // Send push notification
+      this.pushService.sendPush(
+        connection.userId,
+        'Request Accepted!',
+        `${acceptor?.displayName || acceptor?.email || 'Someone'} accepted your connection request.`,
+        { type: 'connection_accepted', id: connection._id.toString(), senderName: acceptor?.displayName || '', senderAvatar: acceptor?.avatarUrl || '' },
+      ).catch(() => {});
 
       await this.timelineService.record(connection.userId, 'connected', {
         connectionId: connection._id.toString(),
@@ -681,6 +699,14 @@ export class ConnectionsService {
         `/connections`,
       );
 
+      // Send push notification
+      this.pushService.sendPush(
+        scannedUserId,
+        'New Connection!',
+        `${scanner?.displayName || scanner?.email || 'Someone'} connected with you via QR scan.`,
+        { type: 'connection_accepted', id: '', senderName: scanner?.displayName || '', senderAvatar: scanner?.avatarUrl || '' },
+      ).catch(() => {});
+
       await this.timelineService.record(scannedUserId, 'connected', {
         connectionId: '',
         targetUserName: scanner?.displayName || scanner?.email || 'Unknown',
@@ -694,6 +720,14 @@ export class ConnectionsService {
         `${scannedUser?.displayName || scannedUser?.email || 'Someone'} connected with you via QR scan.`,
         `/connections`,
       );
+
+      // Send push notification
+      this.pushService.sendPush(
+        scannerUserId,
+        'New Connection!',
+        `${scannedUser?.displayName || scannedUser?.email || 'Someone'} connected with you via QR scan.`,
+        { type: 'connection_accepted', id: '', senderName: scannedUser?.displayName || '', senderAvatar: scannedUser?.avatarUrl || '' },
+      ).catch(() => {});
 
       await this.timelineService.record(scannerUserId, 'connected', {
         connectionId: '',

@@ -371,7 +371,11 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
 
         this.pushService
           .sendPush(recipientId, senderName, body, {
-            link: `/messages?conversation=${conversationId}`,
+            type: 'message',
+            id: conversationId,
+            senderName: senderName,
+            senderAvatar: sender?.avatarUrl || '',
+            link: `/messages/${conversationId}`,
           })
           .catch(() => {}); // fire-and-forget
       }

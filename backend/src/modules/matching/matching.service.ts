@@ -20,6 +20,7 @@ import { MatchResultDto } from './dto/match-result.dto';
 import { UsersService } from '../users/users.service';
 import { User, UserDocument } from '../users/entities/user.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { PushService } from '../notifications/push.service';
 import { Event, EventDocument } from '../events/entities/event.entity';
 
 /** Complementary industry pairs — industries that naturally benefit from networking */
@@ -57,6 +58,7 @@ export class MatchingService {
     private readonly eventModel: Model<EventDocument>,
     private readonly usersService: UsersService,
     private readonly notificationsService: NotificationsService,
+    private readonly pushService: PushService,
   ) {}
 
   /**
@@ -467,8 +469,17 @@ export class MatchingService {
             'match_new',
             'New AI Match!',
             `You have ${userBMatchCount} new match${userBMatchCount > 1 ? 'es' : ''} based on your profile compatibility.`,
-            `/events/${eventId}/matches`,
+            `/ai-match/${eventId}`,
           );
+
+          // Send push notification
+          this.pushService.sendPush(
+            match.userAId,
+            'New AI Match!',
+            `You have ${userBMatchCount} new match${userBMatchCount > 1 ? 'es' : ''} based on your profile compatibility.`,
+            { type: 'ai_match', id: eventId, matchCount: String(userBMatchCount) },
+          ).catch(() => {});
+
           notifiedUsers.add(match.userAId);
         }
 
@@ -483,8 +494,17 @@ export class MatchingService {
             'match_new',
             'New AI Match!',
             `You have ${userAMatchCount} new match${userAMatchCount > 1 ? 'es' : ''} based on your profile compatibility.`,
-            `/events/${eventId}/matches`,
+            `/ai-match/${eventId}`,
           );
+
+          // Send push notification
+          this.pushService.sendPush(
+            match.userBId,
+            'New AI Match!',
+            `You have ${userAMatchCount} new match${userAMatchCount > 1 ? 'es' : ''} based on your profile compatibility.`,
+            { type: 'ai_match', id: eventId, matchCount: String(userAMatchCount) },
+          ).catch(() => {});
+
           notifiedUsers.add(match.userBId);
         }
       }
