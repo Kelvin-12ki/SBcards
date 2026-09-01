@@ -158,9 +158,8 @@ export class AuthService {
     const connectionsCount = await this.connectionModel
       .countDocuments({ userId })
       .exec();
-    const createdAt = (user as any).createdAt as Date | undefined;
-    const accountAgeDays = createdAt
-      ? Math.floor((Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24))
+    const accountAgeDays = user.createdAt
+      ? Math.floor((Date.now() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24))
       : 999; // default to passing if no createdAt
 
     const criteria: Record<string, boolean> = {
