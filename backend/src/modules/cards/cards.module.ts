@@ -6,6 +6,7 @@ import { CardsController } from './cards.controller';
 import { PublicCardsController } from './public-cards.controller';
 import { UsersModule } from '../users/users.module';
 import { ConnectionsModule } from '../connections/connections.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import {
   Connection,
   ConnectionSchema,
@@ -19,6 +20,7 @@ import {
     ]),
     UsersModule,
     forwardRef(() => ConnectionsModule),
+    NotificationsModule,
   ],
   providers: [CardsService],
   controllers: [CardsController, PublicCardsController],

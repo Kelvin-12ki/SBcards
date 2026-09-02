@@ -14,6 +14,8 @@ import {
   ConnectionDocument,
 } from '../connections/entities/connection.entity';
 import { UsersService } from '../users/users.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { PushService } from '../notifications/push.service';
 
 @Injectable()
 export class CardsService {
@@ -25,6 +27,8 @@ export class CardsService {
     @InjectModel(Connection.name)
     private readonly connectionModel: Model<ConnectionDocument>,
     private readonly usersService: UsersService,
+    private readonly notificationsService: NotificationsService,
+    private readonly pushService: PushService,
   ) {}
 
   /**
@@ -36,14 +40,40 @@ export class CardsService {
       await this.unsetOtherDefaults(userId);
     }
 
+    // Check if this is the user's first card
+    const existingCardCount = await this.cardModel.countDocuments({ userId }).exec();
+
     const { skills, interests, ...cardData } = createCardDto;
 
-    return this.cardModel.create({
+    const card = await this.cardModel.create({
       ...cardData,
       userId,
       skills: skills || [],
       interests: interests || [],
     });
+
+    // If this is the user's first card, send a thank you notification
+    if (existingCardCount === 0) {
+      const user = await this.usersService.findById(userId);
+      const name = user?.displayName || 'there';
+
+      this.notificationsService.create(
+        userId,
+        'card_shared',
+        'Your card is ready!',
+        `Great work, ${name}! Your digital business card is live. Share it at events to grow your network.`,
+        `/cards/${card._id.toString()}`,
+      ).catch(() => {});
+
+      this.pushService.sendPush(
+        userId,
+        'Your card is ready!',
+        `Great work, ${name}! Your digital business card is live. Share it at events to grow your network.`,
+        { type: 'card_shared', id: card._id.toString(), cardId: card._id.toString() },
+      ).catch(() => {});
+    }
+
+    return card;
   }
 
   /**
