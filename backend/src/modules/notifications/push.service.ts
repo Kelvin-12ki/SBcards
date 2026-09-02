@@ -43,7 +43,7 @@ export class PushService {
         data: data || {},
         webpush: {
           fcmOptions: {
-            link: data?.link || 'https://sbcards.vercel.app/messages',
+            link: data?.link || 'https://sbcards.vercel.app/connections',
           },
           notification: {
             icon: '/sing-192x192.png',
