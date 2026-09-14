@@ -13,6 +13,7 @@ const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { login, loginWithGoogle } = useAuth();
+  const returnTo = searchParams.get('returnTo');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -38,8 +39,10 @@ const LoginPage: React.FC = () => {
         navigate('/connections', { replace: true });
       } catch (err: any) {
         showApiError(err, 'Logged in but could not auto-connect.');
-        navigate('/dashboard', { replace: true });
+        navigate(returnTo || '/dashboard', { replace: true });
       }
+    } else if (returnTo) {
+      navigate(returnTo, { replace: true });
     } else {
       navigate('/dashboard', { replace: true });
     }
@@ -269,7 +272,7 @@ const LoginPage: React.FC = () => {
           <p className="text-center text-sm text-text-secondary">
             Don&apos;t have an account?{' '}
             <Link
-              to="/register"
+              to={returnTo ? `/register?returnTo=${encodeURIComponent(returnTo)}` : '/register'}
               className="text-neon-cyan hover:text-neon-cyan/80 font-semibold transition-colors"
             >
               Register

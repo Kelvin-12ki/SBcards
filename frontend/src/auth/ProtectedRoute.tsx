@@ -1,13 +1,14 @@
 import React from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from './useAuth';
 
 /**
- * Route guard that redirects unauthenticated users to /login.
- * Shows a loading spinner while auth state is being determined.
+ * Route guard that redirects unauthenticated users to /login with a returnTo
+ * query param so they land on the right page after logging in.
  */
 const ProtectedRoute: React.FC = () => {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -18,7 +19,8 @@ const ProtectedRoute: React.FC = () => {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    const returnTo = `${location.pathname}${location.search}`;
+    return <Navigate to={`/login?returnTo=${encodeURIComponent(returnTo)}`} replace />;
   }
 
   return <Outlet />;

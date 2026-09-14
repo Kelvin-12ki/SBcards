@@ -12,6 +12,7 @@ const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { register, loginWithGoogle } = useAuth();
+  const returnTo = searchParams.get('returnTo');
 
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
@@ -30,8 +31,11 @@ const RegisterPage: React.FC = () => {
         navigate('/connections', { replace: true });
       } catch (connErr: any) {
         showApiError(connErr, 'Account created but could not auto-connect.');
-        navigate('/dashboard', { replace: true });
+        navigate(returnTo || '/dashboard', { replace: true });
       }
+    } else if (returnTo) {
+      toast.success('Welcome to NEXAS!');
+      navigate(returnTo, { replace: true });
     } else {
       toast.success('Welcome to NEXAS!');
       navigate('/dashboard', { replace: true });
@@ -194,7 +198,7 @@ const RegisterPage: React.FC = () => {
           <p className="text-center text-sm text-text-secondary">
             Already have an account?{' '}
             <Link
-              to="/login"
+              to={returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login'}
               className="text-neon-cyan hover:text-neon-cyan/80 font-semibold transition-colors"
             >
               Sign In
