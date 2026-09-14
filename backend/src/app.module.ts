@@ -24,6 +24,7 @@ import { InsightsModule } from './modules/insights/insights.module';
 import { HeatmapModule } from './modules/heatmap/heatmap.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { HealthModule } from './modules/health/health.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 import databaseConfig from './config/database.config';
 import { validateEnv } from './config/env.validation';
 import { FirebaseConfig } from './config/firebase.config';
@@ -84,6 +85,7 @@ import { UserThrottlerGuard } from './common/guards/user-throttler.guard';
     HeatmapModule,
     AdminModule,
     HealthModule,
+    PaymentsModule,
   ],
   controllers: [],
   providers: [

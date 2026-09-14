@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import compression from 'compression';
+import * as express from 'express';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
@@ -58,6 +59,10 @@ async function bootstrap() {
   );
 
   app.use(compression());
+
+  // Stripe webhook needs the raw body for signature verification.
+  // Mount this BEFORE the global JSON parser so /payments/webhook gets raw.
+  app.use('/payments/webhook', express.raw({ type: 'application/json' }));
 
   const allowedOrigins = buildAllowedOrigins(configService);
 

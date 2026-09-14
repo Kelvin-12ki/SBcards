@@ -23,6 +23,8 @@ const RegisterPage: React.FC = () => {
   const [error, setError] = useState('');
 
   const handlePostRegister = async (ref?: string | null) => {
+    const planParam = searchParams.get('plan');
+
     if (ref) {
       try {
         await qrConnect(ref);
@@ -31,8 +33,15 @@ const RegisterPage: React.FC = () => {
         navigate('/connections', { replace: true });
       } catch (connErr: any) {
         showApiError(connErr, 'Account created but could not auto-connect.');
-        navigate(returnTo || '/dashboard', { replace: true });
+        if (planParam) {
+          navigate(`/billing?plan=${planParam}`, { replace: true });
+        } else {
+          navigate(returnTo || '/dashboard', { replace: true });
+        }
       }
+    } else if (planParam) {
+      toast.success('Welcome to NEXAS!');
+      navigate(`/billing?plan=${planParam}`, { replace: true });
     } else if (returnTo) {
       toast.success('Welcome to NEXAS!');
       navigate(returnTo, { replace: true });

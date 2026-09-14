@@ -102,6 +102,14 @@ export class User {
   @Prop({ enum: ['active', 'suspended', 'banned'], default: 'active' })
   status!: string;
 
+  /** Subscription plan tier — synced from Subscription entity. */
+  @Prop({ enum: ['free', 'pro', 'organization'], default: 'free' })
+  plan!: string;
+
+  /** Stripe customer ID for billing. */
+  @Prop()
+  stripeCustomerId?: string;
+
   @Prop()
   fcmToken?: string;
 

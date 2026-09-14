@@ -40,6 +40,7 @@ const InsightsPage = React.lazy(() => import('@/pages/InsightsPage'));
 const HeatmapPage = React.lazy(() => import('@/pages/HeatmapPage'));
 const MyCardsPage = React.lazy(() => import('@/pages/MyCardsPage'));
 const PublicCardPage = React.lazy(() => import('@/pages/PublicCardPage'));
+const BillingPage = React.lazy(() => import('@/pages/BillingPage'));
 
 // Admin pages
 const AdminDashboardPage = React.lazy(() => import('@/pages/admin/AdminDashboardPage'));
@@ -109,6 +110,7 @@ const RoutesTree: React.FC = () => {
             <Route path="/search" element={<SearchPage />} />
             <Route path="/insights" element={<InsightsPage />} />
             <Route path="/events/:eventId/heatmap" element={<HeatmapPage />} />
+            <Route path="/billing" element={<BillingPage />} />
           </Route>
         </Route>
 
