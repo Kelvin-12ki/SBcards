@@ -14,6 +14,23 @@ export class PaymentsController {
 
   constructor(private readonly paymentsService: PaymentsService) {}
 
+  /** Guest checkout — no auth required. Creates account + Stripe session from email. */
+  @Post('guest-checkout')
+  @HttpCode(HttpStatus.OK)
+  async guestCheckout(
+    @Body('email') email: string,
+    @Body('plan') plan: 'pro' | 'organization',
+    @Body('billing') billing: 'monthly' | 'annual' = 'monthly',
+  ) {
+    if (!email || !email.includes('@')) {
+      throw new BadRequestException('Valid email is required');
+    }
+    if (!plan || !['pro', 'organization'].includes(plan)) {
+      throw new BadRequestException('plan must be "pro" or "organization"');
+    }
+    return this.paymentsService.createGuestCheckout(email, plan, billing);
+  }
+
   /** Create a Stripe Checkout session for Pro or Org upgrade. */
   @Post('checkout')
   @UseGuards(JwtAuthGuard)

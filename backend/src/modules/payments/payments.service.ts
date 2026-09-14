@@ -26,6 +26,51 @@ export class PaymentsService {
     });
   }
 
+  /** Create a Stripe Checkout session for a guest (no account yet). */
+  async createGuestCheckout(
+    email: string,
+    plan: Exclude<PlanTier, 'free'>,
+    billing: 'monthly' | 'annual' = 'monthly',
+  ): Promise<{ url: string }> {
+    const priceKey = `${plan === 'pro' ? 'pro' : 'org'}_${billing}`;
+    const priceId = this.config.get<string>(`STRIPE_PRICE_${priceKey.toUpperCase()}`);
+
+    if (!priceId) {
+      throw new Error(`Stripe price ID not configured for ${priceKey}`);
+    }
+
+    const frontendUrl = this.config.get<string>('FRONTEND_URL') || 'https://sbcards.vercel.app';
+
+    // Check if customer already exists in Stripe
+    let customerId: string | undefined;
+    const existingCustomers = await this.stripe.customers.list({ email, limit: 1 });
+    if (existingCustomers.data.length > 0) {
+      customerId = existingCustomers.data[0].id;
+    }
+
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${frontendUrl}/dashboard?upgraded=${plan}`,
+      cancel_url: `${frontendUrl}`,
+      metadata: { plan, email },
+      subscription_data: {
+        trial_period_days: plan === 'pro' ? 14 : 0,
+        metadata: { plan, email },
+      },
+    };
+
+    if (customerId) {
+      sessionParams.customer = customerId;
+    } else {
+      sessionParams.customer_email = email;
+    }
+
+    const session = await this.stripe.checkout.sessions.create(sessionParams);
+    return { url: session.url! };
+  }
+
   /** Get or create a Stripe customer for a user. */
   async getOrCreateCustomer(user: UserDocument): Promise<Stripe.Customer> {
     if (user.stripeCustomerId) {
