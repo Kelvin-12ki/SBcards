@@ -2,35 +2,21 @@ import React from 'react';
 import { cn } from '@/utils/helpers';
 import { formatDate } from '@/utils/helpers';
 import type { Event, EventParticipation } from '@/types/event';
-import Badge from '@/components/ui/Badge';
+import EventStatusBadge from './EventStatusBadge';
 import TableAssignment from '@/components/matching/TableAssignment';
 import MatchList from '@/components/matching/MatchList';
-import type { Match } from '@/types/match';
+import type { MatchResult } from '@/types/match';
 import type { MyAssignment } from '@/types/table';
 
 export interface EventDashboardProps {
   event: Event;
   participants: EventParticipation[];
-  matches?: Match[];
+  matches?: MatchResult[];
   matchesLoading?: boolean;
   tableAssignment?: MyAssignment | null;
   tableLoading?: boolean;
   className?: string;
 }
-
-const statusVariant = {
-  draft: 'default' as const,
-  active: 'success' as const,
-  completed: 'default' as const,
-  cancelled: 'danger' as const,
-};
-
-const statusLabel: Record<string, string> = {
-  draft: 'Draft',
-  active: 'Active',
-  completed: 'Completed',
-  cancelled: 'Cancelled',
-};
 
 const EventDashboard: React.FC<EventDashboardProps> = ({
   event,
@@ -53,7 +39,7 @@ const EventDashboard: React.FC<EventDashboardProps> = ({
             <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-text-tertiary">
               <span>{formatDate(event.startDate)} - {formatDate(event.endDate)}</span>
               {event.location && <span>{event.location}</span>}
-              <Badge variant={statusVariant[event.status]}>{statusLabel[event.status]}</Badge>
+              <EventStatusBadge status={event.status} />
             </div>
           </div>
         </div>

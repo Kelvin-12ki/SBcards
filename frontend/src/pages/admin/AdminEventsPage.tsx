@@ -2,24 +2,18 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { getAllEvents, createEvent, updateEvent, deleteEvent, type PaginatedEvents } from '@/api/admin';
 import { formatDate } from '@/utils/helpers';
 import { showApiError } from '@/utils/errorHandler';
+import { EVENT_STATUS_OPTIONS, eventStatusClasses } from '@/utils/eventStatus';
 import toast from 'react-hot-toast';
 
 // ─── Status Badge ───────────────────────────────────────────────────────────
 
-const EventStatusBadge: React.FC<{ status: string }> = ({ status }) => {
-  const colors: Record<string, string> = {
-    upcoming: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-    active: 'bg-green-500/20 text-green-400 border-green-500/30',
-    completed: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
-    cancelled: 'bg-red-500/20 text-red-400 border-red-500/30',
-    draft: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-  };
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${colors[status] || 'bg-gray-500/20 text-gray-400'}`}>
-      {status}
-    </span>
-  );
-};
+const EventStatusBadge: React.FC<{ status: string }> = ({ status }) => (
+  <span
+    className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${eventStatusClasses(status)}`}
+  >
+    {status}
+  </span>
+);
 
 // ─── Event Modal ────────────────────────────────────────────────────────────
 
@@ -161,11 +155,11 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, initia
                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                 className="w-full rounded-xl border border-border-subtle bg-surface-2 px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-neon-cyan/50"
               >
-                <option value="draft">Draft</option>
-                <option value="upcoming">Upcoming</option>
-                <option value="active">Active</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
+                {EVENT_STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
             <div>

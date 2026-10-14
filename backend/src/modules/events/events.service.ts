@@ -7,7 +7,11 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Event, EventDocument } from './entities/event.entity';
+import {
+  Event,
+  EventDocument,
+  EventStatus,
+} from './entities/event.entity';
 import {
   EventParticipation,
   EventParticipationDocument,
@@ -191,9 +195,7 @@ export class EventsService {
   /**
    * List events with optional status filter.
    */
-  async findAll(
-    status?: 'upcoming' | 'active' | 'completed',
-  ): Promise<EventDocument[]> {
+  async findAll(status?: EventStatus): Promise<EventDocument[]> {
     const filter: any = {};
 
     if (status) {
@@ -248,6 +250,12 @@ export class EventsService {
     }
     if (updateData.endDate) {
       updateData.endDate = new Date(updateData.endDate);
+    }
+
+    // `status` may only be set to a pre-live value here (enforced by the DTO),
+    // so drop the legacy flag to keep the two from disagreeing.
+    if (updateData.status !== undefined) {
+      updateData.isActive = false;
     }
 
     Object.assign(event, updateData);
@@ -461,17 +469,86 @@ export class EventsService {
   }
 
   /**
-   * Activate an event: set isActive=true, status='active'.
+   * Lifecycle transitions. All three are creator-only and always keep
+   * `status` and the legacy `isActive` flag in sync — previously only
+   * `activate` existed, `isActive` was never cleared, and nothing checked
+   * that the caller owned the event.
+   *
+   * upcoming/draft --activate--> active
+   * active         --complete--> completed
+   * active         --cancel----> cancelled
    */
-  async activate(eventId: string): Promise<EventDocument> {
+  private async loadForTransition(
+    eventId: string,
+    userId: string,
+  ): Promise<EventDocument> {
     const event = await this.eventModel.findById(eventId).exec();
 
     if (!event) {
       throw new NotFoundException(`Event with ID "${eventId}" not found`);
     }
 
+    if (event.creatorId !== userId) {
+      throw new ForbiddenException(
+        'Only the event creator can change its lifecycle status',
+      );
+    }
+
+    return event;
+  }
+
+  private static assertTransition(
+    event: EventDocument,
+    from: string[],
+    action: string,
+  ): void {
+    if (!from.includes(event.status)) {
+      throw new BadRequestException(
+        `Cannot ${action} an event with status "${event.status}" (expected ${from.join(' or ')})`,
+      );
+    }
+  }
+
+  /**
+   * Upcoming -> active. Also flips the legacy `isActive` flag so existing
+   * clients that gate on it keep working.
+   */
+  async activate(eventId: string, userId: string): Promise<EventDocument> {
+    const event = await this.loadForTransition(eventId, userId);
+    EventsService.assertTransition(
+      event,
+      ['upcoming', 'draft'],
+      'activate',
+    );
+
     event.isActive = true;
     event.status = 'active';
+
+    return event.save();
+  }
+
+  /** Active -> completed. Clears `isActive`. */
+  async complete(eventId: string, userId: string): Promise<EventDocument> {
+    const event = await this.loadForTransition(eventId, userId);
+    EventsService.assertTransition(event, ['active'], 'complete');
+
+    event.isActive = false;
+    event.status = 'completed';
+
+    return event.save();
+  }
+
+  /** upcoming/draft/active -> cancelled. Clears `isActive`. */
+  async cancel(eventId: string, userId: string): Promise<EventDocument> {
+    const event = await this.loadForTransition(eventId, userId);
+    EventsService.assertTransition(
+      event,
+      ['upcoming', 'draft', 'active'],
+      'cancel',
+    );
+
+    event.isActive = false;
+    event.status = 'cancelled';
 
     return event.save();
   }

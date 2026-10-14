@@ -1,7 +1,8 @@
 import apiClient from './client';
-import type { Match } from '@/types/match';
-import type { Recommendation, WhyRecommendation } from '@/types/recommendation';
+import type { Match, MatchResult } from '@/types/match';
+import type { WhyRecommendation } from '@/types/recommendation';
 
+/** Raw Match documents (not MatchResultDto) — see matching.service.ts. */
 export async function runMatching(eventId: string): Promise<Match[]> {
   const { data } = await apiClient.post<Match[]>(
     `/events/${eventId}/match`,
@@ -9,8 +10,8 @@ export async function runMatching(eventId: string): Promise<Match[]> {
   return data;
 }
 
-export async function getMatches(eventId: string): Promise<Match[]> {
-  const { data } = await apiClient.get<Match[]>(
+export async function getMatches(eventId: string): Promise<MatchResult[]> {
+  const { data } = await apiClient.get<MatchResult[]>(
     `/events/${eventId}/matches`,
   );
   return data;
@@ -22,9 +23,11 @@ export async function getMatches(eventId: string): Promise<Match[]> {
 
 export async function getRecommendations(
   eventId: string,
-): Promise<Recommendation[]> {
-  const { data } = await apiClient.get<Recommendation[]>(
+  limit?: number,
+): Promise<MatchResult[]> {
+  const { data } = await apiClient.get<MatchResult[]>(
     `/events/${eventId}/recommendations`,
+    { params: limit ? { limit } : undefined },
   );
   return data;
 }

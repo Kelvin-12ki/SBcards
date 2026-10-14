@@ -5,7 +5,7 @@ import { getMatches } from '@/api/matching';
 import { getMyAssignment } from '@/api/tables';
 import { useAuth } from '@/auth/useAuth';
 import type { Event, EventParticipation, EventParticipant } from '@/types/event';
-import type { Match } from '@/types/match';
+import type { MatchResult } from '@/types/match';
 import type { MyAssignment } from '@/types/table';
 import EventDashboard from '@/components/events/EventDashboard';
 import ParticipantList from '@/components/events/ParticipantList';
@@ -21,7 +21,7 @@ const EventActivePage: React.FC = () => {
   const [event, setEvent] = useState<Event | null>(null);
   const [participants, setParticipants] = useState<EventParticipation[]>([]);
   const [detailedParticipants, setDetailedParticipants] = useState<EventParticipant[]>([]);
-  const [matches, setMatches] = useState<Match[]>([]);
+  const [matches, setMatches] = useState<MatchResult[]>([]);
   const [matchesLoading, setMatchesLoading] = useState(true);
   const [tableAssignment, setTableAssignment] = useState<MyAssignment | null>(null);
   const [tableLoading, setTableLoading] = useState(true);

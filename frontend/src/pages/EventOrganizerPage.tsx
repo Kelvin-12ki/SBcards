@@ -14,6 +14,8 @@ import {
 } from '@/api/tables';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
+import EventStatusBadge from '@/components/events/EventStatusBadge';
+import EventLifecycleActions from '@/components/events/EventLifecycleActions';
 import CheckInCounter from '@/components/events/organizer/CheckInCounter';
 import TableGrid from '@/components/events/organizer/TableGrid';
 import AttendeeTable from '@/components/events/organizer/AttendeeTable';
@@ -314,12 +316,23 @@ const EventOrganizerPage: React.FC = () => {
         >
           ← {event.name}
         </Link>
-        <h1 className="mt-2 font-display text-2xl font-bold text-gradient-magical sm:text-3xl">
-          Organizer Portal
-        </h1>
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <h1 className="font-display text-2xl font-bold text-gradient-magical sm:text-3xl">
+            Organizer Portal
+          </h1>
+          <EventStatusBadge status={event.status} />
+        </div>
         <p className="mt-1 text-sm text-text-secondary">
           Run check-in, seat attendees, and rotate tables.
         </p>
+
+        {isOrganizer && (
+          <EventLifecycleActions
+            event={event}
+            onChanged={setEvent}
+            className="mt-3 flex flex-wrap items-center gap-2"
+          />
+        )}
 
         {/* Overview. The round number is shown raw and matches what attendees
             see in the app — an off-by-one between the two is unrecoverable

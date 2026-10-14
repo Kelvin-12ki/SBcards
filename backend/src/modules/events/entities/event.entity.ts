@@ -3,6 +3,28 @@ import { HydratedDocument } from 'mongoose';
 
 export type EventDocument = HydratedDocument<Event>;
 
+/**
+ * Canonical event lifecycle. Kept in sync with the web client's
+ * `frontend/src/types/event.ts#EventStatus`.
+ *
+ * upcoming/draft --activate--> active --complete--> completed
+ *                              \--cancel--> cancelled
+ */
+export type EventStatus =
+  | 'upcoming'
+  | 'draft'
+  | 'active'
+  | 'completed'
+  | 'cancelled';
+
+export const EVENT_STATUSES: readonly EventStatus[] = [
+  'upcoming',
+  'draft',
+  'active',
+  'completed',
+  'cancelled',
+];
+
 @Schema({
   timestamps: true,
   toJSON: {
@@ -38,7 +60,7 @@ export class Event {
   endDate!: Date;
 
   @Prop({ default: 'upcoming' })
-  status!: string;
+  status!: EventStatus;
 
   @Prop()
   maxAttendees?: number;

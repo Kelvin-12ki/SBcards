@@ -7,9 +7,11 @@ import type { Card } from '@/types/card';
 import type { EventParticipation, EventParticipant } from '@/types/event';
 import { useAuth } from '@/auth/useAuth';
 import { canOrganize } from '@/types/user';
+import { canJoinEvent, isEventLive } from '@/utils/eventStatus';
 import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
-import Badge from '@/components/ui/Badge';
+import EventStatusBadge from '@/components/events/EventStatusBadge';
+import EventLifecycleActions from '@/components/events/EventLifecycleActions';
 import EventJoin from '@/components/events/EventJoin';
 import ParticipantList from '@/components/events/ParticipantList';
 import { formatDate } from '@/utils/helpers';
@@ -117,9 +119,6 @@ const EventDetailPage: React.FC = () => {
     return <div className="text-center py-20 text-text-secondary">Event not found.</div>;
   }
 
-  const statusVariant =
-    event.status === 'active' ? 'success' : event.status === 'completed' ? 'default' : 'default';
-
   const isCreator = user?.id === event.creatorId;
   // Holding the organizer role isn't enough — the portal is for the event's
   // own creator. Both must be true.
@@ -145,7 +144,7 @@ const EventDetailPage: React.FC = () => {
               <p className="mt-2 text-sm text-text-secondary">{event.description}</p>
             )}
           </div>
-          <Badge variant={statusVariant}>{event.status}</Badge>
+          <EventStatusBadge status={event.status} />
         </div>
 
         <div className="mt-4 space-y-2 text-sm text-text-tertiary">
@@ -173,12 +172,7 @@ const EventDetailPage: React.FC = () => {
         </div>
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
-          {!hasJoined && event.status !== 'completed' && event.status !== 'cancelled' && (
-            <Button variant="primary" onClick={() => setHasJoined(true)}>
-              Join Event
-            </Button>
-          )}
-          {hasJoined && event.isActive && (
+          {hasJoined && isEventLive(event) && (
             <Button variant="primary" onClick={() => navigate(`/events/${event.id}/active`)}>
               View Active Dashboard
             </Button>
@@ -198,15 +192,22 @@ const EventDetailPage: React.FC = () => {
               Check In
             </Button>
           )}
-          {hasJoined && event.status === 'active' && (
+          {hasJoined && isEventLive(event) && (
             <Button variant="ghost" onClick={() => navigate(`/events/${event.id}/matches`)}>
               View Matches
             </Button>
           )}
+          {isCreator && (
+            <EventLifecycleActions
+              event={event}
+              onChanged={setEvent}
+              className="ml-auto flex flex-wrap items-center gap-2"
+            />
+          )}
         </div>
       </div>
 
-      {!hasJoined && event.status !== 'completed' && event.status !== 'cancelled' && (
+      {!hasJoined && canJoinEvent(event) && (
         <EventJoin
           eventId={event.id}
           userCards={userCards}

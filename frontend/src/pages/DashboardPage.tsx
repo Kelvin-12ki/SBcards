@@ -13,7 +13,7 @@ import { showApiError } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 import type { Card } from '@/types/card';
 import type { Event } from '@/types/event';
-import type { Match } from '@/types/match';
+import type { MatchResult } from '@/types/match';
 import type { Activity } from '@/types/timeline';
 import type { Insight } from '@/types/insight';
 import CardPreview from '@/components/cards/CardPreview';
@@ -30,7 +30,7 @@ const DashboardPage: React.FC = () => {
   const [cardsLoading, setCardsLoading] = useState(true);
   const [events, setEvents] = useState<Event[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
-  const [matches, setMatches] = useState<Match[]>([]);
+  const [matches, setMatches] = useState<MatchResult[]>([]);
   const [matchesLoading, setMatchesLoading] = useState(true);
 
   // New state for engagement widgets
@@ -340,7 +340,7 @@ const DashboardPage: React.FC = () => {
         ) : (
           <div className="grid gap-3 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {matches.map((match) => (
-              <MatchCard key={match.id} match={match} />
+              <MatchCard key={match.matchId} match={match} />
             ))}
           </div>
         )}

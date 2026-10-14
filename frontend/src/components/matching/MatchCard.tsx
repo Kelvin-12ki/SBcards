@@ -1,29 +1,41 @@
 import React from 'react';
 import { cn, formatScore } from '@/utils/helpers';
-import type { Match } from '@/types/match';
+import type { MatchResult } from '@/types/match';
+import { scoreTone } from '@/utils/matchFactors';
 import Badge from '@/components/ui/Badge';
 
 export interface MatchCardProps {
-  match: Match;
+  match: MatchResult;
   onViewProfile?: (userId: string) => void;
   className?: string;
 }
+
+const TONE_BAR: Record<ReturnType<typeof scoreTone>, string> = {
+  high: 'bg-success',
+  mid: 'bg-gold',
+  low: 'bg-neon-cyan',
+};
+
+const TONE_GLOW: Record<ReturnType<typeof scoreTone>, string> = {
+  high: '0 0 10px rgba(52,211,153,0.5)',
+  mid: '0 0 10px rgba(234,179,8,0.5)',
+  low: '0 0 10px rgba(0,245,255,0.5)',
+};
 
 const MatchCard: React.FC<MatchCardProps> = ({
   match,
   onViewProfile,
   className,
 }) => {
-  const matchedUser = match.matchedUser;
-  const matchedCard = match.matchedCard;
-  const score = match.overlapScore;
+  const profile = match.matchedUserProfile;
+  const score = Number(match.overlapScore) || 0;
 
-  const initials = matchedUser?.displayName
-    ? matchedUser.displayName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+  const name = match.userName || profile?.displayName || 'Unknown User';
+  const initials = name
+    ? name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
     : '??';
 
-  const scoreColor =
-    score >= 0.8 ? 'bg-success' : score >= 0.5 ? 'bg-warning' : 'bg-danger';
+  const tone = scoreTone(score);
 
   return (
     <div
@@ -34,19 +46,27 @@ const MatchCard: React.FC<MatchCardProps> = ({
     >
       <div className="flex items-start gap-4">
         <div className="relative flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full gradient-magical text-sm font-bold text-white shadow-lg shadow-neon-purple/20">
-          {initials}
+          {profile?.avatarUrl ? (
+            <img
+              src={profile.avatarUrl}
+              alt={name}
+              className="h-full w-full rounded-full object-cover"
+            />
+          ) : (
+            initials
+          )}
         </div>
 
         <div className="min-w-0 flex-1">
           <h3
             className="text-base font-semibold text-text-primary cursor-pointer hover:text-neon-cyan transition-colors"
-            onClick={() => onViewProfile?.(matchedUser?.id || match.userBId)}
+            onClick={() => onViewProfile?.(match.userId)}
           >
-            {matchedUser?.displayName || 'Unknown User'}
+            {name}
           </h3>
-          {(matchedCard?.company || matchedCard?.role) && (
+          {(profile?.jobRole || profile?.company) && (
             <p className="text-sm text-text-secondary">
-              {[matchedCard?.company, matchedCard?.role].filter(Boolean).join(' | ')}
+              {[profile?.jobRole, profile?.company].filter(Boolean).join(' at ')}
             </p>
           )}
 
@@ -67,10 +87,10 @@ const MatchCard: React.FC<MatchCardProps> = ({
         </div>
         <div className="h-2 w-full overflow-hidden rounded-full bg-surface-3">
           <div
-            className={cn('h-full rounded-full transition-all duration-500', scoreColor)}
+            className={cn('h-full rounded-full transition-all duration-500', TONE_BAR[tone])}
             style={{
               width: `${Math.round(score * 100)}%`,
-              boxShadow: score >= 0.8 ? '0 0 10px rgba(52,211,153,0.5)' : score >= 0.5 ? '0 0 10px rgba(251,191,36,0.5)' : '0 0 10px rgba(248,113,113,0.5)',
+              boxShadow: TONE_GLOW[tone],
             }}
           />
         </div>

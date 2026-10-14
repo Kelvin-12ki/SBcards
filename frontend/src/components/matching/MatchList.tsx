@@ -1,12 +1,12 @@
 import React from 'react';
 import { cn } from '@/utils/helpers';
-import type { Match } from '@/types/match';
+import type { MatchResult } from '@/types/match';
 import MatchCard from './MatchCard';
 import Spinner from '@/components/ui/Spinner';
 import EmptyState from '@/components/ui/EmptyState';
 
 export interface MatchListProps {
-  matches: Match[];
+  matches: MatchResult[];
   loading?: boolean;
   onViewProfile?: (userId: string) => void;
   className?: string;
@@ -40,12 +40,14 @@ const MatchList: React.FC<MatchListProps> = ({
     );
   }
 
-  const sorted = [...matches].sort((a, b) => b.overlapScore - a.overlapScore);
+  const sorted = [...matches].sort(
+    (a, b) => Number(b.overlapScore || 0) - Number(a.overlapScore || 0),
+  );
 
   return (
     <div className={cn('space-y-3', className)}>
       {sorted.map((match) => (
-        <MatchCard key={match.id} match={match} onViewProfile={onViewProfile} />
+        <MatchCard key={match.matchId} match={match} onViewProfile={onViewProfile} />
       ))}
     </div>
   );

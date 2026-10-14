@@ -22,7 +22,11 @@ import { FirebaseAuthGuard } from '../../common/guards/firebase-auth.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtUser } from '../../common/strategies/jwt.strategy';
-import { Event } from './entities/event.entity';
+import {
+  Event,
+  EventStatus,
+  EVENT_STATUSES,
+} from './entities/event.entity';
 import { EventParticipation } from './entities/event-participation.entity';
 import { UsersService } from '../users/users.service';
 
@@ -41,11 +45,9 @@ export class EventsController {
   @ApiQuery({
     name: 'status',
     required: false,
-    enum: ['upcoming', 'active', 'completed'],
+    enum: EVENT_STATUSES,
   })
-  async findAll(
-    @Query('status') status?: 'upcoming' | 'active' | 'completed',
-  ): Promise<Event[]> {
+  async findAll(@Query('status') status?: EventStatus): Promise<Event[]> {
     return this.eventsService.findAll(status);
   }
 
@@ -198,15 +200,43 @@ export class EventsController {
 
   @Post(':id/activate')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Activate an event (triggers matching & tables)' })
+  @ApiOperation({ summary: 'Activate an event (creator only)' })
   async activate(
     @Param('id') id: string,
     @CurrentUser() jwtUser: JwtUser,
   ): Promise<Event> {
     const user = await this.usersService.findByFirebaseUid(jwtUser.uid);
     if (!user) {
-      throw new Error('User not found');
+      throw new NotFoundException('User not found');
     }
-    return this.eventsService.activate(id);
+    return this.eventsService.activate(id, user.id);
+  }
+
+  @Post(':id/complete')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Mark an event completed (creator only)' })
+  async complete(
+    @Param('id') id: string,
+    @CurrentUser() jwtUser: JwtUser,
+  ): Promise<Event> {
+    const user = await this.usersService.findByFirebaseUid(jwtUser.uid);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return this.eventsService.complete(id, user.id);
+  }
+
+  @Post(':id/cancel')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Cancel an event (creator only)' })
+  async cancel(
+    @Param('id') id: string,
+    @CurrentUser() jwtUser: JwtUser,
+  ): Promise<Event> {
+    const user = await this.usersService.findByFirebaseUid(jwtUser.uid);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return this.eventsService.cancel(id, user.id);
   }
 }

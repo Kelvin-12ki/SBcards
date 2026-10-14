@@ -2,7 +2,8 @@ import React from 'react';
 import { cn } from '@/utils/helpers';
 import { formatDate } from '@/utils/helpers';
 import type { Event } from '@/types/event';
-import Badge from '@/components/ui/Badge';
+import { canJoinEvent } from '@/utils/eventStatus';
+import EventStatusBadge from './EventStatusBadge';
 import Button from '@/components/ui/Button';
 
 export interface EventCardProps {
@@ -11,20 +12,6 @@ export interface EventCardProps {
   onView?: (eventId: string) => void;
   className?: string;
 }
-
-const statusVariant = {
-  draft: 'default' as const,
-  active: 'success' as const,
-  completed: 'default' as const,
-  cancelled: 'danger' as const,
-};
-
-const statusLabel: Record<string, string> = {
-  draft: 'Draft',
-  active: 'Active',
-  completed: 'Completed',
-  cancelled: 'Cancelled',
-};
 
 const EventCard: React.FC<EventCardProps> = ({
   event,
@@ -53,9 +40,7 @@ const EventCard: React.FC<EventCardProps> = ({
             </p>
           )}
         </div>
-        <Badge variant={statusVariant[event.status]}>
-          {statusLabel[event.status]}
-        </Badge>
+        <EventStatusBadge status={event.status} />
       </div>
 
       <div className="mt-4 space-y-2">
@@ -85,7 +70,7 @@ const EventCard: React.FC<EventCardProps> = ({
       </div>
 
       <div className="mt-4 flex items-center gap-3">
-        {event.status !== 'completed' && event.status !== 'cancelled' && (
+        {canJoinEvent(event) && (
           <Button variant="primary" size="sm" onClick={() => onJoin?.(event.id)}>
             Join
           </Button>

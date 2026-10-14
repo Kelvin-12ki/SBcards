@@ -1,43 +1,40 @@
-export interface RecommendationFactor {
-  name: string;
-  score: number;
-  explanation: string;
+import type { MatchFactor, MatchResult } from './match';
+
+/**
+ * `GET /events/:id/recommendations` returns the same `MatchResultDto[]` as
+ * `GET /events/:id/matches`, just sliced to `limit`. Keep the domain name.
+ */
+export type Recommendation = MatchResult;
+
+export type RecommendationFactor = MatchFactor;
+
+/**
+ * `GET /events/:id/recommendations/why/:targetUserId` envelope.
+ * The API returns `{ match, userProfile, targetProfile, detailedExplanation,
+ * detailedStarters }` — not a flat object.
+ */
+export interface WhyRecommendation {
+  match: MatchResult;
+  userProfile: MatchUserProfile;
+  targetProfile: MatchUserProfile;
+  detailedExplanation: string[];
+  detailedStarters: string[];
 }
 
-export interface RecommendationUser {
+/** Flat profile projection returned by the why-endpoint. */
+export interface MatchUserProfile {
   id: string;
-  displayName: string;
-  avatarUrl?: string;
-  title?: string;
+  displayName?: string;
+  email?: string;
   company?: string;
+  jobRole?: string;
   industry?: string;
   seniority?: string;
+  location?: string;
+  avatarUrl?: string;
   skills?: string[];
   interests?: string[];
-  location?: string;
-}
-
-export interface Recommendation {
-  id: string;
-  eventId: string;
-  targetUserId: string;
-  targetUser: RecommendationUser;
-  matchScore: number;
-  factors: RecommendationFactor[];
-  explanations: string[];
-  conversationStarters: string[];
-  sharedKeywords?: string[];
-}
-
-export interface WhyRecommendation {
-  id: string;
-  eventId: string;
-  targetUserId: string;
-  targetUser: RecommendationUser;
-  currentUser: RecommendationUser;
-  matchScore: number;
-  factors: RecommendationFactor[];
-  explanations: string[];
-  conversationStarters: string[];
-  sharedKeywords?: string[];
+  lookingFor?: string[];
+  offering?: string[];
+  bio?: string;
 }

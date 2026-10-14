@@ -45,8 +45,10 @@ const RecommendationsPage: React.FC = () => {
 
   const isCreator = user?.id === event?.creatorId;
 
-  // Sort by match score descending
-  const sorted = [...recommendations].sort((a, b) => b.matchScore - a.matchScore);
+  // API already sorts by overlapScore DESC; re-sort defensively.
+  const sorted = [...recommendations].sort(
+    (a, b) => Number(b.overlapScore || 0) - Number(a.overlapScore || 0),
+  );
 
   const handleWhy = (targetUserId: string) => {
     navigate(`/events/${eventId}/recommendations/why/${targetUserId}`);
@@ -123,7 +125,7 @@ const RecommendationsPage: React.FC = () => {
         <div className="grid gap-5 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           {sorted.map((rec) => (
             <EnhancedMatchCard
-              key={rec.id || rec.targetUserId}
+              key={rec.matchId}
               match={rec}
               onConnect={handleConnect}
               onWhy={handleWhy}

@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getWhyRecommendation } from '@/api/matching';
 import { createConnection } from '@/api/connections';
-import type { WhyRecommendation } from '@/types/recommendation';
+import type { WhyRecommendation, MatchUserProfile } from '@/types/recommendation';
+import { factorBg, factorColor, factorList, scorePercent, scoreTone } from '@/utils/matchFactors';
 import MatchExplanation from '@/components/matching/MatchExplanation';
 import ConversationStarters from '@/components/matching/ConversationStarters';
 import Button from '@/components/ui/Button';
@@ -11,32 +12,14 @@ import { showApiError } from '@/utils/errorHandler';
 import { cn } from '@/utils/helpers';
 import toast from 'react-hot-toast';
 
-const FACTOR_COLORS: Record<string, string> = {
-  skillcomplementarity: 'bg-neon-cyan',
-  industryrelevance: 'bg-gold',
-  interestoverlap: 'bg-neon-pink',
-  networkinggoals: 'bg-neon-purple',
-  newconnection: 'bg-success',
-};
-
-const FACTOR_BG_COLORS: Record<string, string> = {
-  skillcomplementarity: 'bg-neon-cyan/20',
-  industryrelevance: 'bg-gold/20',
-  interestoverlap: 'bg-neon-pink/20',
-  networkinggoals: 'bg-neon-purple/20',
-  newconnection: 'bg-success/20',
-};
-
-const factorLabels: Record<string, string> = {
-  skillcomplementarity: 'Skills Match',
-  industryrelevance: 'Industry',
-  interestoverlap: 'Interests',
-  networkinggoals: 'Goals',
-  newconnection: 'New Connection',
-};
+const TONE_TEXT = {
+  high: 'text-success',
+  mid: 'text-gold',
+  low: 'text-neon-cyan',
+} as const;
 
 const UserProfileCard: React.FC<{
-  user: WhyRecommendation['targetUser'];
+  user: MatchUserProfile;
   label: string;
 }> = ({ user, label }) => {
   const initials = user?.displayName
@@ -63,9 +46,9 @@ const UserProfileCard: React.FC<{
         <h3 className="mt-3 text-lg font-bold text-text-primary">
           {user?.displayName || 'Unknown'}
         </h3>
-        {(user?.title || user?.company) && (
+        {(user?.jobRole || user?.company) && (
           <p className="text-sm text-text-secondary">
-            {[user?.title, user?.company].filter(Boolean).join(' at ')}
+            {[user?.jobRole, user?.company].filter(Boolean).join(' at ')}
           </p>
         )}
         {user?.industry && (
@@ -173,13 +156,18 @@ const MatchDetailPage: React.FC = () => {
     );
   }
 
-  const scorePercent = Math.round(data.matchScore * 100);
-  const scoreColor =
-    scorePercent >= 80
-      ? 'text-success'
-      : scorePercent >= 60
-        ? 'text-gold'
-        : 'text-neon-cyan';
+  const overallScore = Number(data.match.overlapScore) || 0;
+  const pct = scorePercent(overallScore);
+  const scoreColor = TONE_TEXT[scoreTone(overallScore)];
+  const factors = factorList(data.match.factors);
+  const explanations =
+    data.detailedExplanation.length > 0
+      ? data.detailedExplanation
+      : data.match.explanation || [];
+  const starters =
+    data.detailedStarters.length > 0
+      ? data.detailedStarters
+      : data.match.conversationStarters || [];
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -201,7 +189,7 @@ const MatchDetailPage: React.FC = () => {
 
       {/* Users side by side */}
       <div className="flex flex-col gap-5 sm:flex-row">
-        <UserProfileCard user={data.currentUser} label="You" />
+        <UserProfileCard user={data.userProfile} label="You" />
         <div className="flex items-center justify-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-full gradient-neon text-white shadow-lg">
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -209,7 +197,7 @@ const MatchDetailPage: React.FC = () => {
             </svg>
           </div>
         </div>
-        <UserProfileCard user={data.targetUser} label="Matched With" />
+        <UserProfileCard user={data.targetProfile} label="Matched With" />
       </div>
 
       {/* Match Score Section */}
@@ -226,7 +214,7 @@ const MatchDetailPage: React.FC = () => {
           <div className="flex items-center gap-4">
             <div className="text-center">
               <span className={cn('text-5xl font-extrabold', scoreColor)}>
-                {scorePercent}%
+                {pct}%
               </span>
               <p className="mt-1 text-xs text-text-secondary">Match Score</p>
             </div>
@@ -235,24 +223,22 @@ const MatchDetailPage: React.FC = () => {
       </div>
 
       {/* Factor Breakdown */}
-      {data.factors && data.factors.length > 0 && (
+      {factors.length > 0 && (
         <div className="card-magical rounded-2xl p-6 shimmer-magical">
           <h2 className="mb-5 font-display text-lg font-bold text-gradient-magical">
             Factor Breakdown
           </h2>
           <div className="space-y-4">
-            {data.factors.map((factor) => {
-              const key = factor.name.toLowerCase().replace(/\s+/g, '');
-              const colorClass = FACTOR_COLORS[key] || 'bg-neon-cyan';
-              const bgClass = FACTOR_BG_COLORS[key] || 'bg-surface-3';
-              const label = factorLabels[key] || factor.name;
-              const factorPercent = Math.round((factor.score || 0) * 100);
+            {factors.map((factor) => {
+              const colorClass = factorColor(factor.key);
+              const bgClass = factorBg(factor.key);
+              const factorPercent = scorePercent(factor.score);
 
               return (
-                <div key={factor.name}>
+                <div key={factor.key}>
                   <div className="mb-1.5 flex items-center justify-between">
                     <span className="text-sm font-medium text-text-primary">
-                      {label}
+                      {factor.label}
                     </span>
                     <span className="text-sm font-semibold text-text-primary">
                       {factorPercent}%
@@ -264,17 +250,9 @@ const MatchDetailPage: React.FC = () => {
                         'h-full rounded-full transition-all duration-700',
                         colorClass,
                       )}
-                      style={{
-                        width: `${factorPercent}%`,
-                        boxShadow: `0 0 8px ${colorClass.includes('gold') ? 'rgba(37, 99, 235,0.4)' : colorClass.includes('cyan') ? 'rgba(0,245,255,0.4)' : colorClass.includes('pink') ? 'rgba(255,110,199,0.4)' : colorClass.includes('purple') ? 'rgba(191,95,255,0.4)' : colorClass.includes('blue') ? 'rgba(59,130,246,0.4)' : 'rgba(52,211,153,0.4)'}`,
-                      }}
+                      style={{ width: `${factorPercent}%` }}
                     />
                   </div>
-                  {factor.explanation && (
-                    <p className="mt-1 text-xs text-text-tertiary">
-                      {factor.explanation}
-                    </p>
-                  )}
                 </div>
               );
             })}
@@ -283,19 +261,19 @@ const MatchDetailPage: React.FC = () => {
       )}
 
       {/* Detailed Explanations */}
-      {data.explanations && data.explanations.length > 0 && (
+      {explanations.length > 0 && (
         <div className="card-magical rounded-2xl p-6 shimmer-magical">
           <MatchExplanation
-            explanation={data.explanations}
-            factors={data.factors || []}
+            explanation={explanations}
+            factors={factors}
           />
         </div>
       )}
 
       {/* Conversation Starters */}
-      {data.conversationStarters && data.conversationStarters.length > 0 && (
+      {starters.length > 0 && (
         <div className="card-magical rounded-2xl p-6 shimmer-magical">
-          <ConversationStarters starters={data.conversationStarters} />
+          <ConversationStarters starters={starters} />
         </div>
       )}
 

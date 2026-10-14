@@ -1,3 +1,17 @@
+/**
+ * Canonical event lifecycle. Mirrors the backend's
+ * `entities/event.entity.ts#EventStatus`.
+ *
+ * upcoming/draft --activate--> active --complete--> completed
+ *                              \--cancel--> cancelled
+ */
+export type EventStatus =
+  | 'upcoming'
+  | 'draft'
+  | 'active'
+  | 'completed'
+  | 'cancelled';
+
 export interface Event {
   id: string;
   name: string;
@@ -5,7 +19,7 @@ export interface Event {
   location?: string;
   startDate: string;
   endDate: string;
-  status: 'draft' | 'active' | 'completed' | 'cancelled';
+  status: EventStatus;
   maxAttendees?: number;
   tableCount?: number;
   tableCapacity?: number;

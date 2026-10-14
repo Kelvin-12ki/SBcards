@@ -1,6 +1,7 @@
 import React from 'react';
 import { cn } from '@/utils/helpers';
 import type { Recommendation } from '@/types/recommendation';
+import { factorBg, factorColor, factorList, scorePercent, scoreTone } from '@/utils/matchFactors';
 import Button from '@/components/ui/Button';
 import MatchExplanation from './MatchExplanation';
 import ConversationStarters from './ConversationStarters';
@@ -12,29 +13,23 @@ export interface EnhancedMatchCardProps {
   className?: string;
 }
 
-const FACTOR_COLORS: Record<string, string> = {
-  skillcomplementarity: 'bg-neon-cyan',
-  industryrelevance: 'bg-gold',
-  interestoverlap: 'bg-neon-pink',
-  networkinggoals: 'bg-neon-purple',
-  newconnection: 'bg-success',
-};
+const TONE_TEXT = {
+  high: 'text-success',
+  mid: 'text-gold',
+  low: 'text-neon-cyan',
+} as const;
 
-const FACTOR_BG_COLORS: Record<string, string> = {
-  skillcomplementarity: 'bg-neon-cyan/20',
-  industryrelevance: 'bg-gold/20',
-  interestoverlap: 'bg-neon-pink/20',
-  networkinggoals: 'bg-neon-purple/20',
-  newconnection: 'bg-success/20',
-};
+const TONE_STROKE = {
+  high: 'stroke-success',
+  mid: 'stroke-gold',
+  low: 'stroke-neon-cyan',
+} as const;
 
-const factorLabels: Record<string, string> = {
-  skillcomplementarity: 'Skills Match',
-  industryrelevance: 'Industry',
-  interestoverlap: 'Interests',
-  networkinggoals: 'Goals',
-  newconnection: 'New Connection',
-};
+const TONE_GLOW = {
+  high: 'drop-shadow(0 0 6px rgba(52,211,153,0.6))',
+  mid: 'drop-shadow(0 0 6px rgba(234,179,8,0.6))',
+  low: 'drop-shadow(0 0 6px rgba(0,245,255,0.6))',
+} as const;
 
 const EnhancedMatchCard: React.FC<EnhancedMatchCardProps> = ({
   match,
@@ -42,34 +37,23 @@ const EnhancedMatchCard: React.FC<EnhancedMatchCardProps> = ({
   onWhy,
   className,
 }) => {
-  const user = match.targetUser;
-  const score = match.matchScore;
+  const profile = match.matchedUserProfile;
+  const score = Number(match.overlapScore) || 0;
+  const name = match.userName || profile?.displayName || 'Unknown User';
 
-  const initials = user?.displayName
-    ? user.displayName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+  const initials = name
+    ? name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
     : '??';
 
-  const scorePercent = Math.round(score * 100);
-  const scoreColor =
-    scorePercent >= 80
-      ? 'text-success'
-      : scorePercent >= 60
-        ? 'text-gold'
-        : 'text-neon-cyan';
-
-  const ringColor =
-    scorePercent >= 80
-      ? 'stroke-success'
-      : scorePercent >= 60
-        ? 'stroke-gold'
-        : 'stroke-neon-cyan';
+  const pct = scorePercent(score);
+  const tone = scoreTone(score);
 
   // Compute the circumference for a circle with r=28
   const circumference = 2 * Math.PI * 28;
-  const offset = circumference - (scorePercent / 100) * circumference;
+  const offset = circumference - (pct / 100) * circumference;
 
-  const factors = match.factors || [];
-  const explanations = match.explanations || [];
+  const factors = factorList(match.factors);
+  const explanations = match.explanation || [];
   const starters = match.conversationStarters || [];
 
   return (
@@ -82,10 +66,10 @@ const EnhancedMatchCard: React.FC<EnhancedMatchCardProps> = ({
       {/* Top Section: Avatar, Name, Company/Role */}
       <div className="flex items-start gap-4">
         <div className="relative flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full gradient-aurora text-lg font-bold text-white shadow-lg shadow-neon-purple/20">
-          {user?.avatarUrl ? (
+          {profile?.avatarUrl ? (
             <img
-              src={user.avatarUrl}
-              alt={user.displayName}
+              src={profile.avatarUrl}
+              alt={name}
               className="h-full w-full rounded-full object-cover"
             />
           ) : (
@@ -94,16 +78,14 @@ const EnhancedMatchCard: React.FC<EnhancedMatchCardProps> = ({
         </div>
 
         <div className="min-w-0 flex-1">
-          <h3 className="text-lg font-semibold text-text-primary">
-            {user?.displayName || 'Unknown User'}
-          </h3>
-          {(user?.company || user?.title) && (
+          <h3 className="text-lg font-semibold text-text-primary">{name}</h3>
+          {(profile?.jobRole || profile?.company) && (
             <p className="text-sm text-text-secondary">
-              {[user?.title, user?.company].filter(Boolean).join(' at ')}
+              {[profile?.jobRole, profile?.company].filter(Boolean).join(' at ')}
             </p>
           )}
-          {user?.industry && (
-            <p className="mt-0.5 text-xs text-text-tertiary">{user.industry}</p>
+          {profile?.industry && (
+            <p className="mt-0.5 text-xs text-text-tertiary">{profile.industry}</p>
           )}
         </div>
 
@@ -126,20 +108,14 @@ const EnhancedMatchCard: React.FC<EnhancedMatchCardProps> = ({
               fill="none"
               strokeWidth="4"
               strokeLinecap="round"
-              className={ringColor}
+              className={TONE_STROKE[tone]}
               strokeDasharray={circumference}
               strokeDashoffset={offset}
-              style={{
-                filter: scorePercent >= 80
-                  ? 'drop-shadow(0 0 6px rgba(52,211,153,0.6))'
-                  : scorePercent >= 60
-                    ? 'drop-shadow(0 0 6px rgba(37, 99, 235,0.6))'
-                    : 'drop-shadow(0 0 6px rgba(0,245,255,0.6))',
-              }}
+              style={{ filter: TONE_GLOW[tone] }}
             />
           </svg>
-          <span className={cn('absolute text-lg font-extrabold', scoreColor)}>
-            {scorePercent}%
+          <span className={cn('absolute text-lg font-extrabold', TONE_TEXT[tone])}>
+            {pct}%
           </span>
         </div>
       </div>
@@ -151,21 +127,17 @@ const EnhancedMatchCard: React.FC<EnhancedMatchCardProps> = ({
             Match Factors
           </p>
           {factors.map((factor) => {
-            const key = factor.name.toLowerCase().replace(/\s+/g, '');
-            const colorClass = FACTOR_COLORS[key] || 'bg-neon-cyan';
-            const bgClass = FACTOR_BG_COLORS[key] || 'bg-surface-3';
-            const label = factorLabels[key] || factor.name;
-            const factorPercent = Math.round((factor.score || 0) * 100);
+            const factorPercent = scorePercent(factor.score);
 
             return (
-              <div key={factor.name} className="flex items-center gap-2">
+              <div key={factor.key} className="flex items-center gap-2">
                 <span className="w-28 flex-shrink-0 text-xs text-text-secondary">
-                  {label}
+                  {factor.label}
                 </span>
                 <div className="flex-1">
-                  <div className={cn('h-2 w-full rounded-full', bgClass)}>
+                  <div className={cn('h-2 w-full rounded-full', factorBg(factor.key))}>
                     <div
-                      className={cn('h-full rounded-full transition-all duration-500', colorClass)}
+                      className={cn('h-full rounded-full transition-all duration-500', factorColor(factor.key))}
                       style={{ width: `${factorPercent}%` }}
                     />
                   </div>
@@ -199,7 +171,7 @@ const EnhancedMatchCard: React.FC<EnhancedMatchCardProps> = ({
           <Button
             variant="primary"
             size="sm"
-            onClick={() => onConnect(user?.id || match.targetUserId)}
+            onClick={() => onConnect(match.userId)}
           >
             Connect
           </Button>
@@ -208,7 +180,7 @@ const EnhancedMatchCard: React.FC<EnhancedMatchCardProps> = ({
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => onWhy(user?.id || match.targetUserId)}
+            onClick={() => onWhy(match.userId)}
           >
             Why?
           </Button>

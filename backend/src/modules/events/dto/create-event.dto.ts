@@ -4,10 +4,18 @@ import {
   IsString,
   IsISO8601,
   IsInt,
+  IsIn,
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+/**
+ * Only the pre-live states may be set directly. `active` / `completed` /
+ * `cancelled` are reached through the activate / complete / cancel
+ * endpoints so `isActive` stays in sync with `status`.
+ */
+export const PRE_LIVE_STATUSES = ['upcoming', 'draft'] as const;
 
 export class CreateEventDto {
   @ApiProperty({ description: 'Event name', example: 'Tech Networking Night' })
@@ -46,6 +54,16 @@ export class CreateEventDto {
   @IsNotEmpty()
   @IsISO8601()
   endDate!: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Initial status. Only pre-live values; use activate/complete/cancel for the rest.',
+    enum: PRE_LIVE_STATUSES,
+    default: 'upcoming',
+  })
+  @IsOptional()
+  @IsIn(PRE_LIVE_STATUSES)
+  status?: (typeof PRE_LIVE_STATUSES)[number];
 
   @ApiPropertyOptional({
     description: 'Maximum number of attendees',

@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getMatches } from '@/api/matching';
 import { getMyAssignment } from '@/api/tables';
 import { getEvent } from '@/api/events';
-import type { Match } from '@/types/match';
+import type { MatchResult } from '@/types/match';
 import type { MyAssignment } from '@/types/table';
 import type { Event } from '@/types/event';
 import MatchList from '@/components/matching/MatchList';
@@ -18,7 +18,7 @@ const MatchesPage: React.FC = () => {
   const navigate = useNavigate();
 
   const [event, setEvent] = useState<Event | null>(null);
-  const [matches, setMatches] = useState<Match[]>([]);
+  const [matches, setMatches] = useState<MatchResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [tableAssignment, setTableAssignment] = useState<MyAssignment | null>(null);
   const [tableLoading, setTableLoading] = useState(true);
@@ -58,8 +58,14 @@ const MatchesPage: React.FC = () => {
     if (!search.trim()) return matches;
     const query = search.toLowerCase();
     return matches.filter((match) => {
-      const name = match.matchedUser?.displayName?.toLowerCase() || '';
-      const keywords = match.sharedKeywords?.some((kw) => kw.toLowerCase().includes(query));
+      const name = (
+        match.userName ||
+        match.matchedUserProfile?.displayName ||
+        ''
+      ).toLowerCase();
+      const keywords = match.sharedKeywords?.some((kw) =>
+        kw.toLowerCase().includes(query),
+      );
       return name.includes(query) || keywords;
     });
   }, [matches, search]);
