@@ -67,3 +67,29 @@ export interface EventParticipant {
     avatarUrl?: string;
   } | null;
 }
+
+/**
+ * A person at an event the caller can still connect with.
+ *
+ * Mirrors the backend's EventSuggestion and is deliberately narrower than
+ * EventParticipant: `phone` and `email` are not in this shape because the API
+ * never sends them for this screen.
+ */
+export interface EventSuggestion {
+  userId: string;
+  displayName?: string;
+  avatarUrl?: string;
+  card: {
+    fullName: string;
+    headline?: string;
+    company?: string;
+    role?: string;
+  } | null;
+  joinedAt: string;
+}
+
+export interface EventSuggestionsResponse {
+  eventId: string;
+  eventName: string;
+  suggestions: EventSuggestion[];
+}

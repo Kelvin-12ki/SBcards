@@ -29,6 +29,35 @@ import {
   TableAssignmentDocument,
 } from '../tables/entities/table-assignment.entity';
 import { Match, MatchDocument } from '../matching/entities/match.entity';
+import {
+  Connection,
+  ConnectionDocument,
+} from '../connections/entities/connection.entity';
+
+/**
+ * Reduced attendee profile for the post-join "people here" screen.
+ *
+ * Deliberately not the card document: cards carry `phone` and `email`, and this
+ * screen is about who else is in the room, so neither field is ever selected.
+ */
+export interface EventSuggestion {
+  userId: string;
+  displayName?: string;
+  avatarUrl?: string;
+  card: {
+    fullName: string;
+    headline?: string;
+    company?: string;
+    role?: string;
+  } | null;
+  joinedAt: string;
+}
+
+export interface EventSuggestionPayload {
+  eventId: string;
+  eventName: string;
+  suggestions: EventSuggestion[];
+}
 
 @Injectable()
 export class EventsService {
@@ -49,6 +78,11 @@ export class EventsService {
     private readonly assignmentModel: Model<TableAssignmentDocument>,
     @InjectModel(Match.name)
     private readonly matchModel: Model<MatchDocument>,
+    // Read-only here: suggestions only need to know whether the caller already
+    // has a connection to someone. Creating, accepting and declining connections
+    // still go through ConnectionsService.
+    @InjectModel(Connection.name)
+    private readonly connectionModel: Model<ConnectionDocument>,
   ) {}
 
   /**
@@ -382,6 +416,94 @@ export class EventsService {
       .find({ eventId, isVisible: true })
       .sort({ joinedAt: 1 })
       .exec();
+  }
+
+  /**
+   * Everyone at the event the caller could still connect with, for the screen
+   * shown right after joining.
+   *
+   * Anyone the caller already has a connection record with is dropped rather
+   * than returned with a state. Pending, accepted and declined people are all
+   * managed from the existing Requests/Connections screens, and returning them
+   * here would either offer a Connect that fails on the unique
+   * (userId, connectedUserId) index or require accept/decline UI.
+   *
+   * Lookups are batched - the creator-only getParticipantsWithDetails does one
+   * query per participant, which is fine for an organiser's roster but not for
+   * an attendee-facing list.
+   */
+  async getSuggestions(
+    eventId: string,
+    requesterUserId: string,
+  ): Promise<EventSuggestionPayload> {
+    const event = await this.eventModel.findById(eventId).exec();
+
+    if (!event) {
+      throw new NotFoundException(`Event with ID "${eventId}" not found`);
+    }
+
+    const participations = await this.participationModel
+      .find({ eventId, isVisible: true, userId: { $ne: requesterUserId } })
+      .sort({ joinedAt: 1 })
+      .exec();
+
+    const candidateIds = Array.from(new Set(participations.map((p) => p.userId)));
+
+    const [users, cards, existingConnections] = await Promise.all([
+      this.userModel.find({ _id: { $in: candidateIds } }).exec(),
+      this.cardModel
+        .find({ _id: { $in: participations.map((p) => p.cardId) } })
+        .exec(),
+      this.connectionModel
+        .find({
+          $or: [
+            { userId: requesterUserId, connectedUserId: { $in: candidateIds } },
+            { connectedUserId: requesterUserId, userId: { $in: candidateIds } },
+          ],
+        })
+        .exec(),
+    ]);
+
+    const alreadyConnected = new Set<string>();
+    for (const c of existingConnections) {
+      alreadyConnected.add(
+        c.userId === requesterUserId ? c.connectedUserId : c.userId,
+      );
+    }
+
+    const userById = new Map(users.map((u) => [u._id?.toString() ?? u.id, u]));
+    const cardById = new Map(cards.map((c) => [c._id?.toString() ?? c.id, c]));
+
+    const suggestions: EventSuggestion[] = [];
+    for (const p of participations) {
+      if (alreadyConnected.has(p.userId)) continue;
+
+      const userDoc = userById.get(p.userId);
+      if (!userDoc) continue;
+
+      const cardDoc = cardById.get(p.cardId);
+
+      suggestions.push({
+        userId: p.userId,
+        displayName: userDoc.displayName,
+        avatarUrl: cardDoc?.avatarUrl ?? userDoc.avatarUrl,
+        card: cardDoc
+          ? {
+              fullName: cardDoc.fullName,
+              headline: cardDoc.headline,
+              company: cardDoc.company,
+              role: cardDoc.role,
+            }
+          : null,
+        joinedAt: p.joinedAt ? p.joinedAt.toISOString() : '',
+      });
+    }
+
+    return {
+      eventId,
+      eventName: event.name,
+      suggestions,
+    };
   }
 
   /**

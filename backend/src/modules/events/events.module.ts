@@ -19,6 +19,10 @@ import {
   TableAssignmentSchema,
 } from '../tables/entities/table-assignment.entity';
 import { Match, MatchSchema } from '../matching/entities/match.entity';
+import {
+  Connection,
+  ConnectionSchema,
+} from '../connections/entities/connection.entity';
 
 @Module({
   imports: [
@@ -33,6 +37,10 @@ import { Match, MatchSchema } from '../matching/entities/match.entity';
       { name: EventCheckIn.name, schema: EventCheckInSchema },
       { name: TableAssignment.name, schema: TableAssignmentSchema },
       { name: Match.name, schema: MatchSchema },
+      // Read-only here too: the post-join suggestions screen only needs to know
+      // which participants the caller already has a connection with. Creating,
+      // accepting and declining connections still go through ConnectionsService.
+      { name: Connection.name, schema: ConnectionSchema },
     ]),
     UsersModule,
     CardsModule,

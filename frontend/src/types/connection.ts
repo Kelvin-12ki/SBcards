@@ -24,7 +24,13 @@ export interface Connection {
   notes?: string;
   tags: string[];
   isFavorite: boolean;
-  source: 'qr_scan' | 'manual' | 'event_match' | 'import' | 'profile';
+  source:
+    | 'qr_scan'
+    | 'manual'
+    | 'event_match'
+    | 'event_recommendation'
+    | 'import'
+    | 'profile';
   metAt?: string;
   followUpDate?: string;
   followUpNote?: string;

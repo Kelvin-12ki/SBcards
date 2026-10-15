@@ -1,5 +1,10 @@
 import apiClient from './client';
-import type { Event, EventParticipation, EventParticipant } from '@/types/event';
+import type {
+  Event,
+  EventParticipation,
+  EventParticipant,
+  EventSuggestionsResponse,
+} from '@/types/event';
 import { normaliseEventStatus } from '@/utils/eventStatus';
 
 /**
@@ -132,6 +137,20 @@ export async function checkParticipation(
 ): Promise<EventParticipation | null> {
   const { data } = await apiClient.get<EventParticipation | null>(
     `/events/${id}/participation`,
+  );
+  return data;
+}
+
+/**
+ * People at this event the caller can still connect with - i.e. everyone who
+ * joined and is visible, minus the caller and anyone they already have a
+ * connection record with. Contact details are never returned.
+ */
+export async function getEventSuggestions(
+  id: string,
+): Promise<EventSuggestionsResponse> {
+  const { data } = await apiClient.get<EventSuggestionsResponse>(
+    `/events/${id}/suggestions`,
   );
   return data;
 }

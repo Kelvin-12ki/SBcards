@@ -14,7 +14,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
-import { EventsService } from './events.service';
+import {
+  EventsService,
+  EventSuggestionPayload,
+} from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { JoinEventDto } from './dto/join-event.dto';
@@ -183,6 +186,25 @@ export class EventsController {
     @Param('id') id: string,
   ): Promise<EventParticipation[]> {
     return this.eventsService.getAttendees(id);
+  }
+
+  @Get(':id/suggestions')
+  @ApiOperation({
+    summary: 'People at this event the caller can still connect with',
+    description:
+      'Visible participants excluding the caller and anyone they already have a ' +
+      'connection record with. Returns a reduced profile - phone and email are ' +
+      'never included.',
+  })
+  async getSuggestions(
+    @Param('id') id: string,
+    @CurrentUser() jwtUser: JwtUser,
+  ): Promise<EventSuggestionPayload> {
+    const user = await this.usersService.findByFirebaseUid(jwtUser.uid);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    return this.eventsService.getSuggestions(id, user.id);
   }
 
   @Get(':id/participation')

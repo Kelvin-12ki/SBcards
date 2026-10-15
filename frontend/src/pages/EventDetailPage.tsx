@@ -93,12 +93,14 @@ const EventDetailPage: React.FC = () => {
       await joinEvent(id, cardId);
       toast.success('Joined event!');
       setHasJoined(true);
+      navigate(`/events/${id}/people`);
     } catch (err: any) {
       const message = err?.response?.data?.message || err?.message || 'Failed to join event.';
       // If already participating, treat as success
       if (message.includes('Already participating')) {
         toast.success('Already joined this event!');
         setHasJoined(true);
+        navigate(`/events/${id}/people`);
       } else {
         showApiError(err, 'Failed to join event.');
       }
@@ -190,6 +192,11 @@ const EventDetailPage: React.FC = () => {
           {hasJoined && !isCreator && (
             <Button variant="primary" onClick={() => navigate(`/events/${event.id}/check-in`)}>
               Check In
+            </Button>
+          )}
+          {hasJoined && (
+            <Button variant="ghost" onClick={() => navigate(`/events/${event.id}/people`)}>
+              See Who&apos;s Here
             </Button>
           )}
           {hasJoined && isEventLive(event) && (
