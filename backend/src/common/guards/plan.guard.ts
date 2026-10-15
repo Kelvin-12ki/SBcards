@@ -2,7 +2,7 @@ import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@
 import { Reflector } from '@nestjs/core';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { User, UserDocument } from '../users/entities/user.entity';
+import { User, UserDocument } from '../../modules/users/entities/user.entity';
 
 export const PLAN_KEY = 'required_plan';
 export const RequiredPlan = (plan: string) => {

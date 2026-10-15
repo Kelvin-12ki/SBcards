@@ -50,7 +50,7 @@ export class PaymentsService {
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: 'subscription',
-      payment_method_types: ['card'],
+      allowed_payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${frontendUrl}/dashboard?upgraded=${plan}`,
       cancel_url: `${frontendUrl}`,
@@ -113,7 +113,7 @@ export class PaymentsService {
     const session = await this.stripe.checkout.sessions.create({
       customer: customer.id,
       mode: 'subscription',
-      payment_method_types: ['card'],
+      allowed_payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${frontendUrl}/dashboard?upgraded=${plan}`,
       cancel_url: `${frontendUrl}/dashboard?canceled=1`,
@@ -217,8 +217,8 @@ export class PaymentsService {
         stripeCustomerId: stripeSub.customer as string,
         stripeSubscriptionId: stripeSub.id,
         stripePriceId: stripeSub.items.data[0]?.price?.id,
-        currentPeriodStart: new Date(stripeSub.current_period_start * 1000),
-        currentPeriodEnd: new Date(stripeSub.current_period_end * 1000),
+        currentPeriodStart: new Date(stripeSub.items.data[0].current_period_start * 1000),
+        currentPeriodEnd: new Date(stripeSub.items.data[0].current_period_end * 1000),
         cancelAtPeriodEnd: stripeSub.cancel_at_period_end,
         trialUsed: true,
       },
