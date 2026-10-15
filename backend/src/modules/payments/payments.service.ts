@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -13,7 +13,7 @@ const PLAN_PRICE_MAP: Record<string, { monthly: string; annual: string }> = {
 
 @Injectable()
 export class PaymentsService {
-  private readonly stripe: Stripe;
+  private readonly stripe: Stripe | null;
   private readonly logger = new Logger(PaymentsService.name);
 
   constructor(
@@ -21,9 +21,31 @@ export class PaymentsService {
     @InjectModel(Subscription.name) private readonly subModel: Model<SubscriptionDocument>,
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
   ) {
-    this.stripe = new Stripe(this.config.get<string>('STRIPE_SECRET_KEY')!, {
-      apiVersion: '2024-12-18.acacia' as any,
-    });
+    const secretKey = this.config.get<string>('STRIPE_SECRET_KEY');
+    if (secretKey) {
+      // Deliberately no apiVersion pin. The stripe package's types describe the
+      // API version it ships with, so pinning an older one would make the params
+      // we send (allowed_payment_method_types, SubscriptionItem.current_period_*)
+      // unknown to the server at runtime.
+      this.stripe = new Stripe(secretKey);
+    } else {
+      this.stripe = null;
+      this.logger.warn(
+        'STRIPE_SECRET_KEY is not set - payments endpoints return 503 until it is configured',
+      );
+    }
+  }
+
+  /**
+   * Payments are an optional integration. A missing key must not stop the whole
+   * API booting - this used to be constructed unconditionally and threw during
+   * dependency injection, taking down events/matching/auth with it.
+   */
+  private requireStripe(): Stripe {
+    if (!this.stripe) {
+      throw new ServiceUnavailableException('Payments are not configured');
+    }
+    return this.stripe;
   }
 
   /** Create a Stripe Checkout session for a guest (no account yet). */
@@ -43,7 +65,7 @@ export class PaymentsService {
 
     // Check if customer already exists in Stripe
     let customerId: string | undefined;
-    const existingCustomers = await this.stripe.customers.list({ email, limit: 1 });
+    const existingCustomers = await this.requireStripe().customers.list({ email, limit: 1 });
     if (existingCustomers.data.length > 0) {
       customerId = existingCustomers.data[0].id;
     }
@@ -67,17 +89,17 @@ export class PaymentsService {
       sessionParams.customer_email = email;
     }
 
-    const session = await this.stripe.checkout.sessions.create(sessionParams);
+    const session = await this.requireStripe().checkout.sessions.create(sessionParams);
     return { url: session.url! };
   }
 
   /** Get or create a Stripe customer for a user. */
   async getOrCreateCustomer(user: UserDocument): Promise<Stripe.Customer> {
     if (user.stripeCustomerId) {
-      return this.stripe.customers.retrieve(user.stripeCustomerId) as Promise<Stripe.Customer>;
+      return this.requireStripe().customers.retrieve(user.stripeCustomerId) as Promise<Stripe.Customer>;
     }
 
-    const customer = await this.stripe.customers.create({
+    const customer = await this.requireStripe().customers.create({
       email: user.email,
       name: user.displayName || undefined,
       metadata: { userId: user._id.toString() },
@@ -110,7 +132,7 @@ export class PaymentsService {
 
     const frontendUrl = this.config.get<string>('FRONTEND_URL') || 'https://sbcards.vercel.app';
 
-    const session = await this.stripe.checkout.sessions.create({
+    const session = await this.requireStripe().checkout.sessions.create({
       customer: customer.id,
       mode: 'subscription',
       allowed_payment_method_types: ['card'],
@@ -134,7 +156,7 @@ export class PaymentsService {
 
     const frontendUrl = this.config.get<string>('FRONTEND_URL') || 'https://sbcards.vercel.app';
 
-    const session = await this.stripe.billingPortal.sessions.create({
+    const session = await this.requireStripe().billingPortal.sessions.create({
       customer: user.stripeCustomerId,
       return_url: `${frontendUrl}/dashboard`,
     });
@@ -173,7 +195,7 @@ export class PaymentsService {
 
     const subscriptionId = session.subscription as string;
     if (subscriptionId) {
-      const sub = await this.stripe.subscriptions.retrieve(subscriptionId);
+      const sub = await this.requireStripe().subscriptions.retrieve(subscriptionId);
       await this.upsertSubscription(userId, plan, sub);
     } else {
       // Free plan (no subscription)
@@ -186,7 +208,7 @@ export class PaymentsService {
     const plan = stripeSub.metadata?.plan as PlanTier;
     if (!userId || !plan) {
       // Try to find user by customer ID
-      const customer = await this.stripe.customers.retrieve(stripeSub.customer as string);
+      const customer = await this.requireStripe().customers.retrieve(stripeSub.customer as string);
       const custEmail = (customer as Stripe.Customer).email;
       if (custEmail) {
         const user = await this.userModel.findOne({ email: custEmail });
@@ -259,7 +281,10 @@ export class PaymentsService {
 
   /** Verify a Stripe webhook signature. */
   verifyWebhookSignature(payload: Buffer, signature: string): Stripe.Event {
-    const webhookSecret = this.config.get<string>('STRIPE_WEBHOOK_SECRET')!;
-    return this.stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+    const webhookSecret = this.config.get<string>('STRIPE_WEBHOOK_SECRET');
+    if (!webhookSecret) {
+      throw new ServiceUnavailableException('STRIPE_WEBHOOK_SECRET is not configured');
+    }
+    return this.requireStripe().webhooks.constructEvent(payload, signature, webhookSecret);
   }
 }
