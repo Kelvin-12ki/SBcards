@@ -24,6 +24,7 @@ import { InsightsModule } from './modules/insights/insights.module';
 import { HeatmapModule } from './modules/heatmap/heatmap.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { SecurityModule } from './modules/security/security.module';
+import { BlocksModule } from './modules/blocks/blocks.module';
 import { HealthModule } from './modules/health/health.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import databaseConfig from './config/database.config';
@@ -88,6 +89,7 @@ import { UserThrottlerGuard } from './common/guards/user-throttler.guard';
     // SecurityModule is imported here as well as by AuthModule: the global
     // UserThrottlerGuard injects SecurityService to record rate-limit denials.
     SecurityModule,
+  BlocksModule,
     HealthModule,
     PaymentsModule,
   ],

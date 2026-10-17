@@ -14,6 +14,7 @@ import { UsersModule } from '../users/users.module';
 import { CardsModule } from '../cards/cards.module';
 import { TimelineModule } from '../timeline/timeline.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { BlocksModule } from '../blocks/blocks.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     forwardRef(() => CardsModule),
     TimelineModule,
     NotificationsModule,
+    BlocksModule,
   ],
   providers: [ConnectionsService],
   controllers: [ConnectionsController],

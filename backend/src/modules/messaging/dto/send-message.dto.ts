@@ -61,9 +61,12 @@ export class SendMessageDto {
   })
   // Images and shared cards may carry an empty body or an optional caption,
   // so the non-empty requirement applies to text messages only.
+  // The same 4000 character ceiling is enforced in MessagingService, which is
+  // the only path the websocket send also goes through.
   @ValidateIf((o: SendMessageDto) => (o.type ?? 'text') === 'text')
   @IsNotEmpty()
   @IsString()
+  @MaxLength(4000)
   content!: string;
 
   @ApiPropertyOptional({ enum: MESSAGE_TYPES, default: 'text' })

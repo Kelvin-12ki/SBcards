@@ -24,6 +24,7 @@ import { TimelineService } from '../timeline/timeline.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PushService } from '../notifications/push.service';
 import { EmailService } from '../notifications/email.service';
+import { BlocksService } from '../blocks/blocks.service';
 
 @Injectable()
 export class ConnectionsService {
@@ -40,6 +41,7 @@ export class ConnectionsService {
     private readonly notificationsService: NotificationsService,
     private readonly pushService: PushService,
     private readonly emailService: EmailService,
+    private readonly blocksService: BlocksService,
   ) {}
 
   /**
@@ -68,6 +70,14 @@ export class ConnectionsService {
     if (userId === data.connectedUserId) {
       throw new ConflictException('Cannot connect with yourself');
     }
+
+    // A block between the two users stops the request in either direction,
+    // so a blocked user cannot simply re-request from the other side.
+    await this.blocksService.assertNotBlocked(
+      userId,
+      data.connectedUserId,
+      'connect with',
+    );
 
     // Check if a request already exists in either direction
     const existingForward = await this.connectionModel
@@ -608,6 +618,13 @@ export class ConnectionsService {
     if (scannerUserId === scannedUserId) {
       throw new ConflictException('Cannot connect with yourself');
     }
+
+    // Same rule as the profile path: a block in either direction forbids it.
+    await this.blocksService.assertNotBlocked(
+      scannerUserId,
+      scannedUserId,
+      'connect with',
+    );
 
     // Check for existing connections in both directions
     const existingForward = await this.connectionModel

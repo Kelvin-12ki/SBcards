@@ -8,13 +8,18 @@ import {
   Contact,
   Search,
   X,
+  UserX,
+  UserCheck,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { cn } from '@/utils/helpers';
 import Avatar from '@/components/ui/Avatar';
 import MessageBubble from './MessageBubble';
 import TypingIndicator from './TypingIndicator';
 import CardShareModal from './CardShareModal';
 import { searchMessages } from '@/api/messaging';
+import { blockUser, unblockUser, getBlockStatus } from '@/api/blocks';
+import { showApiError } from '@/utils/errorHandler';
 import type { Message, SharedCardData, PresenceStatus } from '@/types/messaging';
 
 export interface ChatWindowProps {
@@ -42,6 +47,11 @@ export interface ChatWindowProps {
   onSendCard?: (cardData: SharedCardData) => void;
   onToggleReaction?: (messageId: string, emoji: string) => void;
   otherUserPresence?: PresenceStatus;
+  /**
+   * Id of the person on the other end. `otherUser` deliberately exposes no id,
+   * and the block controls cannot work without one.
+   */
+  otherUserId?: string;
 }
 
 /** Format a date to a human-readable label for date separators */
@@ -136,6 +146,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   onSendCard,
   onToggleReaction,
   otherUserPresence,
+  otherUserId,
 }) => {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -159,6 +170,68 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const initials = displayName !== 'Chat'
     ? displayName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
     : '?';
+
+  // WEB: block state. `blockedMe` means the other user blocked us, which
+  // disables the composer regardless of whether we also blocked them.
+  const [blockState, setBlockState] = useState<{
+    blockedByMe: boolean;
+    blockedMe: boolean;
+  }>({ blockedByMe: false, blockedMe: false });
+  const [blockPending, setBlockPending] = useState(false);
+
+  useEffect(() => {
+    setBlockState({ blockedByMe: false, blockedMe: false });
+    if (!otherUserId) return;
+
+    let cancelled = false;
+    getBlockStatus(otherUserId)
+      .then((status) => {
+        if (!cancelled) setBlockState(status);
+      })
+      // A failed lookup must not stop the chat from opening.
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [otherUserId]);
+
+  const handleToggleBlock = useCallback(async () => {
+    if (!otherUserId || blockPending) return;
+
+    if (!blockState.blockedByMe) {
+      const confirmed = window.confirm(
+        `Block ${displayName}? You will no longer be able to send messages to each other until you unblock them.`,
+      );
+      if (!confirmed) return;
+    }
+
+    setBlockPending(true);
+    try {
+      if (blockState.blockedByMe) {
+        await unblockUser(otherUserId);
+        setBlockState((prev) => ({ ...prev, blockedByMe: false }));
+        toast.success(`${displayName} unblocked`);
+      } else {
+        await blockUser(otherUserId);
+        setBlockState((prev) => ({ ...prev, blockedByMe: true }));
+        toast.success(`${displayName} blocked`);
+      }
+    } catch (error) {
+      showApiError(
+        error,
+        blockState.blockedByMe
+          ? 'Could not unblock this user.'
+          : 'Could not block this user.',
+      );
+    } finally {
+      setBlockPending(false);
+    }
+  }, [otherUserId, blockPending, blockState.blockedByMe, displayName]);
+
+  /** True when no message can be sent in this conversation right now. */
+  const composerDisabled =
+    blockState.blockedByMe || blockState.blockedMe;
 
   // Group messages by date and sender
   const groupedMessages = useMemo(() => groupMessages(messages), [messages]);
@@ -344,6 +417,38 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         </div>
 
+        {/* WEB: block / unblock */}
+        {otherUserId && otherUserId !== currentUserId && (
+          <button
+            onClick={handleToggleBlock}
+            disabled={blockPending}
+            className={cn(
+              'min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full transition-colors flex-shrink-0 disabled:opacity-50',
+              blockState.blockedByMe
+                ? 'bg-green-500/10 text-green-400 hover:bg-green-500/20'
+                : 'text-text-tertiary hover:bg-red-500/10 hover:text-red-400',
+            )}
+            aria-label={
+              blockState.blockedByMe
+                ? `Unblock ${displayName}`
+                : `Block ${displayName}`
+            }
+            title={
+              blockState.blockedByMe
+                ? `Unblock ${displayName}`
+                : `Block ${displayName}`
+            }
+          >
+            {blockPending ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : blockState.blockedByMe ? (
+              <UserCheck className="h-5 w-5" />
+            ) : (
+              <UserX className="h-5 w-5" />
+            )}
+          </button>
+        )}
+
         {/* WEB: search toggle */}
         <button
           onClick={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
@@ -510,12 +615,31 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       {/* Input area — refined glass input */}
       <div className="glass border-t border-border-subtle px-4 py-3 sm:px-5 sm:py-4">
+        {composerDisabled && (
+          <div className="mb-3 rounded-xl border border-border-subtle bg-surface-2 px-3 py-2.5 text-center text-sm text-text-tertiary">
+            {blockState.blockedByMe ? (
+              <>
+                You blocked this user, so messaging is disabled.{' '}
+                <button
+                  onClick={handleToggleBlock}
+                  disabled={blockPending}
+                  className="font-semibold text-neon-cyan hover:underline disabled:opacity-50"
+                >
+                  Unblock
+                </button>
+              </>
+            ) : (
+              'You can no longer send messages in this conversation.'
+            )}
+          </div>
+        )}
+
         <div className="flex items-end gap-2 sm:gap-3">
           {/* WEB: card share */}
           {onSendCard && (
             <button
               onClick={() => setCardModalOpen(true)}
-              disabled={loading}
+              disabled={loading || composerDisabled}
               className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-surface-2 border border-border-subtle text-text-tertiary transition-all duration-200 hover:text-gold hover:border-gold/40 active:scale-95 disabled:opacity-50"
               aria-label="Share a card"
             >
@@ -530,17 +654,23 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               value={input}
               onChange={(e) => handleInputChange(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Type a message..."
+              placeholder={
+                composerDisabled
+                  ? blockState.blockedByMe
+                    ? 'You blocked this user'
+                    : 'Messaging unavailable'
+                  : 'Type a message...'
+              }
               className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-tertiary outline-none resize-none leading-relaxed max-h-[120px]"
-              disabled={loading}
+              disabled={loading || composerDisabled}
             />
           </div>
           <button
             onClick={handleSend}
-            disabled={!input.trim() || loading}
+            disabled={!input.trim() || loading || composerDisabled}
             className={cn(
               'flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full transition-all duration-200',
-              input.trim()
+              input.trim() && !composerDisabled
                 ? 'bg-gradient-to-r from-gold to-gold-strong text-gold-ink shadow-lg shadow-gold/25 hover-glow-gold active:scale-95'
                 : 'bg-surface-2 text-text-tertiary cursor-not-allowed',
             )}

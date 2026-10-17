@@ -22,6 +22,14 @@ import {
 import { UsersService } from '../users/users.service';
 import { ConnectionsService } from '../connections/connections.service';
 import { PushService } from '../notifications/push.service';
+import { BlocksService } from '../blocks/blocks.service';
+
+/**
+ * Hard cap on message text. Enforced here rather than only in the DTO so the
+ * socket path — which bypasses the HTTP ValidationPipe — cannot be used to
+ * store oversized documents.
+ */
+export const MAX_MESSAGE_LENGTH = 4000;
 
 /** Optional payload accompanying a non-text message. */
 export interface SendMessageOptions {
@@ -46,6 +54,7 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
     private readonly usersService: UsersService,
     private readonly connectionsService: ConnectionsService,
     private readonly pushService: PushService,
+    private readonly blocksService: BlocksService,
   ) {}
 
   onModuleInit() {
@@ -102,6 +111,8 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
     if (userId === participantId) {
       throw new ForbiddenException('Cannot create conversation with yourself');
     }
+
+    await this.blocksService.assertNotBlocked(userId, participantId, 'message');
 
     const { allowed, status } =
       await this.connectionsService.hasAcceptedConnection(
@@ -315,11 +326,26 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
+    if ((content ?? '').length > MAX_MESSAGE_LENGTH) {
+      throw new BadRequestException(
+        `Message cannot exceed ${MAX_MESSAGE_LENGTH} characters`,
+      );
+    }
+
     // Ensure the sender still has an accepted connection with the other participant
     const otherParticipantId = conversation.participantIds
       .find((id) => id.toString() !== senderId)
       ?.toString();
     if (otherParticipantId) {
+      // Re-checked on every send rather than only when the conversation was
+      // created, so a block takes effect immediately on an existing thread —
+      // including sends arriving over the websocket.
+      await this.blocksService.assertNotBlocked(
+        senderId,
+        otherParticipantId,
+        'message',
+      );
+
       const { allowed, status } =
         await this.connectionsService.hasAcceptedConnection(
           senderId,

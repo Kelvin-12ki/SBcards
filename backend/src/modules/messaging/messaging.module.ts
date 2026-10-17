@@ -17,6 +17,7 @@ import { MessageUploadService } from './services/message-upload.service';
 import { UsersModule } from '../users/users.module';
 import { ConnectionsModule } from '../connections/connections.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { BlocksModule } from '../blocks/blocks.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     UsersModule,
     ConnectionsModule,
     NotificationsModule,
+    BlocksModule,
   ],
   providers: [
     MessagingService,

@@ -714,6 +714,7 @@ const MessagesPage: React.FC = () => {
               isOtherUserTyping={isOtherTyping}
               onInputChange={handleInputChange}
               otherUser={activeConversation?.otherUser}
+              otherUserId={activePartnerId}
               onBack={handleBack}
               onDelete={handleDeleteMessage}
               onLoadOlder={handleLoadOlder}
