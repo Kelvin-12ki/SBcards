@@ -92,7 +92,10 @@ async function bootstrap() {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    // x-device-id carries the stable device id used by the auth-event log.
+    // A header the browser sends but CORS does not list here fails the
+    // preflight and the request never leaves the browser.
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-device-id'],
   });
 
   app.useGlobalPipes(
