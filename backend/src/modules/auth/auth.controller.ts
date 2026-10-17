@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Body,
+  Req,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -16,14 +17,24 @@ import { UsersService } from '../users/users.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtUser } from '../../common/strategies/jwt.strategy';
+import { getRequestContext } from '../../common/utils/request-context';
 import { User } from '../users/entities/user.entity';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 import { ApplyOrganizerDto } from './dto/apply-organizer.dto';
 
 class VerifyTokenDto {
   @IsNotEmpty()
   @IsString()
   idToken!: string;
+
+  /**
+   * What the client believes it is doing. Optional because a missing value
+   * still logs — it just falls back to login/signup inferred server-side.
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  intent?: string;
 }
 
 @ApiTags('auth')
@@ -42,8 +53,13 @@ export class AuthController {
   @ApiBody({ type: VerifyTokenDto })
   async verify(
     @Body() body: VerifyTokenDto,
+    @Req() req: any,
   ): Promise<{ accessToken: string; user: User }> {
-    return this.authService.verifyFirebaseToken(body.idToken);
+    return this.authService.verifyFirebaseToken(
+      body.idToken,
+      getRequestContext(req),
+      body.intent,
+    );
   }
 
   /**

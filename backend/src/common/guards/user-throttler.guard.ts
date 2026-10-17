@@ -1,13 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import {
   ThrottlerGuard,
   ThrottlerModuleOptions,
   ThrottlerStorage,
+  ThrottlerLimitDetail,
   InjectThrottlerOptions,
   InjectThrottlerStorage,
 } from '@nestjs/throttler';
+import { SecurityService } from '../../modules/security/security.service';
+import { getRequestContext } from '../utils/request-context';
 
 /**
  * Rate limits per authenticated user, falling back to IP for anonymous calls.
@@ -28,8 +31,41 @@ export class UserThrottlerGuard extends ThrottlerGuard {
     @InjectThrottlerStorage() storageService: ThrottlerStorage,
     reflector: Reflector,
     private readonly jwtService: JwtService,
+    private readonly securityService: SecurityService,
   ) {
     super(options, storageService, reflector);
+  }
+
+  /**
+   * A rate-limit denial on an auth route is a brute-force attempt, and until
+   * now it was completely invisible — the throttler threw and nothing was
+   * written down.
+   *
+   * Only `/auth` is recorded. Denials on ordinary routes are common under
+   * normal use and would drown the feed; the auth bucket (20/min) is the one
+   * where a denial is meaningful.
+   */
+  protected async throwThrottlingException(
+    context: ExecutionContext,
+    throttlerLimitDetail: ThrottlerLimitDetail,
+  ): Promise<void> {
+    try {
+      const request = context.switchToHttp().getRequest();
+      const url: string = request?.url ?? '';
+      if (url.startsWith('/auth') || url.startsWith('/api/auth')) {
+        await this.securityService.recordAuthEvent({
+          eventType: 'rate_limited',
+          outcome: 'failure',
+          failureReason: 'throttled',
+          intent: url.split('?')[0],
+          ctx: getRequestContext(request),
+        });
+      }
+    } catch {
+      // Recording must never prevent the throttler from rejecting the request.
+    }
+
+    await super.throwThrottlingException(context, throttlerLimitDetail);
   }
 
   protected async getTracker(req: Record<string, any>): Promise<string> {

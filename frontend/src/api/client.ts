@@ -9,12 +9,40 @@ const apiClient = axios.create({
   },
 });
 
+const DEVICE_ID_KEY = 'sbcards_device_id';
+
+/**
+ * Stable per-browser id used by the backend's auth-event log to tell an
+ * existing device from a new one. Generated once and reused; deliberately
+ * absent when storage is unavailable rather than regenerated, so a locked-down
+ * browser does not look like a stream of fresh devices.
+ */
+function getDeviceId(): string | null {
+  try {
+    let id = localStorage.getItem(DEVICE_ID_KEY);
+    if (!id) {
+      id =
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `d-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+      localStorage.setItem(DEVICE_ID_KEY, id);
+    }
+    return id;
+  } catch {
+    return null;
+  }
+}
+
 // Request interceptor: attach Authorization Bearer token from localStorage
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('accessToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    const deviceId = getDeviceId();
+    if (deviceId) {
+      config.headers['x-device-id'] = deviceId;
     }
     return config;
   },

@@ -28,11 +28,23 @@ export class AdminGuard implements CanActivate {
       throw new ForbiddenException('Authentication required');
     }
 
-    // Check DB for current role (JWT may be stale)
-    const dbUser = await this.userModel.findOne({ firebaseUid: user.uid }).lean();
-    if (!dbUser || (dbUser.role !== 'admin' && dbUser.role !== 'organizer')) {
+    // JwtStrategy.validate() already re-read the role from the DB when it
+    // resolved `status`, so admin routes normally cost no extra query here.
+    // Fall back to a direct lookup for the (rare) case that lookup failed.
+    let role = user.dbRole;
+    if (typeof role === 'undefined') {
+      const dbUser = await this.userModel
+        .findOne({ firebaseUid: user.uid })
+        .lean();
+      role = dbUser?.role;
+    }
+
+    // Admin only. Organizers previously slipped through here, which handed
+    // anyone with a self-approved organizer application the ability to ban
+    // users, read every account, and delete events.
+    if (role !== 'admin') {
       this.logger.warn(
-        `User ${user.userId || user.uid} with role "${dbUser?.role || 'none'}" attempted to access admin route`,
+        `User ${user.userId || user.uid} with role "${role ?? 'none'}" attempted to access admin route`,
       );
       throw new ForbiddenException(
         'Admin access required. You do not have the necessary permissions.',

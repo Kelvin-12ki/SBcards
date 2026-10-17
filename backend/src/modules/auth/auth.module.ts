@@ -7,6 +7,7 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { UsersModule } from '../users/users.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { SecurityModule } from '../security/security.module';
 import { User, UserSchema } from '../users/entities/user.entity';
 import { Card, CardSchema } from '../cards/entities/card.entity';
 import { Connection, ConnectionSchema } from '../connections/entities/connection.entity';
@@ -27,6 +28,7 @@ import { JwtStrategy } from '../../common/strategies/jwt.strategy';
     }),
     forwardRef(() => UsersModule),
     NotificationsModule,
+    SecurityModule,
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: Card.name, schema: CardSchema },

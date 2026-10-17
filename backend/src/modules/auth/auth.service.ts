@@ -1,6 +1,7 @@
 import {
   Injectable,
   UnauthorizedException,
+  ForbiddenException,
   BadRequestException,
   Logger,
   Inject,
@@ -12,10 +13,25 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { UsersService } from '../users/users.service';
 import { EmailService } from '../notifications/email.service';
+import { SecurityService } from '../security/security.service';
+import { RequestContext } from '../../common/utils/request-context';
 import { User, UserDocument } from '../users/entities/user.entity';
 import { Card, CardDocument } from '../cards/entities/card.entity';
 import { Connection, ConnectionDocument } from '../connections/entities/connection.entity';
 import { ApplyOrganizerDto } from './dto/apply-organizer.dto';
+
+/** Maps a Firebase verification failure to a stable, dashboard-filterable code. */
+function classifyTokenError(error: any): string {
+  const code: string = typeof error?.code === 'string' ? error.code : '';
+  if (code === 'auth/id-token-expired') return 'token_expired';
+  if (code === 'auth/id-token-revoked') return 'token_revoked';
+  if (code === 'auth/user-disabled') return 'account_disabled';
+  if (code === 'auth/invalid-credential') return 'invalid_credential';
+  if (code === 'auth/invalid-id-token' || code === 'auth/argument-error')
+    return 'token_invalid';
+  if (code) return code.replace(/^auth\//, '');
+  return 'token_invalid';
+}
 
 @Injectable()
 export class AuthService {
@@ -26,6 +42,7 @@ export class AuthService {
     @Inject(forwardRef(() => UsersService))
     private readonly usersService: UsersService,
     private readonly emailService: EmailService,
+    private readonly securityService: SecurityService,
     @InjectModel(Card.name)
     private readonly cardModel: Model<CardDocument>,
     @InjectModel(Connection.name)
@@ -34,21 +51,58 @@ export class AuthService {
 
   /**
    * Verify a Firebase ID token, upsert the user in DB, and return a JWT + user.
+   *
+   * `ctx` carries the request metadata (IP, User-Agent, device id) and `intent`
+   * is what the client says it is doing (login, register, restore, google).
+   * Both are needed to write a useful auth-event row; without them the dashboard
+   * cannot distinguish a signup from a page reload.
    */
   async verifyFirebaseToken(
     idToken: string,
+    ctx: RequestContext = {},
+    intent?: string,
   ): Promise<{ accessToken: string; user: UserDocument }> {
+    let decodedToken: admin.auth.DecodedIdToken;
+
     try {
-      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      decodedToken = await admin.auth().verifyIdToken(idToken);
+    } catch (error) {
+      // The token never decoded, so there is no uid/email to attach — record
+      // it against the source IP, which is the signal that matters here.
+      const failureReason = classifyTokenError(error);
+      this.logger.warn(`Token verification failed: ${failureReason}`);
+      await this.recordAuthEvent({
+        eventType: failureReason === 'account_disabled' ? 'account_disabled' : 'failed_login',
+        outcome: 'failure',
+        failureReason,
+        intent,
+        ctx,
+      });
+      throw new UnauthorizedException(
+        'Invalid or expired Firebase authentication token',
+      );
+    }
 
-      const { uid, email, name, picture } = decodedToken;
+    const { uid, email, name, picture } = decodedToken;
+    const credentialType =
+      (decodedToken as any)?.firebase?.sign_in_provider ?? 'unknown';
 
-      if (!email) {
-        throw new UnauthorizedException(
-          'Email is required from Firebase authentication',
-        );
-      }
+    if (!email) {
+      await this.recordAuthEvent({
+        eventType: 'failed_login',
+        outcome: 'failure',
+        failureReason: 'missing_email',
+        firebaseUid: uid,
+        credentialType,
+        intent,
+        ctx,
+      });
+      throw new UnauthorizedException(
+        'Email is required from Firebase authentication',
+      );
+    }
 
+    try {
       // Check if user already exists (before upsert)
       const existingUser = await this.usersService.findByFirebaseUid(uid);
 
@@ -65,6 +119,28 @@ export class AuthService {
         user.avatarUrl = picture;
       }
 
+      // A banned or suspended account must not be able to obtain a fresh
+      // token, but the attempt itself is the most interesting row in the log,
+      // so it is recorded before the rejection.
+      if (user.status === 'banned' || user.status === 'suspended') {
+        await this.recordAuthEvent({
+          eventType: 'account_disabled',
+          outcome: 'failure',
+          failureReason: `account_${user.status}`,
+          userId: user.id,
+          firebaseUid: uid,
+          email,
+          credentialType,
+          intent,
+          ctx,
+        });
+        throw new ForbiddenException(
+          user.status === 'banned'
+            ? 'Your account has been banned. Contact support if you believe this is a mistake.'
+            : 'Your account is suspended. Contact support if you believe this is a mistake.',
+        );
+      }
+
       // Send welcome email to new users (fire-and-forget)
       if (!existingUser) {
         const displayName = name || email.split('@')[0];
@@ -73,20 +149,59 @@ export class AuthService {
         });
       }
 
+      const isSignup = !existingUser;
+      const isRestore = !isSignup && intent === 'restore';
+
       // Generate JWT
       const accessToken = this.generateToken(user);
 
+      await this.recordAuthEvent({
+        eventType: isSignup ? 'signup' : isRestore ? 'session_restore' : 'login',
+        outcome: 'success',
+        userId: user.id,
+        firebaseUid: uid,
+        email,
+        credentialType,
+        intent,
+        ctx,
+      });
+
       return { accessToken, user };
     } catch (error) {
-      if (error instanceof UnauthorizedException) {
+      if (
+        error instanceof UnauthorizedException ||
+        error instanceof ForbiddenException
+      ) {
+        // Already recorded on the branch that raised it.
         throw error;
       }
       this.logger.error(
         `Firebase token verification failed: ${(error as Error).message}`,
       );
+      await this.recordAuthEvent({
+        eventType: 'failed_login',
+        outcome: 'failure',
+        failureReason: 'server_error',
+        firebaseUid: uid,
+        email,
+        credentialType,
+        intent,
+        ctx,
+      });
       throw new UnauthorizedException(
         'Invalid or expired Firebase authentication token',
       );
+    }
+  }
+
+  /** Fire-and-forget wrapper so a logging failure can never break a login. */
+  private async recordAuthEvent(
+    input: Parameters<SecurityService['recordAuthEvent']>[0],
+  ): Promise<void> {
+    try {
+      await this.securityService.recordAuthEvent(input);
+    } catch (error) {
+      this.logger.warn(`Could not record auth event: ${(error as Error).message}`);
     }
   }
 

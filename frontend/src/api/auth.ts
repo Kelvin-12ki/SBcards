@@ -85,6 +85,7 @@ export function getFirebaseAuthErrorMessage(err: any): string {
 export async function login(
   email: string,
   password: string,
+  intent: 'login' | 'register' = 'login',
 ): Promise<AuthResponse> {
   const firebaseAuth = requireAuth();
 
@@ -102,6 +103,7 @@ export async function login(
   try {
     const { data } = await apiClient.post<AuthResponse>('/auth/verify', {
       idToken,
+      intent,
     });
     console.log('[Auth] Backend verify successful');
 
@@ -156,7 +158,7 @@ export async function register(
 
   // After creation, log in to get the backend token
   console.log('[Auth] User created, now signing in...');
-  return login(email, password);
+  return login(email, password, 'register');
 }
 
 /**
@@ -208,6 +210,7 @@ export async function loginWithGoogle(): Promise<AuthResponse> {
 
   const { data } = await apiClient.post<AuthResponse>('/auth/verify', {
     idToken,
+    intent: 'google',
   });
 
   localStorage.setItem('accessToken', data.accessToken);

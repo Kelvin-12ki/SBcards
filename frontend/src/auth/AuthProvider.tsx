@@ -62,7 +62,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               try {
                 const { getIdToken } = await import('firebase/auth');
                 const idToken = await getIdToken(fbUser);
-                const { data } = await apiClient.post<{ accessToken: string; user: User }>('/auth/verify', { idToken });
+                const { data } = await apiClient.post<{ accessToken: string; user: User }>('/auth/verify', { idToken, intent: 'restore' });
                 if (!cancelled) {
                   localStorage.setItem('accessToken', data.accessToken);
                   localStorage.setItem('user', JSON.stringify(data.user));
