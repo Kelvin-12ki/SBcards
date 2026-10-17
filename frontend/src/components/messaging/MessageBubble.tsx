@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Check, CheckCheck, Trash2, Contact, SmilePlus } from 'lucide-react';
+import { Check, CheckCheck, Trash2, Contact, SmilePlus, Flag } from 'lucide-react';
 import { cn, timeAgo } from '@/utils/helpers';
 import Avatar from '@/components/ui/Avatar';
 import type { Message } from '@/types/messaging';
@@ -20,6 +20,8 @@ export interface MessageBubbleProps {
   onToggleReaction?: (messageId: string, emoji: string) => void;
   // WEB: lets message search scroll a specific bubble into view
   highlighted?: boolean;
+  // WEB: opens the report dialog for someone else's message
+  onReport?: (messageId: string) => void;
 }
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({
@@ -32,6 +34,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   currentUserId = '',
   onToggleReaction,
   highlighted = false,
+  onReport,
 }) => {
   const [pickerOpen, setPickerOpen] = React.useState(false);
 
@@ -182,6 +185,22 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           aria-label="Delete message"
         >
           <Trash2 className="h-3 w-3" />
+        </button>
+      )}
+
+      {/* WEB: report button — only on other people's messages, on hover.
+          Sits outside the reaction button's slot so both stay clickable. */}
+      {!isOwn && isLastInGroup && onReport && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onReport(message.id);
+          }}
+          className="absolute -top-1 -right-14 opacity-0 group-hover/msg:opacity-100 focus-within:opacity-100 transition-opacity duration-150 flex items-center justify-center h-6 w-6 rounded-full bg-surface-3 border border-border-subtle text-text-tertiary hover:text-red-400 hover:border-red-400/50 hover:bg-red-400/10"
+          aria-label="Report message"
+          title="Report message"
+        >
+          <Flag className="h-3 w-3" />
         </button>
       )}
 

@@ -17,10 +17,17 @@ import Avatar from '@/components/ui/Avatar';
 import MessageBubble from './MessageBubble';
 import TypingIndicator from './TypingIndicator';
 import CardShareModal from './CardShareModal';
+import Modal from '@/components/ui/Modal';
 import { searchMessages } from '@/api/messaging';
 import { blockUser, unblockUser, getBlockStatus } from '@/api/blocks';
+import { createReport } from '@/api/moderation';
 import { showApiError } from '@/utils/errorHandler';
 import type { Message, SharedCardData, PresenceStatus } from '@/types/messaging';
+import {
+  REPORT_REASONS,
+  REPORT_REASON_LABELS,
+  type ReportReason,
+} from '@/types/moderation';
 
 export interface ChatWindowProps {
   messages: Message[];
@@ -154,6 +161,42 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   // WEB: card share state
   const [cardModalOpen, setCardModalOpen] = useState(false);
+
+  // WEB: report dialog — target is the message id, null when closed
+  const [reportTarget, setReportTarget] = useState<string | null>(null);
+  const [reportReason, setReportReason] = useState<ReportReason>('spam');
+  const [reportDetails, setReportDetails] = useState('');
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+
+  const handleOpenReport = useCallback((messageId: string) => {
+    setReportReason('spam');
+    setReportDetails('');
+    setReportTarget(messageId);
+  }, []);
+
+  const handleSubmitReport = async () => {
+    if (!reportTarget || reportSubmitting) return;
+    setReportSubmitting(true);
+    try {
+      await createReport({
+        targetType: 'message',
+        targetId: reportTarget,
+        reason: reportReason,
+        details: reportDetails.trim() || undefined,
+      });
+      setReportTarget(null);
+      toast.success('Report sent. Our team will review it.');
+    } catch (err: any) {
+      if (err?.response?.status === 409) {
+        setReportTarget(null);
+        toast.error('You have already reported this message.');
+      } else {
+        showApiError(err, 'Could not send the report.');
+      }
+    } finally {
+      setReportSubmitting(false);
+    }
+  };
 
   // WEB: in-conversation search state
   const [searchOpen, setSearchOpen] = useState(false);
@@ -585,6 +628,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                       currentUserId={currentUserId}
                       onToggleReaction={onToggleReaction}
                       highlighted={highlightedId === msg.id}
+                      onReport={handleOpenReport}
                     />
                   ))}
                 </div>
@@ -680,6 +724,79 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </button>
         </div>
       </div>
+
+      {/* WEB: report dialog */}
+      {reportTarget && (
+        <Modal
+          isOpen
+          onClose={() => setReportTarget(null)}
+          title="Report message"
+          footer={
+            <>
+              <button
+                type="button"
+                onClick={() => setReportTarget(null)}
+                disabled={reportSubmitting}
+                className="rounded-lg border border-border-subtle px-4 py-2 text-sm text-text-secondary hover:bg-surface-2 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitReport}
+                disabled={reportSubmitting}
+                className="rounded-lg bg-red-500/20 px-4 py-2 text-sm font-semibold text-red-400 hover:bg-red-500/30 disabled:opacity-50 transition-colors"
+              >
+                {reportSubmitting ? 'Sending…' : 'Send report'}
+              </button>
+            </>
+          }
+        >
+          <p className="text-sm text-text-tertiary mb-4">
+            Tell us what's wrong with this message. The sender is not told who
+            reported them.
+          </p>
+
+          <fieldset className="space-y-1.5">
+            <legend className="sr-only">Reason</legend>
+            {REPORT_REASONS.map((reason) => (
+              <label
+                key={reason}
+                className={cn(
+                  'flex items-center gap-3 rounded-lg border px-3 py-2 text-sm cursor-pointer transition-colors',
+                  reportReason === reason
+                    ? 'border-gold/50 bg-gold/10 text-text-primary'
+                    : 'border-border-subtle bg-surface-2 text-text-secondary hover:bg-surface-3',
+                )}
+              >
+                <input
+                  type="radio"
+                  name="report-reason"
+                  value={reason}
+                  checked={reportReason === reason}
+                  onChange={() => setReportReason(reason)}
+                  className="accent-gold"
+                />
+                {REPORT_REASON_LABELS[reason]}
+              </label>
+            ))}
+          </fieldset>
+
+          <label className="block mt-4">
+            <span className="block text-xs text-text-tertiary mb-1">
+              Anything else we should know? (optional)
+            </span>
+            <textarea
+              value={reportDetails}
+              onChange={(e) => setReportDetails(e.target.value)}
+              maxLength={1000}
+              rows={3}
+              placeholder="Add details…"
+              className="w-full rounded-lg border border-border-subtle bg-surface-2 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary outline-none focus:border-gold/40"
+            />
+          </label>
+        </Modal>
+      )}
 
       {/* WEB: card picker */}
       {onSendCard && (

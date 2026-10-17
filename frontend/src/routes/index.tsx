@@ -51,6 +51,8 @@ const AdminEventsPage = React.lazy(() => import('@/pages/admin/AdminEventsPage')
 const AdminAnalyticsPage = React.lazy(() => import('@/pages/admin/AdminAnalyticsPage'));
 const AdminSecurityPage = React.lazy(() => import('@/pages/admin/AdminSecurityPage'));
 const AdminDevicesPage = React.lazy(() => import('@/pages/admin/AdminDevicesPage'));
+const AdminReportsPage = React.lazy(() => import('@/pages/admin/AdminReportsPage'));
+const AdminChatsPage = React.lazy(() => import('@/pages/admin/AdminChatsPage'));
 const AdminOrganizerRequestsPage = React.lazy(() => import('@/pages/admin/AdminOrganizerRequestsPage'));
 
 // Admin layout
@@ -130,6 +132,8 @@ const RoutesTree: React.FC = () => {
               <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
               <Route path="/admin/security" element={<AdminSecurityPage />} />
               <Route path="/admin/security/devices" element={<AdminDevicesPage />} />
+          <Route path="/admin/reports" element={<AdminReportsPage />} />
+          <Route path="/admin/chats" element={<AdminChatsPage />} />
             </Route>
           </Route>
         </Route>

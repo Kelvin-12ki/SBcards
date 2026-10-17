@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/utils/helpers';
 import { getOrganizerRequests, type OrganizerRequest } from '@/api/admin';
+import { getReports } from '@/api/moderation';
 
 interface AdminSidebarProps {
   isOpen?: boolean;
@@ -50,20 +51,39 @@ const DevicesIcon = () => (
   </svg>
 );
 
+const ReportsIcon = () => (
+  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 3.75A.75.75 0 013.75 3h2.5a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75h-2.5a.75.75 0 01-.75-.75V3.75zM7.5 4.5A.75.75 0 018.25 3.75h6.75a.75.75 0 01.75.75v15a.75.75 0 01-1.125.65L11.25 17.4l-3.375 2.025A.75.75 0 016.75 18.75V4.5z" />
+  </svg>
+);
+
+const ChatsIcon = () => (
+  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+  </svg>
+);
+
 const adminNavLinks = [
   { to: '/admin', label: 'Dashboard', icon: DashboardIcon, end: true },
   { to: '/admin/users', label: 'Users', icon: UsersIcon, end: false },
   { to: '/admin/events', label: 'Events', icon: EventsIcon, end: false },
   { to: '/admin/organizer-requests', label: 'Organizer Requests', icon: RequestsIcon, end: false },
   { to: '/admin/analytics', label: 'Analytics', icon: AnalyticsIcon, end: false },
+  { to: '/admin/chats', label: 'Chats', icon: ChatsIcon, end: false },
+  { to: '/admin/reports', label: 'Reports', icon: ReportsIcon, end: false },
   { to: '/admin/security', label: 'Security', icon: SecurityIcon, end: false },
   { to: '/admin/security/devices', label: 'Devices', icon: DevicesIcon, end: false },
 ];
 
 const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, onClose }) => {
   const [pendingCount, setPendingCount] = React.useState(0);
+  const [openReports, setOpenReports] = React.useState(0);
 
   React.useEffect(() => {
+    // Both counts are badges only — a failed fetch must not break navigation.
+    getReports({ status: 'open', limit: 1 })
+      .then((data) => setOpenReports(data.total))
+      .catch(() => {});
     getOrganizerRequests()
       .then((requests: OrganizerRequest[]) => {
         const pending = requests.filter(
@@ -137,6 +157,11 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, onClose }) => {
                 {link.to === '/admin/organizer-requests' && pendingCount > 0 && (
                   <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
                     {pendingCount}
+                  </span>
+                )}
+                {link.to === '/admin/reports' && openReports > 0 && (
+                  <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold bg-red-500/20 text-red-400 border border-red-500/30">
+                    {openReports}
                   </span>
                 )}
               </NavLink>
