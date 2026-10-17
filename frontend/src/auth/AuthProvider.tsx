@@ -45,6 +45,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (!cancelled) setLoading(false);
         // Re-register push token on every session restore (handles token rotation & first-time registration)
         import('@/utils/push').then(({ registerPushToken }) => registerPushToken()).catch((e: any) => console.warn('[Auth] Push registration failed:', e));
+
+        // Re-verify in the background so an already-signed-in user still emits a
+        // session_restore event and refreshes their registered device on every
+        // app open. Without this, an existing token short-circuits before any
+        // request is made and the security log never hears from the session.
+        //
+        // Deliberately not awaited: app start must not wait on the backend.
+        // Failures are swallowed so a backend blip leaves the cached token and
+        // user untouched rather than rendering the user signed out.
+        (async () => {
+          try {
+            const firebaseAuth = auth;
+            if (!firebaseAuth) return;
+            const { onAuthStateChanged, getIdToken } = await import('firebase/auth');
+            const fbUser = await new Promise<any>((resolve) => {
+              let unsub: (() => void) | undefined;
+              unsub = onAuthStateChanged(firebaseAuth, (u: any) => {
+                unsub?.();
+                resolve(u);
+              });
+            });
+            if (!fbUser) return;
+
+            const idToken = await getIdToken(fbUser);
+            const { data } = await apiClient.post<{ accessToken: string; user: User }>('/auth/verify', { idToken, intent: 'restore' });
+            if (cancelled) return;
+            localStorage.setItem('accessToken', data.accessToken);
+            localStorage.setItem('user', JSON.stringify(data.user));
+            setToken(data.accessToken);
+            setUser(data.user);
+          } catch { /* keep the cached session */ }
+        })();
+
         return;
       }
 
