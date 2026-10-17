@@ -22,7 +22,7 @@ import ConversationList from '@/components/messaging/ConversationList';
 import ChatWindow from '@/components/messaging/ChatWindow';
 import Spinner from '@/components/ui/Spinner';
 import { registerPushToken, getNotificationStatus } from '@/utils/push';
-import { getSocket, emitWithAck } from '@/services/socket';
+import { getSocket, emitWithAck, reconnectSocket } from '@/services/socket';
 import { usePresenceMap } from '@/hooks/usePresence';
 import toast from 'react-hot-toast';
 
@@ -646,6 +646,13 @@ const MessagesPage: React.FC = () => {
             <span className="flex-1">
               Reconnecting to live chat. Messages will still send, but may take a moment to appear.
             </span>
+            <button
+              type="button"
+              onClick={reconnectSocket}
+              className="flex-shrink-0 rounded-lg border border-amber-500/40 px-3 py-1.5 text-xs font-medium text-amber-300 hover:bg-amber-500/20 transition-colors"
+            >
+              Retry now
+            </button>
           </div>
         </div>
       )}
