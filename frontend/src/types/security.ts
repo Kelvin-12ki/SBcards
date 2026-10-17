@@ -61,3 +61,50 @@ export interface AuthEventsFilter {
   page?: number;
   limit?: number;
 }
+
+/** Owner joined server-side from the user collection; null if the user is gone. */
+export interface DeviceOwner {
+  id?: string;
+  _id?: string;
+  email?: string;
+  displayName?: string;
+  status?: string;
+  role?: string;
+}
+
+/** One row per (user, device), upserted on every successful auth. */
+export interface Device {
+  id: string;
+  userId: string;
+  deviceId: string;
+  userAgent?: string;
+  os?: string;
+  browser?: string;
+  platform?: string;
+  fingerprint?: string;
+  lastIp?: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  createdAt: string;
+  updatedAt: string;
+  user: DeviceOwner | null;
+}
+
+export interface PaginatedDevices {
+  data: Device[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+/** Every field maps to an optional query param — no filter is mandatory. */
+export interface DevicesFilter {
+  userId?: string;
+  os?: string;
+  browser?: string;
+  ip?: string;
+  since?: string;
+  page?: number;
+  limit?: number;
+}

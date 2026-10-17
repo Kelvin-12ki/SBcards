@@ -1,8 +1,16 @@
 import apiClient from './client';
-import type { AuthEventStats, AuthEventsFilter, PaginatedAuthEvents } from '@/types/security';
+import type {
+  AuthEventStats,
+  AuthEventsFilter,
+  DevicesFilter,
+  PaginatedAuthEvents,
+  PaginatedDevices,
+} from '@/types/security';
 
 /** Empty strings are dropped so they never reach `forbidNonWhitelisted`. */
-function cleanParams(filter: AuthEventsFilter): Record<string, unknown> {
+function cleanParams(
+  filter: object,
+): Record<string, unknown> {
   const params: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(filter)) {
     if (value === undefined || value === null || value === '') continue;
@@ -24,6 +32,16 @@ export async function getAuthEvents(
 export async function getAuthEventStats(): Promise<AuthEventStats> {
   const { data } = await apiClient.get<AuthEventStats>(
     '/admin/security/auth-events/stats',
+  );
+  return data;
+}
+
+export async function getDevices(
+  filter: DevicesFilter = {},
+): Promise<PaginatedDevices> {
+  const { data } = await apiClient.get<PaginatedDevices>(
+    '/admin/security/devices',
+    { params: cleanParams(filter) },
   );
   return data;
 }
